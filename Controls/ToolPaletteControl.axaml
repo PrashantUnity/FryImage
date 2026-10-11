@@ -75,23 +75,33 @@
 
                     <!-- 7. Spot Healing Brush (J) -->
                     <Button Classes="ps-tool-btn"
-                            Command="{Binding SetToolCommand}" CommandParameter="brush"
+                            Classes.active="{Binding IsHealingToolActive}"
+                            Command="{Binding SetToolCommand}" CommandParameter="healing"
                             ToolTip.Tip="Spot Healing Brush Tool (J)">
                         <materialIcons:MaterialIcon Kind="Bandage" Width="15" Height="15" />
                     </Button>
 
                     <!-- 8. Brush Tool (B) -->
                     <Button Classes="ps-tool-btn"
-                            Classes.active="{Binding IsBrushToolActive}"
+                            Classes.active="{Binding IsStandardBrushToolActive}"
                             Command="{Binding SetToolCommand}" CommandParameter="brush"
                             ToolTip.Tip="Brush Tool (B)">
                         <materialIcons:MaterialIcon Kind="Brush" Width="15" Height="15" />
                     </Button>
 
+                    <!-- 8b. Pencil Tool (1-bit Crisp Pixel) -->
+                    <Button Classes="ps-tool-btn"
+                            Classes.active="{Binding IsPencilToolActive}"
+                            Command="{Binding SetToolCommand}" CommandParameter="pencil"
+                            ToolTip.Tip="Pencil Tool (1-bit Crisp Pixel) (B)">
+                        <materialIcons:MaterialIcon Kind="Pencil" Width="15" Height="15" />
+                    </Button>
+
                     <!-- 9. Clone Stamp (S) -->
                     <Button Classes="ps-tool-btn"
-                            Command="{Binding SetToolCommand}" CommandParameter="select"
-                            ToolTip.Tip="Clone Stamp Tool (S)">
+                            Classes.active="{Binding IsCloneStampToolActive}"
+                            Command="{Binding SetToolCommand}" CommandParameter="clonestamp"
+                            ToolTip.Tip="Clone Stamp Tool (Option-click to sample source) (S)">
                         <materialIcons:MaterialIcon Kind="Stamper" Width="15" Height="15" />
                     </Button>
 
@@ -118,18 +128,20 @@
                         <materialIcons:MaterialIcon Kind="FormatColorFill" Width="15" Height="15" />
                     </Button>
 
-                    <!-- 13. Blur / Sharpen Tool -->
+                    <!-- 13. Blur / Sharpen / Smudge Tool (R) -->
                     <Button Classes="ps-tool-btn"
-                            Command="{Binding OpenFilterDialogCommand}" CommandParameter="GaussianBlur"
-                            ToolTip.Tip="Blur Tool">
+                            Classes.active="{Binding IsBlurSharpenSmudgeActive}"
+                            Command="{Binding SetToolCommand}" CommandParameter="blur"
+                            ToolTip.Tip="Blur Tool (Hold Option/Alt for Sharpen) (R)">
                         <materialIcons:MaterialIcon Kind="Water" Width="15" Height="15" />
                     </Button>
 
-                    <!-- 14. Dodge / Burn Tool (O) -->
+                    <!-- 14. Dodge / Burn / Sponge Tool (O) -->
                     <Button Classes="ps-tool-btn"
-                            Command="{Binding SetToolCommand}" CommandParameter="select"
-                            ToolTip.Tip="Dodge Tool (O)">
-                        <materialIcons:MaterialIcon Kind="MagnifyPlusOutline" Width="15" Height="15" />
+                            Classes.active="{Binding IsDodgeBurnSpongeActive}"
+                            Command="{Binding SetToolCommand}" CommandParameter="dodge"
+                            ToolTip.Tip="Dodge Tool (Hold Option/Alt for Burn) (O)">
+                        <materialIcons:MaterialIcon Kind="WhiteBalanceSunny" Width="15" Height="15" />
                     </Button>
 
                     <!-- 15. Pen Tool (P) -->

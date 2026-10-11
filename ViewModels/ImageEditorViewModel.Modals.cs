@@ -451,6 +451,153 @@ public partial class ImageEditorViewModel
     }
 
     [RelayCommand]
+    public void ApplyAutoContrast()
+    {
+        var target = SelectedElement as ImageElement ?? Elements.OfType<ImageElement>().LastOrDefault();
+        if (target == null || target.OriginalImageBytes == null) return;
+        try
+        {
+            byte[] beforeBytes = target.OriginalImageBytes;
+            using var srcBmp = SKBitmap.Decode(beforeBytes);
+            if (srcBmp == null) return;
+            byte[] adjusted = ImageAdjustmentEngine.ApplyAutoContrast(srcBmp.Bytes);
+            using var adjBmp = new SKBitmap(srcBmp.Width, srcBmp.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
+            var pin = System.Runtime.InteropServices.GCHandle.Alloc(adjusted, System.Runtime.InteropServices.GCHandleType.Pinned);
+            try
+            {
+                adjBmp.InstallPixels(adjBmp.Info, pin.AddrOfPinnedObject());
+                using var image = SKImage.FromBitmap(adjBmp);
+                using var encoded = image.Encode(SKEncodedImageFormat.Png, 100);
+                byte[] afterBytes = encoded.ToArray();
+                target.OriginalImageBytes = afterBytes;
+                target.AdjustedSource?.Dispose();
+                target.AdjustedSource = null;
+                target.Source = new Bitmap(new MemoryStream(afterBytes));
+
+                var undoCmd = new RetouchImageCommand(target, beforeBytes, afterBytes, "Auto Contrast", (el, b) =>
+                {
+                    el.OriginalImageBytes = b;
+                    el.AdjustedSource?.Dispose();
+                    el.AdjustedSource = null;
+                    el.Source = new Bitmap(new MemoryStream(b));
+                    RefreshCanvas();
+                });
+                if (!_isApplyingHistory) History.Push(undoCmd);
+
+                RefreshCanvas();
+                ScheduleHistogramUpdate();
+                StatusMessage = "Applied Auto Contrast.";
+            }
+            finally
+            {
+                pin.Free();
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Auto Contrast failed: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    public void ApplyAutoColor()
+    {
+        var target = SelectedElement as ImageElement ?? Elements.OfType<ImageElement>().LastOrDefault();
+        if (target == null || target.OriginalImageBytes == null) return;
+        try
+        {
+            byte[] beforeBytes = target.OriginalImageBytes;
+            using var srcBmp = SKBitmap.Decode(beforeBytes);
+            if (srcBmp == null) return;
+            byte[] adjusted = ImageAdjustmentEngine.ApplyAutoColor(srcBmp.Bytes);
+            using var adjBmp = new SKBitmap(srcBmp.Width, srcBmp.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
+            var pin = System.Runtime.InteropServices.GCHandle.Alloc(adjusted, System.Runtime.InteropServices.GCHandleType.Pinned);
+            try
+            {
+                adjBmp.InstallPixels(adjBmp.Info, pin.AddrOfPinnedObject());
+                using var image = SKImage.FromBitmap(adjBmp);
+                using var encoded = image.Encode(SKEncodedImageFormat.Png, 100);
+                byte[] afterBytes = encoded.ToArray();
+                target.OriginalImageBytes = afterBytes;
+                target.AdjustedSource?.Dispose();
+                target.AdjustedSource = null;
+                target.Source = new Bitmap(new MemoryStream(afterBytes));
+
+                var undoCmd = new RetouchImageCommand(target, beforeBytes, afterBytes, "Auto Color", (el, b) =>
+                {
+                    el.OriginalImageBytes = b;
+                    el.AdjustedSource?.Dispose();
+                    el.AdjustedSource = null;
+                    el.Source = new Bitmap(new MemoryStream(b));
+                    RefreshCanvas();
+                });
+                if (!_isApplyingHistory) History.Push(undoCmd);
+
+                RefreshCanvas();
+                ScheduleHistogramUpdate();
+                StatusMessage = "Applied Auto Color.";
+            }
+            finally
+            {
+                pin.Free();
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Auto Color failed: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    public void ApplyEqualize()
+    {
+        var target = SelectedElement as ImageElement ?? Elements.OfType<ImageElement>().LastOrDefault();
+        if (target == null || target.OriginalImageBytes == null) return;
+        try
+        {
+            byte[] beforeBytes = target.OriginalImageBytes;
+            using var srcBmp = SKBitmap.Decode(beforeBytes);
+            if (srcBmp == null) return;
+            byte[] adjusted = ImageAdjustmentEngine.ApplyEqualize(srcBmp.Bytes);
+            using var adjBmp = new SKBitmap(srcBmp.Width, srcBmp.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
+            var pin = System.Runtime.InteropServices.GCHandle.Alloc(adjusted, System.Runtime.InteropServices.GCHandleType.Pinned);
+            try
+            {
+                adjBmp.InstallPixels(adjBmp.Info, pin.AddrOfPinnedObject());
+                using var image = SKImage.FromBitmap(adjBmp);
+                using var encoded = image.Encode(SKEncodedImageFormat.Png, 100);
+                byte[] afterBytes = encoded.ToArray();
+                target.OriginalImageBytes = afterBytes;
+                target.AdjustedSource?.Dispose();
+                target.AdjustedSource = null;
+                target.Source = new Bitmap(new MemoryStream(afterBytes));
+
+                var undoCmd = new RetouchImageCommand(target, beforeBytes, afterBytes, "Equalize", (el, b) =>
+                {
+                    el.OriginalImageBytes = b;
+                    el.AdjustedSource?.Dispose();
+                    el.AdjustedSource = null;
+                    el.Source = new Bitmap(new MemoryStream(b));
+                    RefreshCanvas();
+                });
+                if (!_isApplyingHistory) History.Push(undoCmd);
+
+                RefreshCanvas();
+                ScheduleHistogramUpdate();
+                StatusMessage = "Applied Equalize.";
+            }
+            finally
+            {
+                pin.Free();
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Equalize failed: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
     public void ApplyInvert()
     {
         var target = SelectedElement as ImageElement ?? Elements.OfType<ImageElement>().LastOrDefault();
@@ -500,6 +647,18 @@ public partial class ImageEditorViewModel
     [ObservableProperty] private bool _filterNoiseMonochromatic = true;
     [ObservableProperty] private bool _filterPreviewEnabled = true;
 
+    // Additional Photoshop filter properties
+    [ObservableProperty] private double _filterMotionAngle = 0.0;
+    [ObservableProperty] private double _filterMotionDistance = 15.0;
+    [ObservableProperty] private double _filterRadialAmount = 20.0;
+    [ObservableProperty] private bool _filterRadialIsZoom = false;
+    [ObservableProperty] private int _filterMosaicCellSize = 16;
+    [ObservableProperty] private double _filterTwirlAngle = 180.0;
+    [ObservableProperty] private double _filterTwirlRadius = 0.0;
+    [ObservableProperty] private double _filterSpherizeAmount = 50.0;
+    [ObservableProperty] private double _filterEmbossAngle = 135.0;
+    [ObservableProperty] private int _filterEmbossDepth = 3;
+
     private ImageElement? _filterTargetImageElement;
     private byte[]? _filterOriginalBytes;
 
@@ -510,9 +669,15 @@ public partial class ImageEditorViewModel
         ActiveFilterTitle = mode switch
         {
             "GaussianBlur" => "Gaussian Blur",
+            "MotionBlur" => "Motion Blur",
+            "RadialBlur" => "Radial Blur",
             "UnsharpMask" => "Unsharp Mask",
             "HighPass" => "High Pass",
             "AddNoise" => "Add Noise",
+            "Mosaic" => "Mosaic",
+            "Twirl" => "Twirl",
+            "Spherize" => "Spherize",
+            "Emboss" => "Emboss",
             _ => "Filter"
         };
 
@@ -529,6 +694,16 @@ public partial class ImageEditorViewModel
         FilterHighPassRadius = 10.0;
         FilterNoiseAmount = 25;
         FilterNoiseMonochromatic = true;
+        FilterMotionAngle = 0.0;
+        FilterMotionDistance = 15.0;
+        FilterRadialAmount = 20.0;
+        FilterRadialIsZoom = false;
+        FilterMosaicCellSize = 16;
+        FilterTwirlAngle = 180.0;
+        FilterTwirlRadius = 0.0;
+        FilterSpherizeAmount = 50.0;
+        FilterEmbossAngle = 135.0;
+        FilterEmbossDepth = 3;
         FilterPreviewEnabled = true;
 
         IsFilterDialogOpen = true;
@@ -538,6 +713,15 @@ public partial class ImageEditorViewModel
     partial void OnFilterSharpenAmountChanged(double value) => ApplyFilterPreview();
     partial void OnFilterHighPassRadiusChanged(double value) => ApplyFilterPreview();
     partial void OnFilterNoiseAmountChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterMotionAngleChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterMotionDistanceChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterRadialAmountChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterRadialIsZoomChanged(bool value) => ApplyFilterPreview();
+    partial void OnFilterMosaicCellSizeChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterTwirlAngleChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterSpherizeAmountChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterEmbossAngleChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterEmbossDepthChanged(int value) => ApplyFilterPreview();
 
     private void ApplyFilterPreview()
     {
@@ -553,9 +737,15 @@ public partial class ImageEditorViewModel
             byte[] filteredBgra = ActiveFilterMode switch
             {
                 "GaussianBlur" => ImageAdjustmentEngine.ApplyGaussianBlur(bgra, srcBmp.Width, srcBmp.Height, FilterBlurRadius),
+                "MotionBlur" => ImageAdjustmentEngine.ApplyMotionBlur(bgra, srcBmp.Width, srcBmp.Height, FilterMotionAngle, FilterMotionDistance),
+                "RadialBlur" => ImageAdjustmentEngine.ApplyRadialBlur(bgra, srcBmp.Width, srcBmp.Height, FilterRadialAmount, FilterRadialIsZoom),
                 "UnsharpMask" => ImageAdjustmentEngine.ApplySharpen(bgra, srcBmp.Width, srcBmp.Height, FilterSharpenAmount / 100.0, FilterSharpenRadius, FilterSharpenThreshold),
                 "HighPass" => ImageAdjustmentEngine.ApplyHighPass(bgra, srcBmp.Width, srcBmp.Height, FilterHighPassRadius),
                 "AddNoise" => ImageAdjustmentEngine.ApplyAddNoise(bgra, FilterNoiseAmount, FilterNoiseMonochromatic),
+                "Mosaic" => ImageAdjustmentEngine.ApplyMosaic(bgra, srcBmp.Width, srcBmp.Height, FilterMosaicCellSize),
+                "Twirl" => ImageAdjustmentEngine.ApplyTwirl(bgra, srcBmp.Width, srcBmp.Height, FilterTwirlAngle, FilterTwirlRadius),
+                "Spherize" => ImageAdjustmentEngine.ApplySpherize(bgra, srcBmp.Width, srcBmp.Height, FilterSpherizeAmount),
+                "Emboss" => ImageAdjustmentEngine.ApplyEmboss(bgra, srcBmp.Width, srcBmp.Height, FilterEmbossAngle, FilterEmbossDepth),
                 _ => bgra
             };
 
@@ -585,8 +775,69 @@ public partial class ImageEditorViewModel
     [RelayCommand]
     public void ConfirmFilterDialog()
     {
+        if (_filterTargetImageElement != null && _filterOriginalBytes != null)
+        {
+            var beforeBytes = _filterOriginalBytes;
+            try
+            {
+                using var srcBmp = SKBitmap.Decode(beforeBytes);
+                if (srcBmp != null)
+                {
+                    byte[] bgra = srcBmp.Bytes;
+                    byte[] filteredBgra = ActiveFilterMode switch
+                    {
+                        "GaussianBlur" => ImageAdjustmentEngine.ApplyGaussianBlur(bgra, srcBmp.Width, srcBmp.Height, FilterBlurRadius),
+                        "MotionBlur" => ImageAdjustmentEngine.ApplyMotionBlur(bgra, srcBmp.Width, srcBmp.Height, FilterMotionAngle, FilterMotionDistance),
+                        "RadialBlur" => ImageAdjustmentEngine.ApplyRadialBlur(bgra, srcBmp.Width, srcBmp.Height, FilterRadialAmount, FilterRadialIsZoom),
+                        "UnsharpMask" => ImageAdjustmentEngine.ApplySharpen(bgra, srcBmp.Width, srcBmp.Height, FilterSharpenAmount / 100.0, FilterSharpenRadius, FilterSharpenThreshold),
+                        "HighPass" => ImageAdjustmentEngine.ApplyHighPass(bgra, srcBmp.Width, srcBmp.Height, FilterHighPassRadius),
+                        "AddNoise" => ImageAdjustmentEngine.ApplyAddNoise(bgra, FilterNoiseAmount, FilterNoiseMonochromatic),
+                        "Mosaic" => ImageAdjustmentEngine.ApplyMosaic(bgra, srcBmp.Width, srcBmp.Height, FilterMosaicCellSize),
+                        "Twirl" => ImageAdjustmentEngine.ApplyTwirl(bgra, srcBmp.Width, srcBmp.Height, FilterTwirlAngle, FilterTwirlRadius),
+                        "Spherize" => ImageAdjustmentEngine.ApplySpherize(bgra, srcBmp.Width, srcBmp.Height, FilterSpherizeAmount),
+                        "Emboss" => ImageAdjustmentEngine.ApplyEmboss(bgra, srcBmp.Width, srcBmp.Height, FilterEmbossAngle, FilterEmbossDepth),
+                        _ => bgra
+                    };
+
+                    using var filteredBmp = new SKBitmap(srcBmp.Width, srcBmp.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
+                    var pin = System.Runtime.InteropServices.GCHandle.Alloc(filteredBgra, System.Runtime.InteropServices.GCHandleType.Pinned);
+                    try
+                    {
+                        filteredBmp.InstallPixels(filteredBmp.Info, pin.AddrOfPinnedObject());
+                        using var img = SKImage.FromBitmap(filteredBmp);
+                        using var enc = img.Encode(SKEncodedImageFormat.Png, 100);
+                        byte[] afterBytes = enc.ToArray();
+                        _filterTargetImageElement.OriginalImageBytes = afterBytes;
+                        _filterTargetImageElement.AdjustedSource?.Dispose();
+                        _filterTargetImageElement.AdjustedSource = null;
+                        _filterTargetImageElement.Source = new Bitmap(new MemoryStream(afterBytes));
+
+                        var el = _filterTargetImageElement;
+                        var title = ActiveFilterTitle;
+                        var undoCmd = new RetouchImageCommand(el, beforeBytes, afterBytes, title, (targetEl, b) =>
+                        {
+                            targetEl.OriginalImageBytes = b;
+                            targetEl.AdjustedSource?.Dispose();
+                            targetEl.AdjustedSource = null;
+                            targetEl.Source = new Bitmap(new MemoryStream(b));
+                            RefreshCanvas();
+                        });
+                        if (!_isApplyingHistory) History.Push(undoCmd);
+                    }
+                    finally
+                    {
+                        pin.Free();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ConfirmFilter] error: {ex}");
+            }
+        }
         StatusMessage = $"Applied {ActiveFilterTitle}.";
         IsFilterDialogOpen = false;
+        RefreshCanvas();
         ScheduleHistogramUpdate();
     }
 

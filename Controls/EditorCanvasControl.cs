@@ -8,6 +8,7 @@ using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using PdfEditorApp.Plugins.ImageEditor.Core.Paint;
 using PdfEditorApp.Plugins.ImageEditor.Models;
 
 namespace PdfEditorApp.Plugins.ImageEditor.Controls;
@@ -51,12 +52,40 @@ public class EditorCanvasControl : Control
     private bool _isPlacingShape;
     private Point _shapeDragStart, _shapeDragEnd;
 
-    // Freehand drawing (Brush / Highlighter)
+    // Freehand drawing (Brush / Pencil / Highlighter)
     private bool _isDrawingDoodle;
     private readonly List<Point> _currentDoodlePoints = new();
-    public double BrushThickness { get; set; } = 4.0;
+    private Point? _cursorCanvasPos;
+    public double BrushThickness { get; set; } = 24.0;
     public Color BrushColor { get; set; } = Colors.Black;
     public bool IsHighlighterMode { get; set; }
+    public double BrushHardness { get; set; } = 100.0;
+    public double BrushSpacing { get; set; } = 25.0;
+    public double BrushRoundness { get; set; } = 1.0;
+    public double BrushAngle { get; set; } = 0.0;
+    public int BrushSmoothing { get; set; } = 15;
+    public bool BrushWetEdges { get; set; }
+    public bool BrushAliased { get; set; }
+    public TipShapeKind BrushTipShape { get; set; } = TipShapeKind.Round;
+    public SymmetryMode ActiveSymmetryMode { get; set; } = SymmetryMode.Off;
+
+    // Retouching tools state (Photocraft Parity)
+    private bool _isDrawingRetouch;
+    private readonly List<Point> _currentRetouchPoints = new();
+    private string _currentRetouchTool = "clonestamp";
+    public Point? CloneSourcePoint { get; set; }
+    public bool CloneAligned { get; set; } = true;
+
+    public event Action<Point>? CloneSourceDefined;
+    public event Action<string, IReadOnlyList<Point>>? RetouchStrokeCompleted;
+
+    public event Action<double>? BrushSizeAdjusted;
+    public event Action<double>? BrushHardnessAdjusted;
+    public event Action? SwapColorsRequested;
+    public event Action? ResetColorsRequested;
+    public event Action<string>? ToolSwitchRequested;
+    public event Action? CommandPaletteRequested;
+    public event Action? BrushSettingsRequested;
 
     // Crop mode
     private bool _isCropModeActive;
@@ -501,18 +530,93 @@ public class EditorCanvasControl : Control
 
             if (_isDrawingDoodle && _currentDoodlePoints.Count > 0)
             {
-                var geometry = DoodleElement.BuildSmoothGeometry(_currentDoodlePoints);
                 var strokeColor = BrushColor;
                 if (IsHighlighterMode && strokeColor.A > 140)
                 {
                     strokeColor = Color.FromArgb(120, strokeColor.R, strokeColor.G, strokeColor.B);
                 }
-                var pen = new Pen(
-                    new SolidColorBrush(strokeColor),
-                    BrushThickness,
-                    lineCap: PenLineCap.Round,
-                    lineJoin: PenLineJoin.Round);
-                dc.DrawGeometry(null, pen, geometry);
+
+                // If symmetry is active, render live reflected passes
+                var center = new Point(_logicalWidth / 2.0, _logicalHeight / 2.0);
+                var passes = BrushEngine.ApplySymmetry(_currentDoodlePoints, ActiveSymmetryMode, center);
+
+                foreach (var passPoints in passes)
+                {
+                    if (BrushWetEdges)
+                    {
+                        var geom = DoodleElement.BuildSmoothGeometry(passPoints);
+                        var washColor = Color.FromArgb((byte)(strokeColor.A * 0.45), strokeColor.R, strokeColor.G, strokeColor.B);
+                        var washPen = new Pen(new SolidColorBrush(washColor), BrushThickness, lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);
+                        dc.DrawGeometry(null, washPen, geom);
+
+                        var rimColor = Color.FromArgb((byte)(strokeColor.A * 0.85), (byte)Math.Max(0, strokeColor.R - 30), (byte)Math.Max(0, strokeColor.G - 30), (byte)Math.Max(0, strokeColor.B - 30));
+                        var rimPen = new Pen(new SolidColorBrush(rimColor), Math.Max(1.5, BrushThickness * 0.18), lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);
+                        dc.DrawGeometry(null, rimPen, geom);
+                    }
+                    else if (BrushAliased)
+                    {
+                        var geom = new StreamGeometry();
+                        using (var sctx = geom.Open())
+                        {
+                            sctx.BeginFigure(passPoints[0], false);
+                            for (int pi = 1; pi < passPoints.Count; pi++) sctx.LineTo(passPoints[pi]);
+                            sctx.EndFigure(false);
+                        }
+                        var pen = new Pen(new SolidColorBrush(strokeColor), Math.Max(1.0, Math.Round(BrushThickness)), lineCap: PenLineCap.Square, lineJoin: PenLineJoin.Miter);
+                        dc.DrawGeometry(null, pen, geom);
+                    }
+                    else
+                    {
+                        var geometry = DoodleElement.BuildSmoothGeometry(passPoints);
+                        var pen = new Pen(
+                            new SolidColorBrush(strokeColor),
+                            BrushThickness,
+                            lineCap: PenLineCap.Round,
+                            lineJoin: PenLineJoin.Round);
+                        dc.DrawGeometry(null, pen, geometry);
+                    }
+                }
+            }
+
+            // Draw live retouch stroke feedback
+            if (_isDrawingRetouch && _currentRetouchPoints.Count > 1)
+            {
+                var retouchPen = new Pen(new SolidColorBrush(Color.FromArgb(120, 55, 142, 240)), BrushThickness, lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);
+                var geometry = new StreamGeometry();
+                using (var ctx = geometry.Open())
+                {
+                    ctx.BeginFigure(_currentRetouchPoints[0], false);
+                    for (int i = 1; i < _currentRetouchPoints.Count; i++)
+                    {
+                        ctx.LineTo(_currentRetouchPoints[i]);
+                    }
+                }
+                dc.DrawGeometry(null, retouchPen, geometry);
+            }
+
+            // Draw symmetry axis guides if active
+            if (ActiveSymmetryMode != SymmetryMode.Off && (ActiveToolMode is "brush" or "pencil"))
+            {
+                DrawSymmetryAxes(dc, _logicalWidth, _logicalHeight, ActiveSymmetryMode, _zoom);
+            }
+
+            // Draw brush tip cursor outline under mouse pointer
+            if (_cursorCanvasPos is { } cursorPt
+                && (ActiveToolMode is "brush" or "pencil" or "eraser" or "clonestamp" or "healing" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge")
+                && !_isPanning && !_spaceHeld)
+            {
+                DrawBrushCursor(dc, cursorPt, BrushThickness, BrushRoundness, BrushAngle, _zoom);
+            }
+
+            // Draw Clone Stamp sampled source crosshair marker
+            if (_isDrawingRetouch && _currentRetouchTool == "clonestamp" && CloneSourcePoint.HasValue && _currentRetouchPoints.Count > 0)
+            {
+                Point samplePt = CloneSourcePoint.Value + (_currentRetouchPoints[^1] - _currentRetouchPoints[0]);
+                DrawSourceMarker(dc, samplePt, _zoom);
+            }
+            else if (ActiveToolMode == "clonestamp" && CloneSourcePoint.HasValue && !_isDrawingRetouch)
+            {
+                DrawSourceMarker(dc, CloneSourcePoint.Value, _zoom);
             }
 
             if (_activeGuides.Count > 0)
@@ -1059,11 +1163,40 @@ public class EditorCanvasControl : Control
         // 3. Tool-placement mode.
         if (ActiveToolMode != "select")
         {
-            if (ActiveToolMode == "brush")
+            if (ActiveToolMode is "brush" or "pencil")
             {
                 _isDrawingDoodle = true;
                 _currentDoodlePoints.Clear();
                 _currentDoodlePoints.Add(canvasPt);
+                e.Pointer.Capture(this);
+                e.Handled = true;
+                InvalidateVisual();
+                return;
+            }
+            if (ActiveToolMode is "clonestamp" or "healing" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge")
+            {
+                if ((ActiveToolMode is "clonestamp" or "healing") && e.KeyModifiers.HasFlag(KeyModifiers.Alt))
+                {
+                    CloneSourcePoint = canvasPt;
+                    CloneSourceDefined?.Invoke(canvasPt);
+                    e.Handled = true;
+                    InvalidateVisual();
+                    return;
+                }
+
+                string effectiveTool = ActiveToolMode switch
+                {
+                    "dodge" when e.KeyModifiers.HasFlag(KeyModifiers.Alt) => "burn",
+                    "burn" when e.KeyModifiers.HasFlag(KeyModifiers.Alt) => "dodge",
+                    "blur" when e.KeyModifiers.HasFlag(KeyModifiers.Alt) => "sharpen",
+                    "sharpen" when e.KeyModifiers.HasFlag(KeyModifiers.Alt) => "blur",
+                    _ => ActiveToolMode
+                };
+
+                _currentRetouchTool = effectiveTool;
+                _isDrawingRetouch = true;
+                _currentRetouchPoints.Clear();
+                _currentRetouchPoints.Add(canvasPt);
                 e.Pointer.Capture(this);
                 e.Handled = true;
                 InvalidateVisual();
@@ -1257,6 +1390,11 @@ public class EditorCanvasControl : Control
     {
         base.OnPointerExited(e);
         CursorPositionChanged?.Invoke(new Point(-1, -1));
+        _cursorCanvasPos = null;
+        if (ActiveToolMode is "brush" or "pencil" or "eraser")
+        {
+            InvalidateVisual();
+        }
     }
 
     protected override void OnPointerMoved(PointerEventArgs e)
@@ -1278,6 +1416,12 @@ public class EditorCanvasControl : Control
 
         var pos = ScreenToCanvas(e.GetPosition(this));
         CursorPositionChanged?.Invoke(pos);
+        _cursorCanvasPos = pos;
+
+        if (ActiveToolMode is "brush" or "pencil" or "eraser" or "clonestamp" or "healing" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" && !_isDrawingDoodle && !_isDrawingRetouch)
+        {
+            InvalidateVisual();
+        }
 
         if (_isCropDragging)
         {
@@ -1291,6 +1435,16 @@ public class EditorCanvasControl : Control
             if (_currentDoodlePoints.Count == 0 || Point.Distance(_currentDoodlePoints[^1], pos) >= 1.5 / _zoom)
             {
                 _currentDoodlePoints.Add(pos);
+                InvalidateVisual();
+            }
+            return;
+        }
+
+        if (_isDrawingRetouch)
+        {
+            if (_currentRetouchPoints.Count == 0 || Point.Distance(_currentRetouchPoints[^1], pos) >= 1.5 / _zoom)
+            {
+                _currentRetouchPoints.Add(pos);
                 InvalidateVisual();
             }
             return;
@@ -1493,9 +1647,27 @@ public class EditorCanvasControl : Control
             e.Pointer.Capture(null);
             if (_currentDoodlePoints.Count > 0)
             {
-                DoodlePlaced?.Invoke(new List<Point>(_currentDoodlePoints));
+                var smoothed = BrushSmoothing > 0
+                    ? BrushEngine.SmoothPoints(_currentDoodlePoints, BrushSmoothing)
+                    : new List<Point>(_currentDoodlePoints);
+                DoodlePlaced?.Invoke(smoothed);
             }
             _currentDoodlePoints.Clear();
+            InvalidateVisual();
+        }
+        else if (_isDrawingRetouch)
+        {
+            _isDrawingRetouch = false;
+            e.Pointer.Capture(null);
+            if (_currentRetouchPoints.Count > 0)
+            {
+                RetouchStrokeCompleted?.Invoke(_currentRetouchTool, _currentRetouchPoints);
+                if (_currentRetouchTool == "clonestamp" && CloneAligned && CloneSourcePoint.HasValue && _currentRetouchPoints.Count > 1)
+                {
+                    CloneSourcePoint = CloneSourcePoint.Value + (_currentRetouchPoints[^1] - _currentRetouchPoints[0]);
+                }
+            }
+            _currentRetouchPoints.Clear();
             InvalidateVisual();
         }
         else if (_isPlacingShape)
@@ -1732,6 +1904,175 @@ public class EditorCanvasControl : Control
             if (_isPlacingShape) { _isPlacingShape = false; InvalidateVisual(); e.Handled = true; return; }
         }
 
+        if (e.Key is Key.OemOpenBrackets or Key.Oem4) // '['
+        {
+            if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+                BrushHardnessAdjusted?.Invoke(-10);
+            else
+                BrushSizeAdjusted?.Invoke(BrushThickness > 20 ? -5 : -1);
+            InvalidateVisual();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key is Key.OemCloseBrackets or Key.Oem6) // ']'
+        {
+            if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+                BrushHardnessAdjusted?.Invoke(10);
+            else
+                BrushSizeAdjusted?.Invoke(BrushThickness >= 20 ? 5 : 1);
+            InvalidateVisual();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.X && !e.KeyModifiers.HasFlag(KeyModifiers.Control) && !e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+        {
+            SwapColorsRequested?.Invoke();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.D && !e.KeyModifiers.HasFlag(KeyModifiers.Control) && !e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+        {
+            ResetColorsRequested?.Invoke();
+            e.Handled = true;
+            return;
+        }
+
+        if ((e.Key == Key.K || e.Key == Key.F) && (e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta)))
+        {
+            CommandPaletteRequested?.Invoke();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.F5)
+        {
+            BrushSettingsRequested?.Invoke();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.B && !e.KeyModifiers.HasFlag(KeyModifiers.Control) && !e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+        {
+            ToolSwitchRequested?.Invoke(e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? "pencil" : "brush");
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.E && !e.KeyModifiers.HasFlag(KeyModifiers.Control) && !e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+        {
+            ToolSwitchRequested?.Invoke("eraser");
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.I && !e.KeyModifiers.HasFlag(KeyModifiers.Control) && !e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+        {
+            ToolSwitchRequested?.Invoke("eyedropper");
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.V && !e.KeyModifiers.HasFlag(KeyModifiers.Control) && !e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+        {
+            ToolSwitchRequested?.Invoke("select");
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.S && !e.KeyModifiers.HasFlag(KeyModifiers.Control) && !e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+        {
+            ToolSwitchRequested?.Invoke("clonestamp");
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.J && !e.KeyModifiers.HasFlag(KeyModifiers.Control) && !e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+        {
+            ToolSwitchRequested?.Invoke("healing");
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.R && !e.KeyModifiers.HasFlag(KeyModifiers.Control) && !e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+        {
+            ToolSwitchRequested?.Invoke("blur");
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.O && !e.KeyModifiers.HasFlag(KeyModifiers.Control) && !e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+        {
+            ToolSwitchRequested?.Invoke("dodge");
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.G && !e.KeyModifiers.HasFlag(KeyModifiers.Control) && !e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+        {
+            ToolSwitchRequested?.Invoke("gradient");
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.T && !e.KeyModifiers.HasFlag(KeyModifiers.Control) && !e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+        {
+            ToolSwitchRequested?.Invoke("text");
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.U && !e.KeyModifiers.HasFlag(KeyModifiers.Control) && !e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+        {
+            ToolSwitchRequested?.Invoke("rect");
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Z && !e.KeyModifiers.HasFlag(KeyModifiers.Control) && !e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+        {
+            ToolSwitchRequested?.Invoke("zoom");
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.H && !e.KeyModifiers.HasFlag(KeyModifiers.Control) && !e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+        {
+            ToolSwitchRequested?.Invoke("hand");
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.M && !e.KeyModifiers.HasFlag(KeyModifiers.Control) && !e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+        {
+            ToolSwitchRequested?.Invoke("marquee");
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.L && !e.KeyModifiers.HasFlag(KeyModifiers.Control) && !e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+        {
+            ToolSwitchRequested?.Invoke("lasso");
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.W && !e.KeyModifiers.HasFlag(KeyModifiers.Control) && !e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+        {
+            ToolSwitchRequested?.Invoke("wand");
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.C && !e.KeyModifiers.HasFlag(KeyModifiers.Control) && !e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+        {
+            ToolSwitchRequested?.Invoke("crop");
+            e.Handled = true;
+            return;
+        }
+
         if (e.Key is Key.Left or Key.Right or Key.Up or Key.Down
             && _selection.Count > 0 && !_isCropModeActive && !_isPlacingShape)
         {
@@ -1956,5 +2297,73 @@ public class EditorCanvasControl : Control
         }
 
         return new Rect(newX, newY, newW, newH);
+    }
+
+    private static void DrawSymmetryAxes(DrawingContext dc, double w, double h, SymmetryMode mode, double zoom)
+    {
+        double cx = w / 2.0;
+        double cy = h / 2.0;
+        double strokeW = 1.0 / zoom;
+        var dashStyle = new DashStyle(new double[] { 4, 4 }, 0);
+        var pen = new Pen(new SolidColorBrush(Color.FromArgb(160, 99, 102, 241)), strokeW, dashStyle);
+
+        if (mode is SymmetryMode.Vertical or SymmetryMode.Dual)
+        {
+            dc.DrawLine(pen, new Point(cx, 0), new Point(cx, h));
+        }
+        if (mode is SymmetryMode.Horizontal or SymmetryMode.Dual)
+        {
+            dc.DrawLine(pen, new Point(0, cy), new Point(w, cy));
+        }
+        if (mode == SymmetryMode.Radial)
+        {
+            for (int k = 0; k < 6; k++)
+            {
+                double a = k * Math.PI / 3.0;
+                double len = Math.Max(w, h);
+                dc.DrawLine(pen, new Point(cx - len * Math.Cos(a), cy - len * Math.Sin(a)),
+                                 new Point(cx + len * Math.Cos(a), cy + len * Math.Sin(a)));
+            }
+        }
+
+        // Center pivot crosshair
+        var crossPen = new Pen(new SolidColorBrush(Color.FromArgb(220, 99, 102, 241)), strokeW);
+        double s = 6.0 / zoom;
+        dc.DrawLine(crossPen, new Point(cx - s, cy), new Point(cx + s, cy));
+        dc.DrawLine(crossPen, new Point(cx, cy - s), new Point(cx, cy + s));
+    }
+
+    private static void DrawBrushCursor(DrawingContext dc, Point pt, double size, double roundness, double angleDeg, double zoom)
+    {
+        double radiusX = Math.Max(1.0, size / 2.0);
+        double radiusY = Math.Max(1.0, radiusX * roundness);
+        double angleRad = angleDeg * Math.PI / 180.0;
+        double strokeWidth = 1.0 / zoom;
+
+        var darkPen = new Pen(new SolidColorBrush(Color.FromArgb(180, 0, 0, 0)), strokeWidth);
+        var lightPen = new Pen(new SolidColorBrush(Color.FromArgb(200, 255, 255, 255)), strokeWidth);
+
+        using (dc.PushTransform(Matrix.CreateRotation(angleRad) * Matrix.CreateTranslation(pt.X, pt.Y)))
+        {
+            dc.DrawEllipse(null, darkPen, new Point(0, 0), radiusX, radiusY);
+            dc.DrawEllipse(null, lightPen, new Point(0, 0), Math.Max(0.5, radiusX - strokeWidth), Math.Max(0.5, radiusY - strokeWidth));
+            if (size > 14.0)
+            {
+                dc.DrawEllipse(new SolidColorBrush(Color.FromArgb(180, 255, 255, 255)), null, new Point(0, 0), 1.2 / zoom, 1.2 / zoom);
+            }
+        }
+    }
+
+    private static void DrawSourceMarker(DrawingContext dc, Point pt, double zoom)
+    {
+        double s = 8.0 / zoom;
+        double sw = 1.0 / zoom;
+        var darkPen = new Pen(new SolidColorBrush(Color.FromArgb(200, 0, 0, 0)), sw + 1.5);
+        var lightPen = new Pen(new SolidColorBrush(Colors.White), sw);
+
+        dc.DrawLine(darkPen, new Point(pt.X - s, pt.Y), new Point(pt.X + s, pt.Y));
+        dc.DrawLine(darkPen, new Point(pt.X, pt.Y - s), new Point(pt.X, pt.Y + s));
+        dc.DrawLine(lightPen, new Point(pt.X - s, pt.Y), new Point(pt.X + s, pt.Y));
+        dc.DrawLine(lightPen, new Point(pt.X, pt.Y - s), new Point(pt.X, pt.Y + s));
     }
 }

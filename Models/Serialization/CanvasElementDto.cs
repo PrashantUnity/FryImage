@@ -173,6 +173,17 @@ public sealed class DoodleElementDto : CanvasElementDto
     public bool IsHighlighter { get; set; }
     public double OriginalWidth { get; set; } = 100;
     public double OriginalHeight { get; set; } = 100;
+    public string? BrushPresetId { get; set; }
+    public double Hardness { get; set; } = 1.0;
+    public double Spacing { get; set; } = 0.25;
+    public double Roundness { get; set; } = 1.0;
+    public double Angle { get; set; }
+    public double Flow { get; set; } = 1.0;
+    public bool IsAliased { get; set; }
+    public bool HasWetEdges { get; set; }
+    public bool HasNoise { get; set; }
+    public string TipShape { get; set; } = "Round";
+    public string SymmetryMode { get; set; } = "Off";
     public System.Collections.Generic.List<PointDto> Points { get; set; } = new();
 }
 

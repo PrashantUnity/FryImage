@@ -23,6 +23,9 @@
                         <Button Classes="ps-panel-tab" Content="Adjustments"
                                 Command="{Binding SelectRightDockTabCommand}" CommandParameter="Histogram"
                                 Classes.active="{Binding ActivePropertiesDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Histogram'}" />
+                        <Button Classes="ps-panel-tab" Content="Brushes"
+                                Command="{Binding SelectRightDockTabCommand}" CommandParameter="Brushes"
+                                Classes.active="{Binding ActivePropertiesDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Brushes'}" />
                     </StackPanel>
                     <Button Grid.Column="1" Classes="ps-opt-btn" Width="20" Height="20" ToolTip.Tip="Panel Options">
                         <materialIcons:MaterialIcon Kind="Menu" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
@@ -171,6 +174,140 @@
                         <Button Classes="ps-opt-btn" Content="Hue/Sat..." Margin="0,0,4,4" Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="HueSaturation" ToolTip.Tip="Hue / Saturation" />
                         <Button Classes="ps-opt-btn" Content="Threshold..." Margin="0,0,4,4" Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Threshold" ToolTip.Tip="1-Bit Threshold" />
                     </WrapPanel>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Mode C: Photoshop Brush Settings Panel (F5 Parity) -->
+            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                          IsVisible="{Binding ActivePropertiesDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Brushes'}">
+                <StackPanel Spacing="8" Margin="8,6">
+                    <!-- Header & Active Preset Name -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="BRUSH SETTINGS" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource PsTextDimBrush}" LetterSpacing="0.8" />
+                            <TextBlock Text="{Binding SelectedBrushPreset.Name, FallbackValue='Hard Round'}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource PsTextBrush}" Margin="0,2,0,0" />
+                        </StackPanel>
+                        <Border Grid.Column="1" Background="{DynamicResource PsFieldBrush}" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding SelectedBrushPreset.Group, FallbackValue='General'}" FontSize="10" Foreground="{DynamicResource PsAccentBrush}" FontWeight="SemiBold" />
+                        </Border>
+                    </Grid>
+
+                    <!-- Category Group Filter Chips -->
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding BrushPresetGroups}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="4" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Classes="ps-opt-btn" Padding="6,2" FontSize="10"
+                                            Content="{Binding}"
+                                            Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetBrushGroupCommand}"
+                                            CommandParameter="{Binding}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <!-- Presets Catalog Gallery List -->
+                    <Border Height="110" Background="{DynamicResource PsCanvasBgBrush}" BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1" CornerRadius="4">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <ItemsControl ItemsSource="{Binding FilteredBrushPresets}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Classes="ps-opt-btn" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="5,3"
+                                                Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SelectBrushPresetCommand}"
+                                                CommandParameter="{Binding}">
+                                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                                <Border Grid.Column="0" Width="20" Height="20" Background="{DynamicResource PsFieldBrush}" CornerRadius="3" Margin="0,0,6,0">
+                                                    <materialIcons:MaterialIcon Kind="{Binding IconKind}" Width="12" Height="12" Foreground="{DynamicResource PsAccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Name}" FontSize="10" FontWeight="Medium" Foreground="{DynamicResource PsTextBrush}" />
+                                                    <TextBlock Text="{Binding Group}" FontSize="8" Foreground="{DynamicResource PsTextDimBrush}" />
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="2" Text="{Binding Settings.Size, StringFormat='{}{0:0} px'}" FontSize="9" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+
+                    <!-- Brush Tip Shape Parameters -->
+                    <TextBlock Text="▾ Brush Tip Shape" Classes="ps-section-header" Margin="0,2,0,0" />
+                    <Grid ColumnDefinitions="65,*,40" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+                        <!-- Size -->
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Size:" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                        <Slider Grid.Row="0" Grid.Column="1" Minimum="1" Maximum="300" Value="{Binding BrushThickness, Mode=TwoWay}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding BrushThickness, StringFormat='{}{0:0} px'}" FontSize="10" Foreground="{DynamicResource PsTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                        <!-- Hardness -->
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Hardness:" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                        <Slider Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding BrushHardness, Mode=TwoWay}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding BrushHardness, StringFormat='{}{0:0}%'}" FontSize="10" Foreground="{DynamicResource PsTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                        <!-- Spacing -->
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Spacing:" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                        <Slider Grid.Row="2" Grid.Column="1" Minimum="1" Maximum="100" Value="{Binding BrushSpacing, Mode=TwoWay}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding BrushSpacing, StringFormat='{}{0:0}%'}" FontSize="10" Foreground="{DynamicResource PsTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                        <!-- Roundness -->
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Roundness:" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                        <Slider Grid.Row="3" Grid.Column="1" Minimum="5" Maximum="100" Value="{Binding BrushRoundness, Mode=TwoWay}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="3" Grid.Column="2" Text="{Binding BrushRoundness, StringFormat='{}{0:0}%'}" FontSize="10" Foreground="{DynamicResource PsTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                        <!-- Angle -->
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Angle:" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                        <Slider Grid.Row="4" Grid.Column="1" Minimum="-180" Maximum="180" Value="{Binding BrushAngle, Mode=TwoWay}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="4" Grid.Column="2" Text="{Binding BrushAngle, StringFormat='{}{0:0}°'}" FontSize="10" Foreground="{DynamicResource PsTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                    </Grid>
+
+                    <!-- Dynamics & Options Toggles -->
+                    <TextBlock Text="▾ Dynamics &amp; Effects" Classes="ps-section-header" Margin="0,2,0,0" />
+                    <WrapPanel Orientation="Horizontal">
+                        <CheckBox Classes="ps-check" Content="Pressure Size" IsChecked="{Binding BrushPressureSize, Mode=TwoWay}" Margin="0,0,8,4" FontSize="10" />
+                        <CheckBox Classes="ps-check" Content="Pressure Opacity" IsChecked="{Binding BrushPressureOpacity, Mode=TwoWay}" Margin="0,0,8,4" FontSize="10" />
+                        <CheckBox Classes="ps-check" Content="Wet Edges" IsChecked="{Binding BrushWetEdges, Mode=TwoWay}" Margin="0,0,8,4" FontSize="10" />
+                        <CheckBox Classes="ps-check" Content="Noise Grain" IsChecked="{Binding BrushNoise, Mode=TwoWay}" Margin="0,0,8,4" FontSize="10" />
+                        <CheckBox Classes="ps-check" Content="Airbrush Build-up" IsChecked="{Binding BrushAirbrush, Mode=TwoWay}" Margin="0,0,8,4" FontSize="10" />
+                    </WrapPanel>
+
+                    <!-- Smoothing -->
+                    <Grid ColumnDefinitions="65,*,40">
+                        <TextBlock Grid.Column="0" Text="Smoothing:" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                        <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding BrushSmoothing, Mode=TwoWay}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Text="{Binding BrushSmoothing, StringFormat='{}{0:0}%'}" FontSize="10" Foreground="{DynamicResource PsTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                    </Grid>
+
+                    <!-- Symmetry Mode -->
+                    <TextBlock Text="▾ Painting Symmetry" Classes="ps-section-header" Margin="0,2,0,0" />
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Button Classes="ps-opt-btn" Content="Off" Command="{Binding SetSymmetryModeStringCommand}" CommandParameter="Off" Padding="6,2" FontSize="10" />
+                        <Button Classes="ps-opt-btn" Content="Vertical" Command="{Binding SetSymmetryModeStringCommand}" CommandParameter="Vertical" Padding="6,2" FontSize="10" />
+                        <Button Classes="ps-opt-btn" Content="Horizontal" Command="{Binding SetSymmetryModeStringCommand}" CommandParameter="Horizontal" Padding="6,2" FontSize="10" />
+                        <Button Classes="ps-opt-btn" Content="Dual" Command="{Binding SetSymmetryModeStringCommand}" CommandParameter="Dual" Padding="6,2" FontSize="10" />
+                        <Button Classes="ps-opt-btn" Content="Mandala" Command="{Binding SetSymmetryModeStringCommand}" CommandParameter="Radial" Padding="6,2" FontSize="10" />
+                    </StackPanel>
+
+                    <!-- Live Real-Time S-Curve Stroke & Tip Preview Swatch -->
+                    <TextBlock Text="▾ Live Stroke Preview" Classes="ps-section-header" Margin="0,4,0,0" />
+                    <views:BrushPreviewControl Height="68"
+                                              BrushSize="{Binding BrushThickness}"
+                                              BrushHardness="{Binding BrushHardness}"
+                                              BrushSpacing="{Binding BrushSpacing}"
+                                              BrushRoundness="{Binding BrushRoundness}"
+                                              BrushAngle="{Binding BrushAngle}"
+                                              BrushOpacity="{Binding BrushOpacity}"
+                                              BrushFlow="{Binding BrushFlow}"
+                                              BrushColor="{Binding PrimaryColor}"
+                                              BrushWetEdges="{Binding BrushWetEdges}"
+                                              BrushNoise="{Binding BrushNoise}"
+                                              BrushAirbrush="{Binding BrushAirbrush}"
+                                              BrushPresetId="{Binding SelectedBrushPreset.Id, FallbackValue=''}" />
                 </StackPanel>
             </ScrollViewer>
         </Grid>

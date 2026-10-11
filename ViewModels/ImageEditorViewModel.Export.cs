@@ -21,7 +21,7 @@ public partial class ImageEditorViewModel
     public string ExportEstimatedSizeText => ExportEstimatedSizeLabel;
 
     [RelayCommand]
-    private void OpenExportDialog()
+    public void OpenExportDialog()
     {
         UpdateExportMetrics();
         IsExportDialogOpen = true;

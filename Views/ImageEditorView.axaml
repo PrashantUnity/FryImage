@@ -152,6 +152,7 @@
         <dialogs:NewDocumentDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" />
         <dialogs:AdjustmentDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" />
         <dialogs:FilterDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" />
+        <dialogs:CommandPaletteDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="600" />
 
     </Grid>
 </UserControl>

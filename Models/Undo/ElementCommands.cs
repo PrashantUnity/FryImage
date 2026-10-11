@@ -25,6 +25,31 @@ public sealed class AddElementCommand : IUndoableCommand
     }
 }
 
+public sealed class AddElementsCommand : IUndoableCommand
+{
+    private readonly ObservableCollection<CanvasElement> _elements;
+    private readonly List<CanvasElement> _added;
+
+    public AddElementsCommand(ObservableCollection<CanvasElement> elements, IEnumerable<CanvasElement> added)
+    {
+        _elements = elements;
+        _added = added.ToList();
+    }
+
+    public string Description => _added.Count == 1 ? $"Add {_added[0].ElementType}" : $"Add {_added.Count} elements";
+    public void Undo()
+    {
+        foreach (var el in _added) _elements.Remove(el);
+    }
+    public void Redo()
+    {
+        foreach (var el in _added)
+        {
+            if (!_elements.Contains(el)) _elements.Add(el);
+        }
+    }
+}
+
 public sealed class RemoveElementsCommand : IUndoableCommand
 {
     private readonly ObservableCollection<CanvasElement> _elements;
@@ -327,4 +352,28 @@ public sealed class CanvasResizeCommand : IUndoableCommand
     public string Description => "Resize canvas";
     public void Undo() => _apply(_oldW, _oldH);
     public void Redo() => _apply(_newW, _newH);
+}
+
+/// <summary>
+/// Undoable retouch stroke (Clone Stamp, Blur, Sharpen, Smudge, Dodge, Burn, Sponge) on an ImageElement.
+/// </summary>
+public sealed class RetouchImageCommand : IUndoableCommand
+{
+    private readonly ImageElement _element;
+    private readonly byte[] _beforeBytes;
+    private readonly byte[] _afterBytes;
+    private readonly Action<ImageElement, byte[]> _apply;
+
+    public RetouchImageCommand(ImageElement element, byte[] beforeBytes, byte[] afterBytes, string toolName, Action<ImageElement, byte[]> apply)
+    {
+        _element = element;
+        _beforeBytes = beforeBytes;
+        _afterBytes = afterBytes;
+        Description = $"{toolName} stroke";
+        _apply = apply;
+    }
+
+    public string Description { get; }
+    public void Undo() => _apply(_element, _beforeBytes);
+    public void Redo() => _apply(_element, _afterBytes);
 }

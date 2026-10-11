@@ -44,6 +44,8 @@
                     <NativeMenuItem Header="Copy" Gesture="Meta+C" Command="{Binding CopyElementsCommand}" />
                     <NativeMenuItem Header="Paste" Gesture="Meta+V" Command="{Binding PasteElementsCommand}" />
                     <NativeMenuItemSeparator />
+                    <NativeMenuItem Header="Search / Command Palette..." Gesture="Meta+K" Command="{Binding ToggleCommandPaletteCommand}" />
+                    <NativeMenuItemSeparator />
                     <NativeMenuItem Header="Free Transform" Gesture="Meta+T" Command="{Binding SetToolCommand}" CommandParameter="select" />
                     <NativeMenuItem Header="Rotate 90° CW" Command="{Binding RotateArtboardClockwiseCommand}" />
                     <NativeMenuItem Header="Rotate 90° CCW" Command="{Binding RotateArtboardCounterClockwiseCommand}" />
@@ -71,6 +73,9 @@
                     </NativeMenuItem>
                     <NativeMenuItemSeparator />
                     <NativeMenuItem Header="Auto Tone" Command="{Binding ApplyAutoToneCommand}" />
+                    <NativeMenuItem Header="Auto Contrast" Command="{Binding ApplyAutoContrastCommand}" />
+                    <NativeMenuItem Header="Auto Color" Command="{Binding ApplyAutoColorCommand}" />
+                    <NativeMenuItem Header="Equalize" Command="{Binding ApplyEqualizeCommand}" />
                     <NativeMenuItemSeparator />
                     <NativeMenuItem Header="Canvas Size..." Command="{Binding OpenCanvasSetupCommand}" />
                     <NativeMenuItem Header="Rotate Canvas 90° CW" Command="{Binding RotateArtboardClockwiseCommand}" />
@@ -128,6 +133,8 @@
                     <NativeMenuItem Header="Blur">
                         <NativeMenu>
                             <NativeMenuItem Header="Gaussian Blur..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="GaussianBlur" />
+                            <NativeMenuItem Header="Motion Blur..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="MotionBlur" />
+                            <NativeMenuItem Header="Radial Blur..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="RadialBlur" />
                         </NativeMenu>
                     </NativeMenuItem>
                     <NativeMenuItem Header="Sharpen">
@@ -135,10 +142,30 @@
                             <NativeMenuItem Header="Unsharp Mask..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="UnsharpMask" />
                         </NativeMenu>
                     </NativeMenuItem>
-                    <NativeMenuItem Header="High Pass..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="HighPass" />
+                    <NativeMenuItem Header="Distort">
+                        <NativeMenu>
+                            <NativeMenuItem Header="Twirl..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Twirl" />
+                            <NativeMenuItem Header="Spherize..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Spherize" />
+                        </NativeMenu>
+                    </NativeMenuItem>
+                    <NativeMenuItem Header="Pixelate">
+                        <NativeMenu>
+                            <NativeMenuItem Header="Mosaic..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Mosaic" />
+                        </NativeMenu>
+                    </NativeMenuItem>
+                    <NativeMenuItem Header="Stylize">
+                        <NativeMenu>
+                            <NativeMenuItem Header="Emboss..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Emboss" />
+                        </NativeMenu>
+                    </NativeMenuItem>
                     <NativeMenuItem Header="Noise">
                         <NativeMenu>
                             <NativeMenuItem Header="Add Noise..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="AddNoise" />
+                        </NativeMenu>
+                    </NativeMenuItem>
+                    <NativeMenuItem Header="Other">
+                        <NativeMenu>
+                            <NativeMenuItem Header="High Pass..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="HighPass" />
                         </NativeMenu>
                     </NativeMenuItem>
                 </NativeMenu>

@@ -51,6 +51,8 @@
                             <MenuItem Header="Copy" InputGesture="Ctrl+C" Command="{Binding CopyElementsCommand}" />
                             <MenuItem Header="Paste" InputGesture="Ctrl+V" Command="{Binding PasteElementsCommand}" />
                             <Separator />
+                            <MenuItem Header="Search / Command Palette..." InputGesture="Ctrl+K" Command="{Binding ToggleCommandPaletteCommand}" />
+                            <Separator />
                             <MenuItem Header="Free Transform" InputGesture="Ctrl+T" Command="{Binding SetToolCommand}" CommandParameter="select" />
                             <MenuItem Header="Rotate 90° CW" Command="{Binding RotateArtboardClockwiseCommand}" />
                             <MenuItem Header="Rotate 90° CCW" Command="{Binding RotateArtboardCounterClockwiseCommand}" />
@@ -78,6 +80,9 @@
                             </MenuItem>
                             <Separator />
                             <MenuItem Header="Auto Tone" Command="{Binding ApplyAutoToneCommand}" />
+                            <MenuItem Header="Auto Contrast" Command="{Binding ApplyAutoContrastCommand}" />
+                            <MenuItem Header="Auto Color" Command="{Binding ApplyAutoColorCommand}" />
+                            <MenuItem Header="Equalize" Command="{Binding ApplyEqualizeCommand}" />
                             <Separator />
                             <MenuItem Header="Canvas Size..." Command="{Binding OpenCanvasSetupCommand}" />
                             <MenuItem Header="Rotate Canvas 90° CW" Command="{Binding RotateArtboardClockwiseCommand}" />
@@ -140,13 +145,27 @@
                         <MenuFlyout Placement="BottomEdgeAlignedLeft">
                             <MenuItem Header="Blur">
                                 <MenuItem Header="Gaussian Blur..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="GaussianBlur" />
+                                <MenuItem Header="Motion Blur..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="MotionBlur" />
+                                <MenuItem Header="Radial Blur..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="RadialBlur" />
                             </MenuItem>
                             <MenuItem Header="Sharpen">
                                 <MenuItem Header="Unsharp Mask..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="UnsharpMask" />
                             </MenuItem>
-                            <MenuItem Header="High Pass..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="HighPass" />
+                            <MenuItem Header="Distort">
+                                <MenuItem Header="Twirl..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Twirl" />
+                                <MenuItem Header="Spherize..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Spherize" />
+                            </MenuItem>
+                            <MenuItem Header="Pixelate">
+                                <MenuItem Header="Mosaic..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Mosaic" />
+                            </MenuItem>
+                            <MenuItem Header="Stylize">
+                                <MenuItem Header="Emboss..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Emboss" />
+                            </MenuItem>
                             <MenuItem Header="Noise">
                                 <MenuItem Header="Add Noise..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="AddNoise" />
+                            </MenuItem>
+                            <MenuItem Header="Other">
+                                <MenuItem Header="High Pass..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="HighPass" />
                             </MenuItem>
                         </MenuFlyout>
                     </Button.Flyout>
@@ -181,6 +200,8 @@
                         <MenuFlyout Placement="BottomEdgeAlignedLeft">
                             <MenuItem Header="Properties" Command="{Binding SelectRightDockTabCommand}" CommandParameter="Properties" />
                             <MenuItem Header="Adjustments &amp; Histogram" Command="{Binding SelectRightDockTabCommand}" CommandParameter="Histogram" />
+                            <MenuItem Header="Brush Settings" InputGesture="F5" Command="{Binding SelectRightDockTabCommand}" CommandParameter="Brushes" />
+                            <MenuItem Header="Brushes" Command="{Binding SelectRightDockTabCommand}" CommandParameter="Brushes" />
                             <Separator />
                             <MenuItem Header="Layers" InputGesture="F7" Command="{Binding SelectRightDockTabCommand}" CommandParameter="Layers" />
                             <MenuItem Header="Channels" Command="{Binding SelectRightDockTabCommand}" CommandParameter="Channels" />

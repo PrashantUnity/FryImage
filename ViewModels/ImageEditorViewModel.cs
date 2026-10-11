@@ -24,6 +24,7 @@ using PdfEditorApp.Core.Plugins.Descriptors;
 using PdfEditorApp.Core.Plugins.Settings;
 using PdfEditorApp.Core.Services;
 using PdfEditorApp.Plugins.ImageEditor.Controls;
+using PdfEditorApp.Plugins.ImageEditor.Core.Paint;
 using PdfEditorApp.Plugins.ImageEditor.Models;
 using PdfEditorApp.Plugins.ImageEditor.Models.Templates;
 using PdfEditorApp.Plugins.ImageEditor.Models.Serialization;
@@ -97,10 +98,10 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     private string _activeLayersDockTab = "Layers"; // Layers | Channels | Paths | History
 
     [RelayCommand]
-    private void SelectRightDockTab(string tab)
+    public void SelectRightDockTab(string tab)
     {
         ActiveRightDockTab = tab;
-        if (tab is "Properties" or "Histogram")
+        if (tab is "Properties" or "Histogram" or "Brushes")
         {
             ActivePropertiesDockTab = tab;
             if (tab == "Histogram")
@@ -1948,13 +1949,37 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     public void PlaceDoodleElement(IReadOnlyList<Point> points)
     {
         if (points == null || points.Count == 0) return;
-        var doodle = DoodleElement.FromCanvasPoints(
-            points,
-            PrimaryColor,
-            BrushThickness,
-            IsHighlighterMode);
-        doodle.ZIndex = Elements.Count + 1;
-        CommitNewElement(doodle);
+
+        var settings = GetCurrentBrushSettings();
+        var center = new Point(CanvasWidth / 2.0, CanvasHeight / 2.0);
+        var passes = BrushEngine.ApplySymmetry(points, ActiveSymmetryMode, center);
+
+        var newElements = new List<CanvasElement>(passes.Count);
+        foreach (var passPoints in passes)
+        {
+            var doodle = DoodleElement.FromCanvasPoints(
+                passPoints,
+                PrimaryColor,
+                BrushThickness,
+                IsHighlighterMode,
+                settings,
+                SelectedBrushPreset?.Id ?? "hard_round",
+                ActiveSymmetryMode);
+            doodle.ZIndex = Elements.Count + newElements.Count + 1;
+            newElements.Add(doodle);
+        }
+
+        if (newElements.Count == 1)
+        {
+            CommitNewElement(newElements[0]);
+        }
+        else if (newElements.Count > 1)
+        {
+            foreach (var el in newElements) Elements.Add(el);
+            if (!_isApplyingHistory) History.Push(new AddElementsCommand(Elements, newElements));
+            SelectedElement = newElements[^1];
+            RefreshCanvas();
+        }
     }
 
     public void EraseElement(CanvasElement el)

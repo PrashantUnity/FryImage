@@ -1,0 +1,152 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:models="using:PdfEditorApp.Plugins.ImageEditor.Models"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Dialogs.CommandPaletteDialog"
+             x:DataType="local:ImageEditorViewModel">
+
+    <!-- Modal Backdrop Overlay -->
+    <Border Background="#70000000"
+            IsVisible="{Binding IsCommandPaletteOpen}"
+            PointerPressed="Backdrop_PointerPressed">
+        <Border Width="560" MaxHeight="440"
+                Margin="0,50,0,0"
+                VerticalAlignment="Top"
+                Background="{DynamicResource PsPanelBrush}"
+                BorderBrush="{DynamicResource PsBorderBrush}"
+                BorderThickness="1"
+                BoxShadow="0 16 48 #D0000000"
+                CornerRadius="4"
+                ClipToBounds="True">
+            <Grid RowDefinitions="44,*,28">
+
+                <!-- Row 0: Search Input Header -->
+                <Border Grid.Row="0"
+                        Background="{DynamicResource PsPanelHeaderBrush}"
+                        BorderBrush="{DynamicResource PsBorderBrush}"
+                        BorderThickness="0,0,0,1"
+                        Padding="12,0">
+                    <Grid ColumnDefinitions="24,*,Auto">
+                        <materialIcons:MaterialIcon Grid.Column="0"
+                                                   Kind="Magnify"
+                                                   Width="18"
+                                                   Height="18"
+                                                   Foreground="{DynamicResource PsAccentBrush}"
+                                                   VerticalAlignment="Center" />
+
+                        <TextBox x:Name="SearchBox"
+                                 Grid.Column="1"
+                                 Text="{Binding CommandPaletteQuery, Mode=TwoWay}"
+                                 PlaceholderText="Type a command or tool (e.g. Brush, Blur, Invert, Levels)..."
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 FontSize="13"
+                                 Foreground="{DynamicResource PsTextBrush}"
+                                 VerticalAlignment="Center"
+                                 KeyDown="SearchBox_KeyDown" />
+
+                        <Button Grid.Column="2"
+                                Classes="ps-opt-btn"
+                                Command="{Binding CloseCommandPaletteCommand}"
+                                ToolTip.Tip="Close (Esc)">
+                            <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Row 1: Filtered Command List -->
+                <ListBox x:Name="CommandListBox"
+                         Grid.Row="1"
+                         ItemsSource="{Binding FilteredStudioCommands}"
+                         SelectedItem="{Binding SelectedStudioCommand, Mode=TwoWay}"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         DoubleTapped="CommandListBox_DoubleTapped">
+                    <ListBox.Styles>
+                        <Style Selector="ListBoxItem">
+                            <Setter Property="Padding" Value="10,7" />
+                            <Setter Property="Margin" Value="2,1" />
+                            <Setter Property="CornerRadius" Value="2" />
+                        </Style>
+                        <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+                            <Setter Property="Background" Value="{DynamicResource PsAccentBrush}" />
+                        </Style>
+                    </ListBox.Styles>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="models:StudioCommand">
+                            <Grid ColumnDefinitions="24,Auto,*,Auto">
+                                <!-- Command Icon -->
+                                <materialIcons:MaterialIcon Grid.Column="0"
+                                                           Kind="{Binding IconKind}"
+                                                           Width="16"
+                                                           Height="16"
+                                                           Foreground="{DynamicResource PsTextBrush}"
+                                                           VerticalAlignment="Center" />
+
+                                <!-- Category Badge -->
+                                <Border Grid.Column="1"
+                                        Background="#25FFFFFF"
+                                        CornerRadius="2"
+                                        Padding="5,1"
+                                        Margin="6,0,8,0"
+                                        VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Category}"
+                                               FontSize="10"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource PsMutedBrush}" />
+                                </Border>
+
+                                <!-- Title -->
+                                <TextBlock Grid.Column="2"
+                                           Text="{Binding Title}"
+                                           FontSize="12"
+                                           FontWeight="Normal"
+                                           Foreground="{DynamicResource PsTextBrush}"
+                                           VerticalAlignment="Center" />
+
+                                <!-- Shortcut Badge -->
+                                <Border Grid.Column="3"
+                                        IsVisible="{Binding Shortcut, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                        Background="#30000000"
+                                        BorderBrush="{DynamicResource PsBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="2"
+                                        Padding="5,1"
+                                        VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Shortcut}"
+                                               FontSize="10"
+                                               FontFamily="Consolas, Menlo, Monospace"
+                                               Foreground="{DynamicResource PsMutedBrush}" />
+                                </Border>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- Row 2: Status / Keyboard Shortcuts Footer -->
+                <Border Grid.Row="2"
+                        Background="{DynamicResource PsPanelHeaderBrush}"
+                        BorderBrush="{DynamicResource PsBorderBrush}"
+                        BorderThickness="0,1,0,0"
+                        Padding="12,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0"
+                                   Text="↑↓ Navigate   •   ↵ Select   •   Esc Close"
+                                   FontSize="10"
+                                   Foreground="{DynamicResource PsMutedBrush}"
+                                   VerticalAlignment="Center" />
+
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding FilteredStudioCommands.Count, StringFormat='{}{0} commands'}"
+                                   FontSize="10"
+                                   Foreground="{DynamicResource PsMutedBrush}"
+                                   VerticalAlignment="Center" />
+                    </Grid>
+                </Border>
+
+            </Grid>
+        </Border>
+    </Border>
+</UserControl>

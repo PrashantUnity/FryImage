@@ -91,6 +91,21 @@ public partial class ImageEditorView : UserControl
         // the element, live only while editing.
         CanvasControl.TextEditRequested += BeginInlineTextEdit;
 
+        // Brush shortcuts and events
+        CanvasControl.BrushSizeAdjusted += delta => vm.AdjustBrushSize(delta);
+        CanvasControl.BrushHardnessAdjusted += delta => vm.AdjustBrushHardness(delta);
+        CanvasControl.SwapColorsRequested += () => vm.SwapColorsCommand.Execute(null);
+        CanvasControl.ResetColorsRequested += () => vm.ResetColorsCommand.Execute(null);
+        CanvasControl.ToolSwitchRequested += tool => vm.SetToolCommand.Execute(tool);
+
+        // Retouching tool integration
+        CanvasControl.CloneSourceDefined += pt => vm.SetCloneSource(pt);
+        CanvasControl.RetouchStrokeCompleted += (tool, pts) => vm.ApplyRetouchStroke(tool, pts);
+
+        // Command Palette & Brush Settings hotkey integration
+        CanvasControl.CommandPaletteRequested += () => vm.ToggleCommandPalette();
+        CanvasControl.BrushSettingsRequested += () => vm.SelectRightDockTab("Brushes");
+
         // Keep the canvas's tool mode in sync with the toolbar's selected tool. Also keep the
         // inline text-edit overlay's own formatting in sync with ribbon toggles — without this,
         // clicking Bold/Italic/Alignment while InlineTextEditBox is open updates the underlying
@@ -101,10 +116,44 @@ public partial class ImageEditorView : UserControl
             if (args.PropertyName == nameof(ImageEditorViewModel.ActiveToolMode))
             {
                 CanvasControl.ActiveToolMode = vm.ActiveToolMode;
+                CanvasControl.BrushAliased = vm.ActiveToolMode == "pencil" || (vm.SelectedBrushPreset?.Settings.Aliased ?? false);
             }
             else if (args.PropertyName == nameof(ImageEditorViewModel.BrushThickness))
             {
                 CanvasControl.BrushThickness = vm.BrushThickness;
+            }
+            else if (args.PropertyName == nameof(ImageEditorViewModel.BrushHardness))
+            {
+                CanvasControl.BrushHardness = vm.BrushHardness;
+            }
+            else if (args.PropertyName == nameof(ImageEditorViewModel.BrushRoundness))
+            {
+                CanvasControl.BrushRoundness = vm.BrushRoundness / 100.0;
+            }
+            else if (args.PropertyName == nameof(ImageEditorViewModel.BrushAngle))
+            {
+                CanvasControl.BrushAngle = vm.BrushAngle;
+            }
+            else if (args.PropertyName == nameof(ImageEditorViewModel.BrushSmoothing))
+            {
+                CanvasControl.BrushSmoothing = vm.BrushSmoothing;
+            }
+            else if (args.PropertyName == nameof(ImageEditorViewModel.BrushWetEdges))
+            {
+                CanvasControl.BrushWetEdges = vm.BrushWetEdges;
+            }
+            else if (args.PropertyName == nameof(ImageEditorViewModel.ActiveSymmetryMode))
+            {
+                CanvasControl.ActiveSymmetryMode = vm.ActiveSymmetryMode;
+            }
+            else if (args.PropertyName == nameof(ImageEditorViewModel.SelectedBrushPreset))
+            {
+                if (vm.SelectedBrushPreset is { } preset)
+                {
+                    CanvasControl.BrushTipShape = preset.Settings.TipShape;
+                    CanvasControl.BrushAliased = preset.Settings.Aliased || vm.ActiveToolMode == "pencil";
+                    CanvasControl.BrushWetEdges = preset.Settings.WetEdges;
+                }
             }
             else if (args.PropertyName == nameof(ImageEditorViewModel.IsHighlighterMode))
             {
@@ -113,6 +162,14 @@ public partial class ImageEditorView : UserControl
             else if (args.PropertyName == nameof(ImageEditorViewModel.PrimaryColor))
             {
                 CanvasControl.BrushColor = vm.PrimaryColor;
+            }
+            else if (args.PropertyName == nameof(ImageEditorViewModel.CloneSourcePoint))
+            {
+                CanvasControl.CloneSourcePoint = vm.CloneSourcePoint;
+            }
+            else if (args.PropertyName == nameof(ImageEditorViewModel.CloneAligned))
+            {
+                CanvasControl.CloneAligned = vm.CloneAligned;
             }
             else if (_editingTextElement is { } editing &&
                      (args.PropertyName == nameof(ImageEditorViewModel.IsBold) ||
@@ -126,6 +183,13 @@ public partial class ImageEditorView : UserControl
         };
         CanvasControl.ActiveToolMode = vm.ActiveToolMode;
         CanvasControl.BrushThickness = vm.BrushThickness;
+        CanvasControl.BrushHardness = vm.BrushHardness;
+        CanvasControl.BrushRoundness = vm.BrushRoundness / 100.0;
+        CanvasControl.BrushAngle = vm.BrushAngle;
+        CanvasControl.BrushSmoothing = vm.BrushSmoothing;
+        CanvasControl.BrushWetEdges = vm.BrushWetEdges;
+        CanvasControl.BrushAliased = vm.ActiveToolMode == "pencil" || (vm.SelectedBrushPreset?.Settings.Aliased ?? false);
+        CanvasControl.ActiveSymmetryMode = vm.ActiveSymmetryMode;
         CanvasControl.IsHighlighterMode = vm.IsHighlighterMode;
         CanvasControl.BrushColor = vm.PrimaryColor;
 

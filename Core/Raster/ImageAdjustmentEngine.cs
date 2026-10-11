@@ -679,4 +679,495 @@ public static class ImageAdjustmentEngine
         if (t < 2.0 / 3.0) return p + (q - p) * (2.0 / 3.0 - t) * 6.0;
         return p;
     }
+
+    /// <summary>
+    /// Applies Auto Contrast: stretches composite luminance across all channels uniformly (0.5% tail clip).
+    /// </summary>
+    public static byte[] ApplyAutoContrast(byte[] bgraPixels)
+    {
+        int totalPixels = bgraPixels.Length / 4;
+        if (totalPixels == 0) return (byte[])bgraPixels.Clone();
+
+        int[] lumaHist = new int[256];
+        for (int i = 0; i < bgraPixels.Length; i += 4)
+        {
+            int luma = (int)Math.Round(LumaB * bgraPixels[i] + LumaG * bgraPixels[i + 1] + LumaR * bgraPixels[i + 2]);
+            lumaHist[Math.Clamp(luma, 0, 255)]++;
+        }
+
+        int clip = (int)(totalPixels * 0.005);
+        int minLuma = 0;
+        int accum = 0;
+        for (int i = 0; i < 256; i++)
+        {
+            accum += lumaHist[i];
+            if (accum > clip) { minLuma = i; break; }
+        }
+
+        int maxLuma = 255;
+        accum = 0;
+        for (int i = 255; i >= 0; i--)
+        {
+            accum += lumaHist[i];
+            if (accum > clip) { maxLuma = i; break; }
+        }
+
+        if (maxLuma <= minLuma) { minLuma = 0; maxLuma = 255; }
+
+        byte[] lut = new byte[256];
+        double range = Math.Max(1, maxLuma - minLuma);
+        for (int i = 0; i < 256; i++)
+        {
+            double normalized = Math.Clamp((i - minLuma) / range, 0.0, 1.0);
+            lut[i] = (byte)Math.Clamp((int)Math.Round(normalized * 255.0), 0, 255);
+        }
+
+        byte[] result = new byte[bgraPixels.Length];
+        Parallel.For(0, totalPixels, p =>
+        {
+            int idx = p * 4;
+            result[idx] = lut[bgraPixels[idx]];
+            result[idx + 1] = lut[bgraPixels[idx + 1]];
+            result[idx + 2] = lut[bgraPixels[idx + 2]];
+            result[idx + 3] = bgraPixels[idx + 3];
+        });
+
+        return result;
+    }
+
+    /// <summary>
+    /// Applies Auto Color: clips 0.5% shadows/highlights per channel and neutralizes midtone color cast.
+    /// </summary>
+    public static byte[] ApplyAutoColor(byte[] bgraPixels)
+    {
+        // First apply per-channel tone stretch
+        byte[] stretched = ApplyAutoTone(bgraPixels);
+        int totalPixels = stretched.Length / 4;
+        if (totalPixels == 0) return stretched;
+
+        // Find average RGB in the midtone luminance range (96..160)
+        long sumB = 0, sumG = 0, sumR = 0, count = 0;
+        for (int i = 0; i < stretched.Length; i += 4)
+        {
+            int luma = (int)Math.Round(LumaB * stretched[i] + LumaG * stretched[i + 1] + LumaR * stretched[i + 2]);
+            if (luma >= 96 && luma <= 160)
+            {
+                sumB += stretched[i];
+                sumG += stretched[i + 1];
+                sumR += stretched[i + 2];
+                count++;
+            }
+        }
+
+        if (count == 0) return stretched;
+
+        double avgB = (double)sumB / count;
+        double avgG = (double)sumG / count;
+        double avgR = (double)sumR / count;
+        double targetMid = (avgB + avgG + avgR) / 3.0;
+
+        double shiftB = (targetMid - avgB) * 0.7;
+        double shiftG = (targetMid - avgG) * 0.7;
+        double shiftR = (targetMid - avgR) * 0.7;
+
+        byte[] result = new byte[stretched.Length];
+        Parallel.For(0, totalPixels, p =>
+        {
+            int idx = p * 4;
+            int luma = (int)Math.Round(LumaB * stretched[idx] + LumaG * stretched[idx + 1] + LumaR * stretched[idx + 2]);
+            // Bell curve weighting centered at 128
+            double weight = Math.Max(0.0, 1.0 - Math.Abs(luma - 128) / 128.0);
+
+            result[idx] = (byte)Math.Clamp((int)Math.Round(stretched[idx] + shiftB * weight), 0, 255);
+            result[idx + 1] = (byte)Math.Clamp((int)Math.Round(stretched[idx + 1] + shiftG * weight), 0, 255);
+            result[idx + 2] = (byte)Math.Clamp((int)Math.Round(stretched[idx + 2] + shiftR * weight), 0, 255);
+            result[idx + 3] = stretched[idx + 3];
+        });
+
+        return result;
+    }
+
+    /// <summary>
+    /// Applies Histogram Equalization (Equalize) to flatten the cumulative distribution of luminance.
+    /// </summary>
+    public static byte[] ApplyEqualize(byte[] bgraPixels)
+    {
+        int totalPixels = bgraPixels.Length / 4;
+        if (totalPixels == 0) return (byte[])bgraPixels.Clone();
+
+        int[] hist = new int[256];
+        for (int i = 0; i < bgraPixels.Length; i += 4)
+        {
+            int luma = (int)Math.Round(LumaB * bgraPixels[i] + LumaG * bgraPixels[i + 1] + LumaR * bgraPixels[i + 2]);
+            hist[Math.Clamp(luma, 0, 255)]++;
+        }
+
+        // Calculate CDF
+        int[] cdf = new int[256];
+        int accum = 0;
+        int cdfMin = -1;
+        for (int i = 0; i < 256; i++)
+        {
+            accum += hist[i];
+            cdf[i] = accum;
+            if (cdfMin == -1 && cdf[i] > 0) cdfMin = cdf[i];
+        }
+
+        if (cdfMin == -1 || totalPixels <= cdfMin) return (byte[])bgraPixels.Clone();
+
+        byte[] eqLut = new byte[256];
+        double denom = Math.Max(1, totalPixels - cdfMin);
+        for (int i = 0; i < 256; i++)
+        {
+            eqLut[i] = (byte)Math.Clamp((int)Math.Round(((cdf[i] - cdfMin) / denom) * 255.0), 0, 255);
+        }
+
+        byte[] result = new byte[bgraPixels.Length];
+        Parallel.For(0, totalPixels, p =>
+        {
+            int idx = p * 4;
+            int luma = (int)Math.Round(LumaB * bgraPixels[idx] + LumaG * bgraPixels[idx + 1] + LumaR * bgraPixels[idx + 2]);
+            int targetLuma = eqLut[Math.Clamp(luma, 0, 255)];
+            double scale = luma > 0 ? (double)targetLuma / luma : 1.0;
+
+            result[idx] = (byte)Math.Clamp((int)Math.Round(bgraPixels[idx] * scale), 0, 255);
+            result[idx + 1] = (byte)Math.Clamp((int)Math.Round(bgraPixels[idx + 1] * scale), 0, 255);
+            result[idx + 2] = (byte)Math.Clamp((int)Math.Round(bgraPixels[idx + 2] * scale), 0, 255);
+            result[idx + 3] = bgraPixels[idx + 3];
+        });
+
+        return result;
+    }
+
+    /// <summary>
+    /// Applies Motion Blur along an angle [-180..180] degrees with distance in pixels.
+    /// </summary>
+    public static byte[] ApplyMotionBlur(byte[] bgraPixels, int width, int height, double angleDegrees, double distance)
+    {
+        if (distance <= 0.5 || width <= 0 || height <= 0) return (byte[])bgraPixels.Clone();
+
+        double rad = angleDegrees * Math.PI / 180.0;
+        double vx = Math.Cos(rad) * distance;
+        double vy = Math.Sin(rad) * distance;
+        int steps = Math.Max(3, (int)Math.Ceiling(distance));
+
+        byte[] result = new byte[bgraPixels.Length];
+        Parallel.For(0, height, y =>
+        {
+            for (int x = 0; x < width; x++)
+            {
+                double sumB = 0, sumG = 0, sumR = 0, sumA = 0;
+                for (int s = 0; s < steps; s++)
+                {
+                    double t = ((double)s / (steps - 1)) - 0.5;
+                    double sx = x + t * vx;
+                    double sy = y + t * vy;
+                    SampleBilinearBgra(bgraPixels, width, height, sx, sy, out byte b, out byte g, out byte r, out byte a);
+                    sumB += b;
+                    sumG += g;
+                    sumR += r;
+                    sumA += a;
+                }
+
+                int outIdx = (y * width + x) * 4;
+                result[outIdx] = (byte)Math.Clamp((int)Math.Round(sumB / steps), 0, 255);
+                result[outIdx + 1] = (byte)Math.Clamp((int)Math.Round(sumG / steps), 0, 255);
+                result[outIdx + 2] = (byte)Math.Clamp((int)Math.Round(sumR / steps), 0, 255);
+                result[outIdx + 3] = (byte)Math.Clamp((int)Math.Round(sumA / steps), 0, 255);
+            }
+        });
+
+        return result;
+    }
+
+    /// <summary>
+    /// Applies Radial Blur (Spin or Zoom) centered on the image canvas.
+    /// </summary>
+    public static byte[] ApplyRadialBlur(byte[] bgraPixels, int width, int height, double amount, bool zoom = false)
+    {
+        if (amount <= 0.1 || width <= 0 || height <= 0) return (byte[])bgraPixels.Clone();
+
+        double cx = width * 0.5;
+        double cy = height * 0.5;
+        const int steps = 16;
+        byte[] result = new byte[bgraPixels.Length];
+
+        Parallel.For(0, height, y =>
+        {
+            for (int x = 0; x < width; x++)
+            {
+                double sumB = 0, sumG = 0, sumR = 0, sumA = 0;
+                double dx = x - cx;
+                double dy = y - cy;
+
+                if (zoom)
+                {
+                    // Zoom outward/inward along ray
+                    for (int s = 0; s < steps; s++)
+                    {
+                        double factor = 1.0 + (((double)s / (steps - 1)) - 0.5) * (amount * 0.008);
+                        double sx = cx + dx * factor;
+                        double sy = cy + dy * factor;
+                        SampleBilinearBgra(bgraPixels, width, height, sx, sy, out byte b, out byte g, out byte r, out byte a);
+                        sumB += b;
+                        sumG += g;
+                        sumR += r;
+                        sumA += a;
+                    }
+                }
+                else
+                {
+                    // Spin around center
+                    double maxAngle = (amount * 0.003) * Math.PI;
+                    for (int s = 0; s < steps; s++)
+                    {
+                        double t = ((double)s / (steps - 1)) - 0.5;
+                        double angle = t * maxAngle;
+                        double cosA = Math.Cos(angle);
+                        double sinA = Math.Sin(angle);
+                        double sx = cx + dx * cosA - dy * sinA;
+                        double sy = cy + dx * sinA + dy * cosA;
+                        SampleBilinearBgra(bgraPixels, width, height, sx, sy, out byte b, out byte g, out byte r, out byte a);
+                        sumB += b;
+                        sumG += g;
+                        sumR += r;
+                        sumA += a;
+                    }
+                }
+
+                int outIdx = (y * width + x) * 4;
+                result[outIdx] = (byte)Math.Clamp((int)Math.Round(sumB / steps), 0, 255);
+                result[outIdx + 1] = (byte)Math.Clamp((int)Math.Round(sumG / steps), 0, 255);
+                result[outIdx + 2] = (byte)Math.Clamp((int)Math.Round(sumR / steps), 0, 255);
+                result[outIdx + 3] = (byte)Math.Clamp((int)Math.Round(sumA / steps), 0, 255);
+            }
+        });
+
+        return result;
+    }
+
+    /// <summary>
+    /// Applies Mosaic / Pixelate with square cells of specified pixel size.
+    /// </summary>
+    public static byte[] ApplyMosaic(byte[] bgraPixels, int width, int height, int cellSize)
+    {
+        int cell = Math.Clamp(cellSize, 2, Math.Max(width, height));
+        byte[] result = new byte[bgraPixels.Length];
+
+        int blocksX = (width + cell - 1) / cell;
+        int blocksY = (height + cell - 1) / cell;
+
+        Parallel.For(0, blocksY, by =>
+        {
+            int y0 = by * cell;
+            int y1 = Math.Min(y0 + cell, height);
+
+            for (int bx = 0; bx < blocksX; bx++)
+            {
+                int x0 = bx * cell;
+                int x1 = Math.Min(x0 + cell, width);
+
+                long sumB = 0, sumG = 0, sumR = 0, sumA = 0;
+                int count = (x1 - x0) * (y1 - y0);
+
+                for (int y = y0; y < y1; y++)
+                {
+                    int row = y * width * 4;
+                    for (int x = x0; x < x1; x++)
+                    {
+                        int idx = row + x * 4;
+                        sumB += bgraPixels[idx];
+                        sumG += bgraPixels[idx + 1];
+                        sumR += bgraPixels[idx + 2];
+                        sumA += bgraPixels[idx + 3];
+                    }
+                }
+
+                byte avgB = (byte)(sumB / count);
+                byte avgG = (byte)(sumG / count);
+                byte avgR = (byte)(sumR / count);
+                byte avgA = (byte)(sumA / count);
+
+                for (int y = y0; y < y1; y++)
+                {
+                    int row = y * width * 4;
+                    for (int x = x0; x < x1; x++)
+                    {
+                        int idx = row + x * 4;
+                        result[idx] = avgB;
+                        result[idx + 1] = avgG;
+                        result[idx + 2] = avgR;
+                        result[idx + 3] = avgA;
+                    }
+                }
+            }
+        });
+
+        return result;
+    }
+
+    /// <summary>
+    /// Applies Twirl distortion around the center with specified angle [-720..720] and radius.
+    /// </summary>
+    public static byte[] ApplyTwirl(byte[] bgraPixels, int width, int height, double angleDegrees, double radius = 0)
+    {
+        if (Math.Abs(angleDegrees) < 0.1 || width <= 0 || height <= 0) return (byte[])bgraPixels.Clone();
+
+        double cx = width * 0.5;
+        double cy = height * 0.5;
+        double rMax = radius <= 0 ? Math.Min(width, height) * 0.5 : radius;
+        double totalRad = angleDegrees * Math.PI / 180.0;
+
+        byte[] result = new byte[bgraPixels.Length];
+        Parallel.For(0, height, y =>
+        {
+            for (int x = 0; x < width; x++)
+            {
+                int outIdx = (y * width + x) * 4;
+                double dx = x - cx;
+                double dy = y - cy;
+                double r = Math.Sqrt(dx * dx + dy * dy);
+
+                if (r < rMax && rMax > 0)
+                {
+                    double twist = totalRad * (1.0 - r / rMax);
+                    double cosT = Math.Cos(twist);
+                    double sinT = Math.Sin(twist);
+                    double sx = cx + dx * cosT - dy * sinT;
+                    double sy = cy + dx * sinT + dy * cosT;
+
+                    SampleBilinearBgra(bgraPixels, width, height, sx, sy, out byte b, out byte g, out byte rVal, out byte a);
+                    result[outIdx] = b;
+                    result[outIdx + 1] = g;
+                    result[outIdx + 2] = rVal;
+                    result[outIdx + 3] = a;
+                }
+                else
+                {
+                    result[outIdx] = bgraPixels[outIdx];
+                    result[outIdx + 1] = bgraPixels[outIdx + 1];
+                    result[outIdx + 2] = bgraPixels[outIdx + 2];
+                    result[outIdx + 3] = bgraPixels[outIdx + 3];
+                }
+            }
+        });
+
+        return result;
+    }
+
+    /// <summary>
+    /// Applies Spherize distortion [-100..100] around center.
+    /// </summary>
+    public static byte[] ApplySpherize(byte[] bgraPixels, int width, int height, double amount)
+    {
+        if (Math.Abs(amount) < 0.1 || width <= 0 || height <= 0) return (byte[])bgraPixels.Clone();
+
+        double cx = width * 0.5;
+        double cy = height * 0.5;
+        double rMax = Math.Min(width, height) * 0.5;
+        double aFactor = Math.Clamp(amount / 100.0, -1.0, 1.0);
+
+        byte[] result = new byte[bgraPixels.Length];
+        Parallel.For(0, height, y =>
+        {
+            for (int x = 0; x < width; x++)
+            {
+                int outIdx = (y * width + x) * 4;
+                double dx = x - cx;
+                double dy = y - cy;
+                double r = Math.Sqrt(dx * dx + dy * dy);
+
+                if (r < rMax && r > 0.001)
+                {
+                    double normR = r / rMax;
+                    double targetR = aFactor >= 0 ? Math.Asin(normR) * 2.0 / Math.PI : Math.Sin(normR * Math.PI * 0.5);
+                    double mappedR = rMax * (normR + Math.Abs(aFactor) * (targetR - normR));
+
+                    double sx = cx + dx * (mappedR / r);
+                    double sy = cy + dy * (mappedR / r);
+
+                    SampleBilinearBgra(bgraPixels, width, height, sx, sy, out byte b, out byte g, out byte rVal, out byte a);
+                    result[outIdx] = b;
+                    result[outIdx + 1] = g;
+                    result[outIdx + 2] = rVal;
+                    result[outIdx + 3] = a;
+                }
+                else
+                {
+                    result[outIdx] = bgraPixels[outIdx];
+                    result[outIdx + 1] = bgraPixels[outIdx + 1];
+                    result[outIdx + 2] = bgraPixels[outIdx + 2];
+                    result[outIdx + 3] = bgraPixels[outIdx + 3];
+                }
+            }
+        });
+
+        return result;
+    }
+
+    /// <summary>
+    /// Applies Emboss relief filter with specified directional angle and depth [1..10].
+    /// </summary>
+    public static byte[] ApplyEmboss(byte[] bgraPixels, int width, int height, double angleDegrees, int depth = 3)
+    {
+        double rad = angleDegrees * Math.PI / 180.0;
+        int ox = (int)Math.Round(Math.Cos(rad) * depth);
+        int oy = (int)Math.Round(Math.Sin(rad) * depth);
+
+        byte[] result = new byte[bgraPixels.Length];
+        Parallel.For(0, height, y =>
+        {
+            for (int x = 0; x < width; x++)
+            {
+                int xPlus = Math.Clamp(x + ox, 0, width - 1);
+                int yPlus = Math.Clamp(y + oy, 0, height - 1);
+                int xMinus = Math.Clamp(x - ox, 0, width - 1);
+                int yMinus = Math.Clamp(y - oy, 0, height - 1);
+
+                int idxPlus = (yPlus * width + xPlus) * 4;
+                int idxMinus = (yMinus * width + xMinus) * 4;
+
+                int lumaPlus = (int)Math.Round(LumaB * bgraPixels[idxPlus] + LumaG * bgraPixels[idxPlus + 1] + LumaR * bgraPixels[idxPlus + 2]);
+                int lumaMinus = (int)Math.Round(LumaB * bgraPixels[idxMinus] + LumaG * bgraPixels[idxMinus + 1] + LumaR * bgraPixels[idxMinus + 2]);
+
+                byte val = (byte)Math.Clamp(lumaPlus - lumaMinus + 128, 0, 255);
+
+                int outIdx = (y * width + x) * 4;
+                result[outIdx] = val;
+                result[outIdx + 1] = val;
+                result[outIdx + 2] = val;
+                result[outIdx + 3] = bgraPixels[outIdx + 3];
+            }
+        });
+
+        return result;
+    }
+
+    private static void SampleBilinearBgra(byte[] src, int w, int h, double x, double y, out byte b, out byte g, out byte r, out byte a)
+    {
+        x = Math.Clamp(x, 0, w - 1);
+        y = Math.Clamp(y, 0, h - 1);
+
+        int x0 = (int)Math.Floor(x);
+        int y0 = (int)Math.Floor(y);
+        int x1 = Math.Min(x0 + 1, w - 1);
+        int y1 = Math.Min(y0 + 1, h - 1);
+
+        double fx = x - x0;
+        double fy = y - y0;
+        double w00 = (1.0 - fx) * (1.0 - fy);
+        double w10 = fx * (1.0 - fy);
+        double w01 = (1.0 - fx) * fy;
+        double w11 = fx * fy;
+
+        int idx00 = (y0 * w + x0) * 4;
+        int idx10 = (y0 * w + x1) * 4;
+        int idx01 = (y1 * w + x0) * 4;
+        int idx11 = (y1 * w + x1) * 4;
+
+        b = (byte)Math.Clamp((int)Math.Round(src[idx00] * w00 + src[idx10] * w10 + src[idx01] * w01 + src[idx11] * w11), 0, 255);
+        g = (byte)Math.Clamp((int)Math.Round(src[idx00 + 1] * w00 + src[idx10 + 1] * w10 + src[idx01 + 1] * w01 + src[idx11 + 1] * w11), 0, 255);
+        r = (byte)Math.Clamp((int)Math.Round(src[idx00 + 2] * w00 + src[idx10 + 2] * w10 + src[idx01 + 2] * w01 + src[idx11 + 2] * w11), 0, 255);
+        a = (byte)Math.Clamp((int)Math.Round(src[idx00 + 3] * w00 + src[idx10 + 3] * w10 + src[idx01 + 3] * w01 + src[idx11 + 3] * w11), 0, 255);
+    }
 }

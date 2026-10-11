@@ -6,7 +6,7 @@
              xmlns:panels="using:PdfEditorApp.Plugins.ImageEditor.Controls.Panels"
              xmlns:dialogs="using:PdfEditorApp.Plugins.ImageEditor.Controls.Dialogs"
              xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
-             x:Class="PdfEditorApp.Plugins.ImageEditor.ImageEditorView"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Views.ImageEditorView"
              x:DataType="local:ImageEditorViewModel"
              Background="#1E1E1E">
 
@@ -66,7 +66,7 @@
                     <!-- Main Canvas Work Viewport -->
                     <Grid Grid.Row="1" Grid.Column="1" Background="{DynamicResource PsCanvasBrush}" ClipToBounds="True">
                         <!-- Canvas View Component -->
-                        <local:EditorCanvasControl x:Name="CanvasControl"
+                        <controls:EditorCanvasControl x:Name="CanvasControl"
                                                    HorizontalAlignment="Stretch"
                                                    VerticalAlignment="Stretch"
                                                    Focusable="True" />

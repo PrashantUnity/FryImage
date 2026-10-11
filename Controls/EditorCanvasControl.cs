@@ -10,7 +10,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using PdfEditorApp.Plugins.ImageEditor.Models;
 
-namespace PdfEditorApp.Plugins.ImageEditor;
+namespace PdfEditorApp.Plugins.ImageEditor.Controls;
 
 /// <summary>Snapshot of an ImageElement's crop/frame state, used to undo/redo a crop.</summary>
 public readonly record struct ImageCropState(Rect? SourceCropRect, double X, double Y, double Width, double Height);

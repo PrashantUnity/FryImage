@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using PdfEditorApp.Core.Plugins;
 using PdfEditorApp.Core.Plugins.Descriptors;
 using PdfEditorApp.Core.Plugins.Manifests;
+using PdfEditorApp.Plugins.ImageEditor.Views;
 
 namespace PdfEditorApp.Plugins.ImageEditor;
 

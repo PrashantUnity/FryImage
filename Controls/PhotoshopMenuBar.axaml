@@ -10,8 +10,11 @@
     <Border BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="8,0">
         <Grid ColumnDefinitions="Auto,*,Auto">
 
-            <!-- Left: Brand + Complete Photoshop Menu Hierarchy -->
-            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+            <!-- macOS Window Controls Spacer (reserves clean space for traffic lights) -->
+            <Border Grid.Column="0" Width="72" IsVisible="{Binding IsMacOS}" />
+
+            <!-- Left: Brand + Complete Photoshop Menu Hierarchy (Shown on non-macOS platforms) -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center" IsVisible="{Binding !IsMacOS}">
                 <TextBlock Text="FryImage"
                            FontWeight="Black"
                            FontSize="12"

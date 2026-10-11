@@ -46,12 +46,16 @@ A professional Photoshop & Canva inspired layered design and photo editing studi
 
 ## Architecture notes
 
-- `EditorCanvasControl.cs` owns rendering (zoom/pan viewport transform, per-element rotate/flip, multi-select outlines, rotation/group-resize handles, alignment guides, crop overlay) and all pointer/keyboard interaction. A tile-bitmap cache backs the dot-grid/checkerboard background so they're regenerated only when the canvas size changes, not on every render.
+- `Controls/EditorCanvasControl.cs` owns rendering (zoom/pan viewport transform, per-element rotate/flip, multi-select outlines, rotation/group-resize handles, alignment guides, crop overlay) and all pointer/keyboard interaction. A tile-bitmap cache backs the dot-grid/checkerboard background so they're regenerated only when the canvas size changes, not on every render.
+- `Views/ImageEditorView.axaml` provides the primary studio view layout (ruler dock, toolbar palettes, panels, floating selection clusters).
+- `ViewModels/ImageEditorViewModel.cs` (along with partials in `ViewModels/`) is the single source of truth for undo history, selection, tools, and all commands.
+- `Converters/ValueConverters.cs` houses all Avalonia XAML value converters.
+- `Models/Elements/` contains all canvas elements (`CanvasElement`, `RectangleElement`, `EllipseElement`, `TextElement`, `ImageElement`, `DoodleElement`, etc.).
+- `Models/Styling/` contains fill, stroke, gradient, dash styles, and layer effect models.
+- `Models/Processing/ImageAdjustmentProcessor.cs` builds the brightness/contrast/saturation/hue/temperature/tint color matrices and blur/sharpen spatial filters applied via SkiaSharp; adjustments always recompute from the originally-imported bytes so they never compound.
 - `Models/Undo/` holds the undo/redo command infrastructure (`EditHistory`, per-mutation `IUndoableCommand` types, and a generic `GenericPropertyCommand<TTarget,TValue>`/`BatchPropertyCommand` for simple property swaps).
 - `Models/Serialization/` is a separate DTO layer (`CanvasElementMapper`, `[JsonPolymorphic]` DTOs) for `.fryimg` project files — kept independent of the runtime model to avoid attribute-collision risk.
 - `Models/Templates/` defines the 8 starter templates as element factories (no embedded asset files); gallery thumbnails are rendered live via `EditorCanvasControl.RenderElementsStatic`.
-- `Models/ImageAdjustmentProcessor.cs` builds the brightness/contrast/saturation/hue/temperature/tint color matrices and blur/sharpen spatial filters applied via SkiaSharp; adjustments always recompute from the originally-imported bytes so they never compound.
-- `ImageEditorViewModel.cs` is the single source of truth for undo history, selection, and all commands — no separate ViewModel is introduced for any sub-panel.
 
 ## Requirements
 

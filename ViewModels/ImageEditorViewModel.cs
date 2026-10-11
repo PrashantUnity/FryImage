@@ -23,6 +23,7 @@ using PdfEditorApp.Core.Models;
 using PdfEditorApp.Core.Plugins.Descriptors;
 using PdfEditorApp.Core.Plugins.Settings;
 using PdfEditorApp.Core.Services;
+using PdfEditorApp.Plugins.ImageEditor.Controls;
 using PdfEditorApp.Plugins.ImageEditor.Models;
 using PdfEditorApp.Plugins.ImageEditor.Models.Templates;
 using PdfEditorApp.Plugins.ImageEditor.Models.Serialization;
@@ -49,6 +50,9 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     /// IPluginSettingsStore) — the Typefaces picker degrades to the always-available "Basics"
     /// group in that case, since FontHelper's embedded-asset resolution needs no DI service.</summary>
     private readonly IFontPackageService? _fontPackageService;
+
+    /// <summary>True when running natively on macOS.</summary>
+    public bool IsMacOS => OperatingSystem.IsMacOS();
 
     // ── Canvas state ───────────────────────────────────────────────────────
     [ObservableProperty]

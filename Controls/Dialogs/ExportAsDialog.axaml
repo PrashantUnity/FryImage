@@ -32,20 +32,25 @@
                     <Grid ColumnDefinitions="Auto,*">
                         <TextBlock Grid.Column="0" Text="Format:" Classes="ps-label" Width="70" />
                         <ComboBox Grid.Column="1" Classes="ps-combo" Width="140"
-                                  SelectedItem="{Binding ExportFormat, Mode=TwoWay}">
-                            <ComboBoxItem Content="PNG" />
-                            <ComboBoxItem Content="JPEG" />
-                            <ComboBoxItem Content="WebP" />
+                                  SelectedValue="{Binding ExportFormat, Mode=TwoWay}"
+                                  SelectedValueBinding="{Binding (ComboBoxItem).Tag}">
+                            <ComboBoxItem Content="PNG" Tag="PNG" />
+                            <ComboBoxItem Content="JPEG" Tag="JPEG" />
+                            <ComboBoxItem Content="WebP" Tag="WEBP" />
+                            <ComboBoxItem Content="FITS" Tag="FITS" />
+                            <ComboBoxItem Content="BMP" Tag="BMP" />
                         </ComboBox>
                     </Grid>
 
                     <Grid ColumnDefinitions="Auto,*">
                         <TextBlock Grid.Column="0" Text="Scale:" Classes="ps-label" Width="70" />
-                        <ComboBox Grid.Column="1" Classes="ps-combo" Width="140">
-                            <ComboBoxItem Content="1x (Native)" />
-                            <ComboBoxItem Content="0.5x" />
-                            <ComboBoxItem Content="2x (@2x)" />
-                            <ComboBoxItem Content="3x (@3x)" />
+                        <ComboBox Grid.Column="1" Classes="ps-combo" Width="140"
+                                  SelectedValue="{Binding ExportScaleStr, Mode=TwoWay}"
+                                  SelectedValueBinding="{Binding (ComboBoxItem).Tag}">
+                            <ComboBoxItem Content="1x (Native)" Tag="1" />
+                            <ComboBoxItem Content="0.5x" Tag="0.5" />
+                            <ComboBoxItem Content="2x (@2x)" Tag="2" />
+                            <ComboBoxItem Content="3x (@3x)" Tag="3" />
                         </ComboBox>
                     </Grid>
 

@@ -125,7 +125,11 @@
             <NativeMenuItem Header="Select">
                 <NativeMenu>
                     <NativeMenuItem Header="Select All" Gesture="Meta+A" Command="{Binding SelectAllElementsCommand}" />
-                    <NativeMenuItem Header="Deselect" Gesture="Meta+D" Command="{Binding SetToolCommand}" CommandParameter="select" />
+                    <NativeMenuItem Header="Deselect" Gesture="Meta+D" Command="{Binding DeselectAllCommand}" />
+                    <NativeMenuItem Header="Inverse" Gesture="Meta+Shift+I" Command="{Binding InvertSelectionCommand}" />
+                    <NativeMenuItemSeparator />
+                    <NativeMenuItem Header="Color Range..." Command="{Binding OpenColorRangeDialogCommand}" />
+                    <NativeMenuItem Header="Select and Mask..." Gesture="Meta+Alt+R" Command="{Binding OpenSelectAndMaskDialogCommand}" />
                 </NativeMenu>
             </NativeMenuItem>
 
@@ -165,6 +169,8 @@
                     <NativeMenuItem Header="Noise">
                         <NativeMenu>
                             <NativeMenuItem Header="Add Noise..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="AddNoise" />
+                            <NativeMenuItem Header="Dust &amp; Scratches..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="DustAndScratches" />
+                            <NativeMenuItem Header="Median..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Median" />
                         </NativeMenu>
                     </NativeMenuItem>
                     <NativeMenuItem Header="Other">

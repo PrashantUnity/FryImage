@@ -1,0 +1,81 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Dialogs.ColorRangeDialog"
+             x:DataType="local:ImageEditorViewModel">
+
+    <!-- Modal Backdrop -->
+    <Border Background="#90000000" IsVisible="{Binding IsColorRangeDialogOpen}">
+        <Border Width="440" MaxHeight="520" MinHeight="360"
+                VerticalAlignment="Center" HorizontalAlignment="Center"
+                Background="{DynamicResource PsPanelBrush}"
+                BorderBrush="{DynamicResource PsBorderBrush}"
+                BorderThickness="1"
+                BoxShadow="0 10 36 #B0000000"
+                CornerRadius="2"
+                ClipToBounds="True">
+            <Grid RowDefinitions="34,*,46">
+
+                <!-- Header -->
+                <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="14,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <materialIcons:MaterialIcon Kind="Eyedropper" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+                            <TextBlock Text="Color Range" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="ps-opt-btn" Command="{Binding CancelColorRangeDialogCommand}" ToolTip.Tip="Cancel (Esc)">
+                            <materialIcons:MaterialIcon Kind="Close" Width="12" Height="12" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Body Controls -->
+                <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Margin="16,12">
+                    <StackPanel Spacing="14">
+
+                        <!-- Select Mode Dropdown -->
+                        <Border Background="{DynamicResource PsOptionsBrush}" CornerRadius="2" Padding="10,8">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Selection Source" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource PsAccentBrush}" />
+                                <Grid ColumnDefinitions="Auto,*">
+                                    <TextBlock Grid.Column="0" Text="Select:" Classes="ps-label" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <ComboBox Grid.Column="1" Classes="ps-combo"
+                                              ItemsSource="{Binding AvailableColorRangeModes}"
+                                              SelectedItem="{Binding ColorRangeSelectMode, Mode=TwoWay}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Fuzziness Slider -->
+                        <Border Background="{DynamicResource PsOptionsBrush}" CornerRadius="2" Padding="10,8">
+                            <StackPanel Spacing="8">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Fuzziness" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding ColorRangeFuzziness, StringFormat='{}{0:0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="0" Maximum="200" Value="{Binding ColorRangeFuzziness, Mode=TwoWay}" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Invert and Options -->
+                        <Border Background="{DynamicResource PsOptionsBrush}" CornerRadius="2" Padding="10,8">
+                            <StackPanel Spacing="8">
+                                <CheckBox Content="Invert Selection" IsChecked="{Binding ColorRangeInvert, Mode=TwoWay}" />
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Footer Action Buttons -->
+                <Border Grid.Row="2" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="14,8">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                        <Button Classes="ps-btn" Content="Cancel" Command="{Binding CancelColorRangeDialogCommand}" Padding="14,5" />
+                        <Button Classes="ps-btn ps-btn-primary" Content="OK" Command="{Binding ConfirmColorRangeDialogCommand}" Padding="18,5" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Border>
+</UserControl>

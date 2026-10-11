@@ -257,4 +257,128 @@ public partial class ImageEditorViewModel
             StatusMessage = $"Selection inverted ({SelectedElements.Count} layers selected).";
         }
     }
+
+    // ── Color Range Workspace State ─────────────────────────────────────────
+    [ObservableProperty] private bool _isColorRangeDialogOpen;
+    [ObservableProperty] private string _colorRangeSelectMode = "SampledColors";
+    [ObservableProperty] private double _colorRangeFuzziness = 40.0;
+    [ObservableProperty] private bool _colorRangeInvert = false;
+
+    public IReadOnlyList<string> AvailableColorRangeModes { get; } =
+    [
+        "SampledColors",
+        "Reds",
+        "Yellows",
+        "Greens",
+        "Cyans",
+        "Blues",
+        "Magentas",
+        "Highlights",
+        "Midtones",
+        "Shadows"
+    ];
+
+    private ImageElement? _colorRangeTargetImage;
+    private byte[]? _colorRangeOriginalImageBytes;
+
+    [RelayCommand]
+    public void OpenColorRangeDialog()
+    {
+        _colorRangeTargetImage = SelectedElement as ImageElement ?? Elements.OfType<ImageElement>().LastOrDefault();
+        if (_colorRangeTargetImage == null)
+        {
+            using var rtb = RenderCanvasToBitmap(1.0);
+            if (rtb != null)
+            {
+                using var ms = new MemoryStream();
+                rtb.Save(ms, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
+                var bytes = ms.ToArray();
+                var img = new ImageElement
+                {
+                    Name = "Background Composite",
+                    X = 0,
+                    Y = 0,
+                    Width = _canvasWidth,
+                    Height = _canvasHeight,
+                    OriginalImageBytes = bytes,
+                    Source = new Bitmap(new MemoryStream(bytes)),
+                    NaturalPixelWidth = (int)_canvasWidth,
+                    NaturalPixelHeight = (int)_canvasHeight,
+                    ZIndex = 0
+                };
+                Elements.Insert(0, img);
+                SelectedElement = img;
+                _colorRangeTargetImage = img;
+            }
+        }
+
+        if (_colorRangeTargetImage == null)
+        {
+            StatusMessage = "Select an image layer to open Color Range.";
+            return;
+        }
+
+        _colorRangeOriginalImageBytes = _colorRangeTargetImage.OriginalImageBytes;
+        if (_colorRangeOriginalImageBytes == null || _colorRangeOriginalImageBytes.Length == 0)
+        {
+            StatusMessage = "Target layer has no image data to select from.";
+            return;
+        }
+
+        IsColorRangeDialogOpen = true;
+        StatusMessage = "Color Range dialog open. Choose color range or sampled color.";
+    }
+
+    [RelayCommand]
+    public void CancelColorRangeDialog()
+    {
+        _colorRangeTargetImage = null;
+        _colorRangeOriginalImageBytes = null;
+        IsColorRangeDialogOpen = false;
+        StatusMessage = "Ready";
+    }
+
+    [RelayCommand]
+    public void ConfirmColorRangeDialog()
+    {
+        if (_colorRangeTargetImage == null || _colorRangeOriginalImageBytes == null)
+        {
+            IsColorRangeDialogOpen = false;
+            return;
+        }
+
+        try
+        {
+            using var bmp = SKBitmap.Decode(_colorRangeOriginalImageBytes);
+            if (bmp == null) return;
+
+            byte[] mask = ColorRangeEngine.ComputeMask(
+                bmp.Bytes,
+                bmp.Width,
+                bmp.Height,
+                ColorRangeSelectMode,
+                ColorRangeFuzziness,
+                ColorRangeInvert,
+                PrimaryColor);
+
+            if (CanvasControl != null)
+            {
+                CanvasControl.QuickMaskBuffer = mask;
+                CanvasControl.IsQuickMaskMode = true;
+                CanvasControl.InvalidateVisual();
+            }
+
+            StatusMessage = $"Color Range selection generated ({ColorRangeSelectMode}, Fuzziness: {ColorRangeFuzziness:0}).";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Color Range error: {ex.Message}";
+        }
+        finally
+        {
+            _colorRangeTargetImage = null;
+            _colorRangeOriginalImageBytes = null;
+            IsColorRangeDialogOpen = false;
+        }
+    }
 }

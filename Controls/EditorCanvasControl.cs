@@ -82,6 +82,11 @@ public class EditorCanvasControl : Control
     public byte[]? QuickMaskBuffer { get; set; }
     private bool _isDrawingQuickMask;
 
+    // Move & Transform tool options
+    public bool AutoSelectLayers { get; set; } = true;
+    public string AutoSelectTarget { get; set; } = "Layer";
+    public bool ShowTransformControls { get; set; } = true;
+
     // Vector Path state (Pen & Path Selection tools)
     public VectorDocumentPath? ActiveDocumentPath { get; set; }
     private bool _isDraggingPenHandle;
@@ -122,6 +127,81 @@ public class EditorCanvasControl : Control
 
     // Smart alignment guides (rendered only while dragging)
     private List<(bool IsVertical, double Position)> _activeGuides = new();
+
+    // Persistent document user guides
+    private readonly List<(bool IsVertical, double Position)> _userGuides = new();
+    public bool ShowUserGuides { get; set; } = true;
+    public bool LockUserGuides { get; set; } = false;
+    public bool SnapEnabled { get; set; } = true;
+    public bool SnapToGuides { get; set; } = true;
+    public bool SnapToGrid { get; set; } = true;
+    public bool SnapToLayers { get; set; } = true;
+    public bool SnapToDocumentBounds { get; set; } = true;
+
+    public void AddUserGuide(bool isVertical, double position)
+    {
+        _userGuides.Add((isVertical, position));
+        InvalidateVisual();
+    }
+
+    public void ClearUserGuides()
+    {
+        _userGuides.Clear();
+        InvalidateVisual();
+    }
+
+    public void ApplyGuideLayout(
+        int columns,
+        int rows,
+        double colWidth,
+        double rowHeight,
+        double colGutter,
+        double rowGutter,
+        double marginTop,
+        double marginLeft,
+        double marginBottom,
+        double marginRight,
+        bool clearExisting)
+    {
+        if (clearExisting) _userGuides.Clear();
+
+        double availWidth = _logicalWidth - marginLeft - marginRight;
+        double availHeight = _logicalHeight - marginTop - marginBottom;
+
+        if (columns > 0 && availWidth > 0)
+        {
+            double computedColWidth = colWidth > 0
+                ? colWidth
+                : (availWidth - Math.Max(0, columns - 1) * colGutter) / columns;
+
+            double curX = marginLeft;
+            for (int c = 0; c < columns; c++)
+            {
+                _userGuides.Add((true, curX));
+                curX += computedColWidth;
+                _userGuides.Add((true, curX));
+                curX += colGutter;
+            }
+        }
+
+        if (rows > 0 && availHeight > 0)
+        {
+            double computedRowHeight = rowHeight > 0
+                ? rowHeight
+                : (availHeight - Math.Max(0, rows - 1) * rowGutter) / rows;
+
+            double curY = marginTop;
+            for (int r = 0; r < rows; r++)
+            {
+                _userGuides.Add((false, curY));
+                curY += computedRowHeight;
+                _userGuides.Add((false, curY));
+                curY += rowGutter;
+            }
+        }
+
+        InvalidateVisual();
+    }
 
     // Arrow-key nudge (committed as one undo step after a short idle window)
     private Dictionary<CanvasElement, Point>? _nudgeOrigins;
@@ -523,15 +603,21 @@ public class EditorCanvasControl : Control
             }
             else if (_selection.Count == 1)
             {
-                DrawSelectionHandles(dc, _selection[0], _zoom);
-                DrawRotationHandle(dc, _selection[0].Bounds, _selection[0].RotationDegrees, _zoom);
+                if (ShowTransformControls)
+                {
+                    DrawSelectionHandles(dc, _selection[0], _zoom);
+                    DrawRotationHandle(dc, _selection[0].Bounds, _selection[0].RotationDegrees, _zoom);
+                }
             }
             else if (_selection.Count > 1)
             {
-                DrawMultiSelectionOutline(dc, _selection, _zoom);
-                var groupBounds = ComputeGroupBounds(_selection);
-                DrawResizeHandles(dc, groupBounds, _zoom);
-                DrawRotationHandle(dc, groupBounds, 0, _zoom);
+                if (ShowTransformControls)
+                {
+                    DrawMultiSelectionOutline(dc, _selection, _zoom);
+                    var groupBounds = ComputeGroupBounds(_selection);
+                    DrawResizeHandles(dc, groupBounds, _zoom);
+                    DrawRotationHandle(dc, groupBounds, 0, _zoom);
+                }
             }
 
             if (_isMarqueeSelecting)
@@ -1467,9 +1553,17 @@ public class EditorCanvasControl : Control
             }
         }
 
-        // 8. Hit-test elements (top-most Z first), skipping hidden/locked elements.
-        var hit = _elements.OrderByDescending(el => el.ZIndex)
-            .FirstOrDefault(el => el.IsVisible && !el.IsLocked && el.HitTestRotationAware(canvasPt));
+        // 8. Hit-test elements (top-most Z first), respecting AutoSelectLayers setting
+        CanvasElement? hit;
+        if (AutoSelectLayers || _selection.Count == 0)
+        {
+            hit = _elements.OrderByDescending(el => el.ZIndex)
+                .FirstOrDefault(el => el.IsVisible && !el.IsLocked && el.HitTestRotationAware(canvasPt));
+        }
+        else
+        {
+            hit = _selection.FirstOrDefault(el => el.HitTestRotationAware(canvasPt));
+        }
 
         if (hit != null)
         {

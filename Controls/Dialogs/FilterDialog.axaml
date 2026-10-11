@@ -199,6 +199,35 @@
                             <CheckBox Content="Monochromatic" IsChecked="{Binding FilterNoiseMonochromatic, Mode=TwoWay}" Margin="0,4,0,0" />
                         </StackPanel>
 
+                        <!-- Dust & Scratches -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ActiveFilterMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='DustAndScratches'}">
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Radius" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterDustRadius, StringFormat='{}{0:0} pixels'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="1" Maximum="50" Value="{Binding FilterDustRadius, Mode=TwoWay}" />
+                            </StackPanel>
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Threshold" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterDustThreshold, StringFormat='{}{0:0} levels'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="0" Maximum="255" Value="{Binding FilterDustThreshold, Mode=TwoWay}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Median -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ActiveFilterMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Median'}">
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Radius" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterMedianRadius, StringFormat='{}{0:0} pixels'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="1" Maximum="50" Value="{Binding FilterMedianRadius, Mode=TwoWay}" />
+                            </StackPanel>
+                        </StackPanel>
+
                         <!-- 9. Oil Paint -->
                         <StackPanel Spacing="10" IsVisible="{Binding ActiveFilterMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='OilPaint'}">
                             <StackPanel Spacing="4">

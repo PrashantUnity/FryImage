@@ -73,6 +73,8 @@ public partial class ImageEditorViewModel
         AddCmd("filter.pixelate.mosaic", "Mosaic Pixelate...", "Filter", null, "ViewGridPlusOutline", () => OpenFilterDialog("Mosaic"));
         AddCmd("filter.stylize.emboss", "Emboss Relief...", "Filter", null, "TextureBox", () => OpenFilterDialog("Emboss"));
         AddCmd("filter.noise.add", "Add Noise...", "Filter", null, "Grain", () => OpenFilterDialog("AddNoise"));
+        AddCmd("filter.noise.dustAndScratches", "Dust & Scratches...", "Filter", null, "Broom", () => OpenFilterDialog("DustAndScratches"));
+        AddCmd("filter.noise.median", "Median Filter...", "Filter", null, "FilterVariant", () => OpenFilterDialog("Median"));
         AddCmd("filter.other.highpass", "High Pass Filter...", "Filter", null, "ContrastBox", () => OpenFilterDialog("HighPass"));
         AddCmd("filter.render.clouds", "Clouds...", "Filter", null, "CloudOutline", () => OpenFilterDialog("Clouds"));
         AddCmd("filter.render.lensflare", "Lens Flare...", "Filter", null, "Flare", () => OpenFilterDialog("LensFlare"));
@@ -98,6 +100,7 @@ public partial class ImageEditorViewModel
         AddCmd("adjust.invert", "Invert Colors", "Adjustments", "Ctrl+I", "InvertColors", ApplyInvert);
 
         // ── Selection & Masks ────────────────────────────────
+        AddCmd("select.colorrange", "Color Range...", "Select", null, "Eyedropper", OpenColorRangeDialog);
         AddCmd("select.andmask", "Select and Mask...", "Select", "Ctrl+Alt+R", "SelectDrag", OpenSelectAndMaskDialog);
         AddCmd("select.quickmask", "Quick Mask Mode", "Select", "Q", "CircleHalfFull", ToggleQuickMask);
         AddCmd("select.all", "Select All Elements", "Select", "Ctrl+A", "SelectAll", SelectAllElements);

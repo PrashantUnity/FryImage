@@ -153,6 +153,7 @@
         <dialogs:AdjustmentDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsAdjustmentDialogOpen}" />
         <dialogs:FilterDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsFilterDialogOpen}" />
         <dialogs:SelectAndMaskDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsSelectAndMaskDialogOpen}" />
+        <dialogs:ColorRangeDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsColorRangeDialogOpen}" />
         <dialogs:LiquifyDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsLiquifyDialogOpen}" />
         <dialogs:CommandPaletteDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="600" IsVisible="{Binding IsCommandPaletteOpen}" />
 

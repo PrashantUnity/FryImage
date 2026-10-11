@@ -12,7 +12,7 @@
     <Version>3.0.0</Version>
     <Company>FryPDF Team</Company>
     <Description>Canva-style layered design editor overlay plugin for FryPDF</Description>
-    <DefaultItemExcludes>$(DefaultItemExcludes);Runner/**</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);Runner/**;UISnapshots/**;IdeaSample/**</DefaultItemExcludes>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 

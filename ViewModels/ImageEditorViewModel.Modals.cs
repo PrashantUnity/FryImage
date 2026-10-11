@@ -933,6 +933,9 @@ public partial class ImageEditorViewModel
     [ObservableProperty] private double _filterHighPassRadius = 10.0;
     [ObservableProperty] private int _filterNoiseAmount = 25;
     [ObservableProperty] private bool _filterNoiseMonochromatic = true;
+    [ObservableProperty] private int _filterDustRadius = 2;
+    [ObservableProperty] private int _filterDustThreshold = 0;
+    [ObservableProperty] private int _filterMedianRadius = 3;
     [ObservableProperty] private bool _filterPreviewEnabled = true;
 
     // Additional Studio filter properties
@@ -1025,6 +1028,8 @@ public partial class ImageEditorViewModel
             "UnsharpMask" => "Unsharp Mask",
             "HighPass" => "High Pass",
             "AddNoise" => "Add Noise",
+            "DustAndScratches" => "Dust & Scratches",
+            "Median" => "Median",
             "Mosaic" => "Mosaic",
             "Twirl" => "Twirl",
             "Spherize" => "Spherize",
@@ -1178,6 +1183,9 @@ public partial class ImageEditorViewModel
     partial void OnFilterLensBrightnessChanged(double value) => ApplyFilterPreview();
     partial void OnFilterLensTypeChanged(int value) => ApplyFilterPreview();
     partial void OnFilterSolarizeThresholdChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterDustRadiusChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterDustThresholdChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterMedianRadiusChanged(int value) => ApplyFilterPreview();
 
     private byte[] ExecuteFilterMode(byte[] bgra, int width, int height)
     {
@@ -1191,6 +1199,8 @@ public partial class ImageEditorViewModel
             "UnsharpMask" => ImageAdjustmentEngine.ApplySharpen(bgra, width, height, FilterSharpenAmount / 100.0, FilterSharpenRadius, FilterSharpenThreshold),
             "HighPass" => ImageAdjustmentEngine.ApplyHighPass(bgra, width, height, FilterHighPassRadius),
             "AddNoise" => ImageAdjustmentEngine.ApplyAddNoise(bgra, FilterNoiseAmount, FilterNoiseMonochromatic),
+            "DustAndScratches" => ImageAdjustmentEngine.ApplyDustAndScratches(bgra, width, height, FilterDustRadius, FilterDustThreshold),
+            "Median" => ImageAdjustmentEngine.ApplyMedian(bgra, width, height, FilterMedianRadius),
             "Mosaic" => ImageAdjustmentEngine.ApplyMosaic(bgra, width, height, FilterMosaicCellSize),
             "Twirl" => ImageAdjustmentEngine.ApplyTwirl(bgra, width, height, FilterTwirlAngle, FilterTwirlRadius),
             "Spherize" => ImageAdjustmentEngine.ApplySpherize(bgra, width, height, FilterSpherizeAmount),
@@ -1329,126 +1339,193 @@ public partial class ImageEditorViewModel
 
             var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                Title = "Open Image or PSD Document",
-                AllowMultiple = false,
+                Title = "Open Images, PSD or FITS Documents",
+                AllowMultiple = true,
                 FileTypeFilter =
                 [
-                    new FilePickerFileType("Supported Images & PSD")
+                    new FilePickerFileType("Supported Images, PSD & FITS")
                     {
-                        Patterns = ["*.psd", "*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp", "*.gif"]
+                        Patterns = ["*.psd", "*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp", "*.gif", "*.tif", "*.tiff", "*.fits", "*.fit", "*.fts"]
                     },
                     new FilePickerFileType("Layered Document (*.psd)") { Patterns = ["*.psd"] },
+                    new FilePickerFileType("Astronomical Image (*.fits, *.fit, *.fts)") { Patterns = ["*.fits", "*.fit", "*.fts"] },
                     new FilePickerFileType("All Files") { Patterns = ["*.*"] }
                 ]
             });
 
             if (files.Count == 0) return;
-            var file = files[0];
-            await using var stream = await file.OpenReadAsync();
 
-            string ext = Path.GetExtension(file.Name).ToLowerInvariant();
-            if (ext == ".psd")
+            var orderedFiles = files.OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList();
+            int openedCount = 0;
+
+            foreach (var file in orderedFiles)
             {
-                var psd = PsdCodec.Decode(stream);
-                ClearCanvas();
-                CanvasWidth = Math.Max(200, psd.Width);
-                CanvasHeight = Math.Max(150, psd.Height);
-                DocumentTitle = file.Name;
+                await using var stream = await file.OpenReadAsync();
+                string ext = Path.GetExtension(file.Name).ToLowerInvariant();
 
-                int z = 1;
-                foreach (var layer in psd.Layers)
+                if (ext == ".psd")
                 {
-                    if (layer.BgraPixels != null && layer.Width > 0 && layer.Height > 0)
+                    var psd = PsdCodec.Decode(stream);
+                    if (Elements.Count == 0)
                     {
-                        using var skBmp = new SKBitmap(layer.Width, layer.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
-                        var pin = System.Runtime.InteropServices.GCHandle.Alloc(layer.BgraPixels, System.Runtime.InteropServices.GCHandleType.Pinned);
-                        try
+                        ClearCanvas();
+                        CanvasWidth = Math.Max(200, psd.Width);
+                        CanvasHeight = Math.Max(150, psd.Height);
+                        DocumentTitle = file.Name;
+                    }
+
+                    int z = Elements.Count + 1;
+                    foreach (var layer in psd.Layers)
+                    {
+                        if (layer.BgraPixels != null && layer.Width > 0 && layer.Height > 0)
                         {
-                            skBmp.InstallPixels(skBmp.Info, pin.AddrOfPinnedObject());
-                            using var img = SKImage.FromBitmap(skBmp);
-                            using var data = img.Encode(SKEncodedImageFormat.Png, 100);
-                            byte[] pngBytes = data.ToArray();
-
-                            using var ms = new MemoryStream(pngBytes);
-                            var avaloniaBmp = new Bitmap(ms);
-
-                            var el = new ImageElement
+                            using var skBmp = new SKBitmap(layer.Width, layer.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
+                            var pin = System.Runtime.InteropServices.GCHandle.Alloc(layer.BgraPixels, System.Runtime.InteropServices.GCHandleType.Pinned);
+                            try
                             {
-                                Name = layer.Name,
-                                X = layer.Left,
-                                Y = layer.Top,
-                                Width = layer.Width,
-                                Height = layer.Height,
-                                NaturalPixelWidth = layer.Width,
-                                NaturalPixelHeight = layer.Height,
-                                Source = avaloniaBmp,
-                                OriginalImageBytes = pngBytes,
-                                Opacity = layer.Opacity / 255.0,
-                                BlendMode = layer.BlendMode switch
-                                {
-                                    "mul" => LayerBlendMode.Multiply,
-                                    "scrn" => LayerBlendMode.Screen,
-                                    "over" => LayerBlendMode.Overlay,
-                                    "dark" => LayerBlendMode.Darken,
-                                    "lite" => LayerBlendMode.Lighten,
-                                    "div" => LayerBlendMode.ColorDodge,
-                                    "idiv" => LayerBlendMode.ColorBurn,
-                                    "hLit" => LayerBlendMode.HardLight,
-                                    "sLit" => LayerBlendMode.SoftLight,
-                                    "diff" => LayerBlendMode.Difference,
-                                    "smud" => LayerBlendMode.Exclusion,
-                                    "hue" => LayerBlendMode.Hue,
-                                    "sat" => LayerBlendMode.Saturation,
-                                    "colr" => LayerBlendMode.Color,
-                                    "lum" => LayerBlendMode.Luminosity,
-                                    _ => LayerBlendMode.Normal
-                                },
-                                IsVisible = layer.IsVisible,
-                                ZIndex = z++
-                            };
+                                skBmp.InstallPixels(skBmp.Info, pin.AddrOfPinnedObject());
+                                using var img = SKImage.FromBitmap(skBmp);
+                                using var data = img.Encode(SKEncodedImageFormat.Png, 100);
+                                byte[] pngBytes = data.ToArray();
 
-                            Elements.Add(el);
-                        }
-                        finally
-                        {
-                            pin.Free();
+                                using var ms = new MemoryStream(pngBytes);
+                                var avaloniaBmp = new Bitmap(ms);
+
+                                var el = new ImageElement
+                                {
+                                    Name = layer.Name,
+                                    X = layer.Left,
+                                    Y = layer.Top,
+                                    Width = layer.Width,
+                                    Height = layer.Height,
+                                    NaturalPixelWidth = layer.Width,
+                                    NaturalPixelHeight = layer.Height,
+                                    Source = avaloniaBmp,
+                                    OriginalImageBytes = pngBytes,
+                                    Opacity = layer.Opacity / 255.0,
+                                    BlendMode = layer.BlendMode switch
+                                    {
+                                        "mul" => LayerBlendMode.Multiply,
+                                        "scrn" => LayerBlendMode.Screen,
+                                        "over" => LayerBlendMode.Overlay,
+                                        "dark" => LayerBlendMode.Darken,
+                                        "lite" => LayerBlendMode.Lighten,
+                                        "div" => LayerBlendMode.ColorDodge,
+                                        "idiv" => LayerBlendMode.ColorBurn,
+                                        "hLit" => LayerBlendMode.HardLight,
+                                        "sLit" => LayerBlendMode.SoftLight,
+                                        "diff" => LayerBlendMode.Difference,
+                                        "smud" => LayerBlendMode.Exclusion,
+                                        "hue" => LayerBlendMode.Hue,
+                                        "sat" => LayerBlendMode.Saturation,
+                                        "colr" => LayerBlendMode.Color,
+                                        "lum" => LayerBlendMode.Luminosity,
+                                        _ => LayerBlendMode.Normal
+                                    },
+                                    IsVisible = layer.IsVisible,
+                                    ZIndex = z++
+                                };
+
+                                Elements.Add(el);
+                            }
+                            finally
+                            {
+                                pin.Free();
+                            }
                         }
                     }
+
+                    openedCount++;
                 }
-
-                FitToWindow();
-                StatusMessage = $"Opened PSD with {psd.Layers.Count} layers.";
-                ScheduleHistogramUpdate();
-            }
-            else
-            {
-                // Standard image file
-                using var ms = new MemoryStream();
-                await stream.CopyToAsync(ms);
-                byte[] bytes = ms.ToArray();
-
-                using var imgMs = new MemoryStream(bytes);
-                var bmp = new Bitmap(imgMs);
-
-                var imgEl = new ImageElement
+                else if (ext is ".fits" or ".fit" or ".fts")
                 {
-                    Name = Path.GetFileNameWithoutExtension(file.Name),
-                    X = (CanvasWidth - bmp.PixelSize.Width) / 2.0,
-                    Y = (CanvasHeight - bmp.PixelSize.Height) / 2.0,
-                    Width = Math.Min(CanvasWidth, bmp.PixelSize.Width),
-                    Height = Math.Min(CanvasHeight, bmp.PixelSize.Height),
-                    NaturalPixelWidth = bmp.PixelSize.Width,
-                    NaturalPixelHeight = bmp.PixelSize.Height,
-                    Source = bmp,
-                    OriginalImageBytes = bytes,
-                    ZIndex = Elements.Count + 1
-                };
+                    var fits = FitsCodec.Decode(stream);
+                    if (Elements.Count == 0)
+                    {
+                        ClearCanvas();
+                        CanvasWidth = Math.Max(200, fits.Width);
+                        CanvasHeight = Math.Max(150, fits.Height);
+                        DocumentTitle = file.Name;
+                    }
 
-                Elements.Add(imgEl);
-                SelectedElement = imgEl;
-                StatusMessage = $"Imported image: {file.Name}";
-                ScheduleHistogramUpdate();
+                    using var skBmp = new SKBitmap(fits.Width, fits.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
+                    var pin = System.Runtime.InteropServices.GCHandle.Alloc(fits.BgraPixels, System.Runtime.InteropServices.GCHandleType.Pinned);
+                    try
+                    {
+                        skBmp.InstallPixels(skBmp.Info, pin.AddrOfPinnedObject());
+                        using var img = SKImage.FromBitmap(skBmp);
+                        using var data = img.Encode(SKEncodedImageFormat.Png, 100);
+                        byte[] pngBytes = data.ToArray();
+
+                        using var ms = new MemoryStream(pngBytes);
+                        var avaloniaBmp = new Bitmap(ms);
+
+                        var el = new ImageElement
+                        {
+                            Name = Path.GetFileNameWithoutExtension(file.Name),
+                            X = (CanvasWidth - fits.Width) / 2.0,
+                            Y = (CanvasHeight - fits.Height) / 2.0,
+                            Width = fits.Width,
+                            Height = fits.Height,
+                            NaturalPixelWidth = fits.Width,
+                            NaturalPixelHeight = fits.Height,
+                            Source = avaloniaBmp,
+                            OriginalImageBytes = pngBytes,
+                            ZIndex = Elements.Count + 1
+                        };
+
+                        Elements.Add(el);
+                        SelectedElement = el;
+                    }
+                    finally
+                    {
+                        pin.Free();
+                    }
+
+                    openedCount++;
+                }
+                else
+                {
+                    // Standard image file
+                    using var ms = new MemoryStream();
+                    await stream.CopyToAsync(ms);
+                    byte[] bytes = ms.ToArray();
+
+                    using var imgMs = new MemoryStream(bytes);
+                    var bmp = new Bitmap(imgMs);
+
+                    if (Elements.Count == 0)
+                    {
+                        CanvasWidth = Math.Max(200, bmp.PixelSize.Width);
+                        CanvasHeight = Math.Max(150, bmp.PixelSize.Height);
+                        DocumentTitle = file.Name;
+                    }
+
+                    var imgEl = new ImageElement
+                    {
+                        Name = Path.GetFileNameWithoutExtension(file.Name),
+                        X = (CanvasWidth - bmp.PixelSize.Width) / 2.0,
+                        Y = (CanvasHeight - bmp.PixelSize.Height) / 2.0,
+                        Width = Math.Min(CanvasWidth, bmp.PixelSize.Width),
+                        Height = Math.Min(CanvasHeight, bmp.PixelSize.Height),
+                        NaturalPixelWidth = bmp.PixelSize.Width,
+                        NaturalPixelHeight = bmp.PixelSize.Height,
+                        Source = bmp,
+                        OriginalImageBytes = bytes,
+                        ZIndex = Elements.Count + 1
+                    };
+
+                    Elements.Add(imgEl);
+                    SelectedElement = imgEl;
+                    openedCount++;
+                }
             }
+
+            FitToWindow();
+            StatusMessage = orderedFiles.Count == 1
+                ? $"Opened {orderedFiles[0].Name}"
+                : $"Opened {openedCount} documents in alphabetical order.";
+            ScheduleHistogramUpdate();
         }
         catch (Exception ex)
         {

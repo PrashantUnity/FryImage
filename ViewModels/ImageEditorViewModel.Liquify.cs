@@ -41,6 +41,33 @@ public partial class ImageEditorViewModel
         _liquifyTargetImageElement = SelectedElement as ImageElement ?? Elements.OfType<ImageElement>().LastOrDefault();
         if (_liquifyTargetImageElement == null)
         {
+            using var rtb = RenderCanvasToBitmap(1.0);
+            if (rtb != null)
+            {
+                using var ms = new MemoryStream();
+                rtb.Save(ms, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
+                var bytes = ms.ToArray();
+                var img = new ImageElement
+                {
+                    Name = "Background Composite",
+                    X = 0,
+                    Y = 0,
+                    Width = _canvasWidth,
+                    Height = _canvasHeight,
+                    OriginalImageBytes = bytes,
+                    Source = new Avalonia.Media.Imaging.Bitmap(new MemoryStream(bytes)),
+                    NaturalPixelWidth = (int)_canvasWidth,
+                    NaturalPixelHeight = (int)_canvasHeight,
+                    ZIndex = 0
+                };
+                Elements.Insert(0, img);
+                SelectedElement = img;
+                _liquifyTargetImageElement = img;
+            }
+        }
+
+        if (_liquifyTargetImageElement == null)
+        {
             StatusMessage = "Select an image layer to open Liquify workspace.";
             return;
         }

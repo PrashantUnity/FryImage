@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using PdfEditorApp.Plugins.ImageEditor.Core.Codecs;
+using SkiaSharp;
 
 namespace PdfEditorApp.Plugins.ImageEditor;
 
@@ -11,7 +13,7 @@ public partial class ImageEditorViewModel
 {
     // ── Export As Studio Modal ─────────────────────────────────────────────
     [ObservableProperty] private bool _isExportDialogOpen;
-    [ObservableProperty] private string _exportFormat = "PNG"; // PNG, JPEG, WEBP
+    [ObservableProperty] private string _exportFormat = "PNG"; // PNG, JPEG, WEBP, FITS, BMP
     [ObservableProperty] private double _exportScale = 1.0; // 0.5, 1.0, 2.0, 3.0
     [ObservableProperty] private int _exportQuality = 90;
     [ObservableProperty] private string _exportDimensionsLabel = "";
@@ -19,6 +21,25 @@ public partial class ImageEditorViewModel
 
     public string ExportDimensionsText => ExportDimensionsLabel;
     public string ExportEstimatedSizeText => ExportEstimatedSizeLabel;
+
+    public string ExportScaleStr
+    {
+        get => ExportScale.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+        set
+        {
+            if (double.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out var s))
+            {
+                ExportScale = s;
+                UpdateExportMetrics();
+                OnPropertyChanged(nameof(ExportScaleStr));
+            }
+        }
+    }
+
+    partial void OnExportFormatChanged(string value)
+    {
+        UpdateExportMetrics();
+    }
 
     [RelayCommand]
     public void OpenExportDialog()
@@ -58,7 +79,9 @@ public partial class ImageEditorViewModel
         {
             "JPEG" => pixels * 0.25 * (ExportQuality / 100.0),
             "WEBP" => pixels * 0.18 * (ExportQuality / 100.0),
-            _ => pixels * 1.5 // PNG
+            "FITS" => pixels * 3.0, // Planar 8-bit RGB
+            "BMP" => pixels * 4.0,  // 32-bit uncompressed
+            _ => pixels * 1.5       // PNG
         };
 
         if (estBytes > 1024 * 1024)
@@ -78,17 +101,24 @@ public partial class ImageEditorViewModel
             var topLevel = GetTopLevel();
             if (topLevel?.StorageProvider is not { } storage || CanvasControl == null) return;
 
-            string ext = ExportFormat.ToLowerInvariant();
-            if (ext == "jpeg") ext = "jpg";
+            string fmt = (ExportFormat ?? "PNG").Trim().ToUpperInvariant();
+            string ext = fmt switch
+            {
+                "JPEG" or "JPG" => "jpg",
+                "WEBP" => "webp",
+                "FITS" => "fits",
+                "BMP" => "bmp",
+                _ => "png"
+            };
 
             var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
             {
-                Title = $"Export As {ExportFormat}",
+                Title = $"Export As {fmt}",
                 SuggestedFileName = $"canvas_export_{ExportScale:0.#}x.{ext}",
                 DefaultExtension = $".{ext}",
                 FileTypeChoices =
                 [
-                    new FilePickerFileType($"{ExportFormat} Image") { Patterns = [$"*.{ext}"] }
+                    new FilePickerFileType($"{fmt} Image") { Patterns = [$"*.{ext}"] }
                 ]
             });
 
@@ -97,20 +127,67 @@ public partial class ImageEditorViewModel
             using var bitmap = RenderCanvasToBitmap(ExportScale);
             if (bitmap == null) return;
 
-            var tempPath = Path.ChangeExtension(Path.GetTempFileName(), $".{ext}");
-            if (ExportFormat == "JPEG")
+            await using var outStream = await file.OpenWriteAsync();
+
+            if (fmt == "FITS")
             {
-                bitmap.Save(tempPath, new Avalonia.Media.Imaging.JpegBitmapEncoderOptions { Quality = ExportQuality });
+                using var pngMs = new MemoryStream();
+                bitmap.Save(pngMs, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
+                pngMs.Position = 0;
+                using var skBmp = SKBitmap.Decode(pngMs);
+                using var bgraBmp = new SKBitmap(skBmp.Width, skBmp.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
+                using var canvas = new SKCanvas(bgraBmp);
+                canvas.DrawBitmap(skBmp, 0, 0);
+                canvas.Flush();
+
+                FitsCodec.Encode(bgraBmp.Bytes, bgraBmp.Width, bgraBmp.Height, outStream);
+            }
+            else if (fmt == "WEBP")
+            {
+                using var pngMs = new MemoryStream();
+                bitmap.Save(pngMs, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
+                pngMs.Position = 0;
+                using var skBmp = SKBitmap.Decode(pngMs);
+                using var data = skBmp.Encode(SKEncodedImageFormat.Webp, ExportQuality);
+                data.SaveTo(outStream);
+            }
+            else if (fmt == "BMP")
+            {
+                using var pngMs = new MemoryStream();
+                bitmap.Save(pngMs, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
+                pngMs.Position = 0;
+                using var skBmp = SKBitmap.Decode(pngMs);
+                using var data = skBmp.Encode(SKEncodedImageFormat.Bmp, 100);
+                data.SaveTo(outStream);
+            }
+            else if (fmt is "JPEG" or "JPG")
+            {
+                var tempPath = Path.ChangeExtension(Path.GetTempFileName(), ".jpg");
+                try
+                {
+                    bitmap.Save(tempPath, new Avalonia.Media.Imaging.JpegBitmapEncoderOptions { Quality = ExportQuality });
+                    var bytes = await File.ReadAllBytesAsync(tempPath);
+                    await outStream.WriteAsync(bytes);
+                }
+                finally
+                {
+                    if (File.Exists(tempPath)) File.Delete(tempPath);
+                }
             }
             else
             {
-                bitmap.Save(tempPath, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
+                var tempPath = Path.ChangeExtension(Path.GetTempFileName(), ".png");
+                try
+                {
+                    bitmap.Save(tempPath, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
+                    var bytes = await File.ReadAllBytesAsync(tempPath);
+                    await outStream.WriteAsync(bytes);
+                }
+                finally
+                {
+                    if (File.Exists(tempPath)) File.Delete(tempPath);
+                }
             }
-
-            await using var outStream = await file.OpenWriteAsync();
-            var bytes = await File.ReadAllBytesAsync(tempPath);
-            await outStream.WriteAsync(bytes);
-            File.Delete(tempPath);
 
             IsExportDialogOpen = false;
             StatusMessage = $"Exported {ExportDimensionsLabel} to {file.Name}.";

@@ -42,12 +42,6 @@ public partial class ImageEditorViewModel
     [ObservableProperty]
     private string _cropAspectRatio = "Free"; // Free, 1:1, 16:9, 4:3, Original
 
-    [ObservableProperty]
-    private bool _autoSelectLayers = true;
-
-    [ObservableProperty]
-    private bool _showTransformControls = true;
-
     // ── Core Brush Engine State ─────────────────────────────────────────────
     [ObservableProperty]
     private BrushPreset? _selectedBrushPreset = BrushPresetLibrary.DefaultPreset;
@@ -410,6 +404,39 @@ public partial class ImageEditorViewModel
 
     [RelayCommand]
     public void SetTextAlignRight() => TextAlignmentField = Avalonia.Media.TextAlignment.Right;
+
+    // Move Tool Options
+    [ObservableProperty] private bool _autoSelectLayers = true;
+    [ObservableProperty] private string _autoSelectTarget = "Layer";
+    [ObservableProperty] private bool _showTransformControls = true;
+    public IReadOnlyList<string> AvailableAutoSelectTargets { get; } = ["Layer", "Group"];
+
+    partial void OnAutoSelectLayersChanged(bool value)
+    {
+        if (CanvasControl != null)
+        {
+            CanvasControl.AutoSelectLayers = value;
+            CanvasControl.InvalidateVisual();
+        }
+    }
+
+    partial void OnAutoSelectTargetChanged(string value)
+    {
+        if (CanvasControl != null)
+        {
+            CanvasControl.AutoSelectTarget = value;
+            CanvasControl.InvalidateVisual();
+        }
+    }
+
+    partial void OnShowTransformControlsChanged(bool value)
+    {
+        if (CanvasControl != null)
+        {
+            CanvasControl.ShowTransformControls = value;
+            CanvasControl.InvalidateVisual();
+        }
+    }
 
     [ObservableProperty]
     private bool _isQuickMaskMode;

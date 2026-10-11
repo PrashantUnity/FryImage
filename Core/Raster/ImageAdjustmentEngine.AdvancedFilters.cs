@@ -1746,4 +1746,102 @@ public static partial class ImageAdjustmentEngine
     }
 
     #endregion
+
+    #region Dust & Scratches and Median Filter
+
+    /// <summary>
+    /// Applies high-performance Dust &amp; Scratches filter:
+    /// Replaces pixels that differ from the local median by at least threshold levels.
+    /// When threshold is 0, behaves as a pure disc Median filter.
+    /// </summary>
+    public static byte[] ApplyDustAndScratches(byte[] bgraPixels, int width, int height, int radius, int threshold)
+    {
+        if (radius <= 0 || width <= 0 || height <= 0) return (byte[])bgraPixels.Clone();
+        int r = Math.Clamp(radius, 1, 50);
+        int thresh = Math.Clamp(threshold, 0, 255);
+
+        // Precompute disc rows: for each dy in -r..r, max dx such that dx*dx + dy*dy <= r*r + r
+        int[] discHalfWidth = new int[2 * r + 1];
+        int rSq = r * r + r;
+        for (int dy = -r; dy <= r; dy++)
+        {
+            int lim = rSq - dy * dy;
+            discHalfWidth[dy + r] = lim >= 0 ? (int)Math.Sqrt(lim) : -1;
+        }
+
+        byte[] result = new byte[bgraPixels.Length];
+
+        Parallel.For(0, height, y =>
+        {
+            int[] histB = new int[256];
+            int[] histG = new int[256];
+            int[] histR = new int[256];
+
+            for (int x = 0; x < width; x++)
+            {
+                Array.Clear(histB, 0, 256);
+                Array.Clear(histG, 0, 256);
+                Array.Clear(histR, 0, 256);
+
+                int count = 0;
+                for (int dy = -r; dy <= r; dy++)
+                {
+                    int py = y + dy;
+                    if (py < 0 || py >= height) continue;
+
+                    int hw = discHalfWidth[dy + r];
+                    if (hw < 0) continue;
+
+                    int minX = Math.Max(0, x - hw);
+                    int maxX = Math.Min(width - 1, x + hw);
+                    int rowOffset = py * width * 4;
+
+                    for (int px = minX; px <= maxX; px++)
+                    {
+                        int idx = rowOffset + px * 4;
+                        histB[bgraPixels[idx]]++;
+                        histG[bgraPixels[idx + 1]]++;
+                        histR[bgraPixels[idx + 2]]++;
+                        count++;
+                    }
+                }
+
+                int mid = count / 2;
+                int medB = FindMedianFromHist(histB, mid);
+                int medG = FindMedianFromHist(histG, mid);
+                int medR = FindMedianFromHist(histR, mid);
+
+                int dstIdx = (y * width + x) * 4;
+                byte origB = bgraPixels[dstIdx];
+                byte origG = bgraPixels[dstIdx + 1];
+                byte origR = bgraPixels[dstIdx + 2];
+
+                result[dstIdx] = Math.Abs(origB - medB) >= thresh ? (byte)medB : origB;
+                result[dstIdx + 1] = Math.Abs(origG - medG) >= thresh ? (byte)medG : origG;
+                result[dstIdx + 2] = Math.Abs(origR - medR) >= thresh ? (byte)medR : origR;
+                result[dstIdx + 3] = bgraPixels[dstIdx + 3];
+            }
+        });
+
+        return result;
+    }
+
+    /// <summary>
+    /// Applies circular disc Median filter.
+    /// </summary>
+    public static byte[] ApplyMedian(byte[] bgraPixels, int width, int height, int radius)
+        => ApplyDustAndScratches(bgraPixels, width, height, radius, 0);
+
+    private static int FindMedianFromHist(int[] hist, int mid)
+    {
+        int sum = 0;
+        for (int i = 0; i < 256; i++)
+        {
+            sum += hist[i];
+            if (sum > mid) return i;
+        }
+        return 255;
+    }
+
+    #endregion
 }

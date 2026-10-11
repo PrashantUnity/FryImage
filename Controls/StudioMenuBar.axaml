@@ -2,18 +2,22 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
              xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
-             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.PhotoshopMenuBar"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.StudioMenuBar"
              x:DataType="local:ImageEditorViewModel"
              Height="28"
              Background="{DynamicResource PsChromeBrush}">
 
-    <Border BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="8,0">
-        <Grid ColumnDefinitions="Auto,*,Auto">
+    <Border WindowDecorationProperties.ElementRole="TitleBar"
+            BorderBrush="{DynamicResource PsBorderBrush}"
+            BorderThickness="0,0,0,1"
+            Padding="8,0"
+            Background="Transparent">
+        <Grid ColumnDefinitions="Auto,*,Auto" Background="Transparent">
 
             <!-- macOS Window Controls Spacer (reserves clean space for traffic lights) -->
             <Border Grid.Column="0" Width="72" IsVisible="{Binding IsMacOS}" />
 
-            <!-- Left: Brand + Complete Photoshop Menu Hierarchy (Shown on non-macOS platforms) -->
+            <!-- Left: Brand + Complete FryImage Studio Menu Hierarchy (Shown on non-macOS platforms) -->
             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center" IsVisible="{Binding !IsMacOS}">
                 <TextBlock Text="FryImage"
                            FontWeight="Black"
@@ -69,9 +73,15 @@
                             <MenuItem Header="Adjustments">
                                 <MenuItem Header="Brightness / Contrast..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="BrightnessContrast" />
                                 <MenuItem Header="Levels..." InputGesture="Ctrl+L" Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Levels" />
+                                <MenuItem Header="Exposure..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Exposure" />
+                                <Separator />
                                 <MenuItem Header="Hue / Saturation..." InputGesture="Ctrl+U" Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="HueSaturation" />
                                 <MenuItem Header="Vibrance..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Vibrance" />
                                 <MenuItem Header="Color Balance..." InputGesture="Ctrl+B" Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="ColorBalance" />
+                                <MenuItem Header="Selective Color..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="SelectiveColor" />
+                                <MenuItem Header="Color Lookup (3D LUT)..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="ColorLookup" />
+                                <MenuItem Header="Photo Filter..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="PhotoFilter" />
+                                <MenuItem Header="Gradient Map..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="GradientMap" />
                                 <Separator />
                                 <MenuItem Header="Threshold..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Threshold" />
                                 <MenuItem Header="Posterize..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Posterize" />
@@ -102,8 +112,14 @@
                             <MenuItem Header="New Adjustment Layer">
                                 <MenuItem Header="Brightness / Contrast..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="BrightnessContrast" />
                                 <MenuItem Header="Levels..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Levels" />
+                                <MenuItem Header="Exposure..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Exposure" />
                                 <MenuItem Header="Hue / Saturation..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="HueSaturation" />
                                 <MenuItem Header="Vibrance..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Vibrance" />
+                                <MenuItem Header="Color Balance..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="ColorBalance" />
+                                <MenuItem Header="Selective Color..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="SelectiveColor" />
+                                <MenuItem Header="Color Lookup..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="ColorLookup" />
+                                <MenuItem Header="Photo Filter..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="PhotoFilter" />
+                                <MenuItem Header="Gradient Map..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="GradientMap" />
                             </MenuItem>
                             <Separator />
                             <MenuItem Header="Layer Style..." Command="{Binding OpenLayerStyleDialogCommand}" />
@@ -134,7 +150,10 @@
                     <Button.Flyout>
                         <MenuFlyout Placement="BottomEdgeAlignedLeft">
                             <MenuItem Header="Select All" InputGesture="Ctrl+A" Command="{Binding SelectAllElementsCommand}" />
-                            <MenuItem Header="Deselect" InputGesture="Ctrl+D" Command="{Binding SetToolCommand}" CommandParameter="select" />
+                            <MenuItem Header="Deselect" InputGesture="Ctrl+D" Command="{Binding DeselectAllCommand}" />
+                            <MenuItem Header="Inverse" InputGesture="Ctrl+Shift+I" Command="{Binding InvertSelectionCommand}" />
+                            <Separator />
+                            <MenuItem Header="Select and Mask..." InputGesture="Ctrl+Alt+R" Command="{Binding OpenSelectAndMaskDialogCommand}" />
                         </MenuFlyout>
                     </Button.Flyout>
                 </Button>
@@ -143,6 +162,12 @@
                 <Button Classes="ps-menu-btn" Content="Filter">
                     <Button.Flyout>
                         <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                            <MenuItem Header="Camera Raw Filter..." InputGesture="Ctrl+Shift+A" Command="{Binding OpenFilterDialogCommand}" CommandParameter="CameraRaw" />
+                            <Separator />
+                            <MenuItem Header="Blur Gallery">
+                                <MenuItem Header="Tilt-Shift..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="TiltShift" />
+                                <MenuItem Header="Iris Blur..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="IrisBlur" />
+                            </MenuItem>
                             <MenuItem Header="Blur">
                                 <MenuItem Header="Gaussian Blur..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="GaussianBlur" />
                                 <MenuItem Header="Motion Blur..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="MotionBlur" />
@@ -152,13 +177,29 @@
                                 <MenuItem Header="Unsharp Mask..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="UnsharpMask" />
                             </MenuItem>
                             <MenuItem Header="Distort">
+                                <MenuItem Header="Wave..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Wave" />
+                                <MenuItem Header="Ripple..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Ripple" />
+                                <MenuItem Header="Pinch..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Pinch" />
+                                <MenuItem Header="Polar Coordinates..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="PolarCoordinates" />
                                 <MenuItem Header="Twirl..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Twirl" />
                                 <MenuItem Header="Spherize..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Spherize" />
                             </MenuItem>
                             <MenuItem Header="Pixelate">
+                                <MenuItem Header="Color Halftone..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="ColorHalftone" />
+                                <MenuItem Header="Crystallize..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Crystallize" />
+                                <MenuItem Header="Pointillize..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Pointillize" />
                                 <MenuItem Header="Mosaic..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Mosaic" />
+                                <MenuItem Header="Facet" Command="{Binding OpenFilterDialogCommand}" CommandParameter="Facet" />
+                            </MenuItem>
+                            <MenuItem Header="Render">
+                                <MenuItem Header="Lens Flare..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="LensFlare" />
+                                <MenuItem Header="Clouds" Command="{Binding OpenFilterDialogCommand}" CommandParameter="Clouds" />
+                                <MenuItem Header="Difference Clouds" Command="{Binding OpenFilterDialogCommand}" CommandParameter="DifferenceClouds" />
                             </MenuItem>
                             <MenuItem Header="Stylize">
+                                <MenuItem Header="Oil Paint..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="OilPaint" />
+                                <MenuItem Header="Find Edges" Command="{Binding OpenFilterDialogCommand}" CommandParameter="FindEdges" />
+                                <MenuItem Header="Solarize..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Solarize" />
                                 <MenuItem Header="Emboss..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Emboss" />
                             </MenuItem>
                             <MenuItem Header="Noise">

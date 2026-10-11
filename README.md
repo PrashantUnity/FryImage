@@ -1,6 +1,6 @@
 # 🖼️ FryImage — Layered Graphics & Image Studio
 
-A professional Photoshop & Canva inspired layered design and photo editing studio for **FryPDF** and standalone desktop use — compose graphics, adjust colors, apply filters, manage layers, and export high-resolution assets directly inside your workspace.
+A professional layered design and photo editing studio for **FryPDF** and standalone desktop use — compose graphics, adjust colors, apply filters, manage layers, and export high-resolution assets directly inside your workspace.
 
 ## Features
 

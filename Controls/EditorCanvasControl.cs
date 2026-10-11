@@ -9,6 +9,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using PdfEditorApp.Plugins.ImageEditor.Core.Paint;
+using PdfEditorApp.Plugins.ImageEditor.Core.Vector;
 using PdfEditorApp.Plugins.ImageEditor.Models;
 
 namespace PdfEditorApp.Plugins.ImageEditor.Controls;
@@ -69,12 +70,19 @@ public class EditorCanvasControl : Control
     public TipShapeKind BrushTipShape { get; set; } = TipShapeKind.Round;
     public SymmetryMode ActiveSymmetryMode { get; set; } = SymmetryMode.Off;
 
-    // Retouching tools state (Photocraft Parity)
+    // Retouching tools state (FryImage Studio)
     private bool _isDrawingRetouch;
     private readonly List<Point> _currentRetouchPoints = new();
     private string _currentRetouchTool = "clonestamp";
     public Point? CloneSourcePoint { get; set; }
     public bool CloneAligned { get; set; } = true;
+
+    // Vector Path state (Pen & Path Selection tools)
+    public VectorDocumentPath? ActiveDocumentPath { get; set; }
+    private bool _isDraggingPenHandle;
+    private PathKnot? _penActiveKnot;
+    private bool _isDraggingPathKnot;
+    private PathKnot? _selectedPathKnot;
 
     public event Action<Point>? CloneSourceDefined;
     public event Action<string, IReadOnlyList<Point>>? RetouchStrokeCompleted;
@@ -181,6 +189,9 @@ public class EditorCanvasControl : Control
 
     /// <summary>Fired when the user double-clicks a TextElement while the Select tool is active.</summary>
     public event Action<TextElement>? TextEditRequested;
+
+    /// <summary>Fired when the user double-clicks any non-text element while the Select tool is active (e.g. to open Layer Styles).</summary>
+    public event Action<CanvasElement>? ElementDoubleClicked;
 
     /// <summary>Fired when a freehand brush or highlighter stroke completes.</summary>
     public event Action<IReadOnlyList<Point>>? DoodlePlaced;
@@ -526,6 +537,12 @@ public class EditorCanvasControl : Control
             if (_isPlacingShape)
             {
                 DrawShapePlacementPreview(dc, ActiveToolMode, _shapeDragStart, _shapeDragEnd, _zoom);
+            }
+
+            // Vector Document Path overlay (Pen & Path Selection tools)
+            if (ActiveDocumentPath != null && !ActiveDocumentPath.IsEmpty)
+            {
+                DrawVectorPathOverlay(dc, ActiveDocumentPath, _zoom);
             }
 
             if (_isDrawingDoodle && _currentDoodlePoints.Count > 0)
@@ -1063,7 +1080,7 @@ public class EditorCanvasControl : Control
             DrawElement(dc, img);
         }
 
-        // Rule of thirds grid lines inside crop preview (Photoshop standard)
+        // Rule of thirds grid lines inside crop preview (Studio standard)
         if (_cropPreviewRect.Width > 12 && _cropPreviewRect.Height > 12)
         {
             var gridPen = new Pen(new SolidColorBrush(Color.FromArgb(90, 255, 255, 255)), 1.0 / zoom);
@@ -1173,7 +1190,7 @@ public class EditorCanvasControl : Control
                 InvalidateVisual();
                 return;
             }
-            if (ActiveToolMode is "clonestamp" or "healing" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge")
+            if (ActiveToolMode is "clonestamp" or "healing" or "historybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge")
             {
                 if ((ActiveToolMode is "clonestamp" or "healing") && e.KeyModifiers.HasFlag(KeyModifiers.Alt))
                 {
@@ -1202,6 +1219,65 @@ public class EditorCanvasControl : Control
                 InvalidateVisual();
                 return;
             }
+            if (ActiveToolMode == "pen")
+            {
+                ActiveDocumentPath ??= new VectorDocumentPath("Work Path");
+                if (ActiveDocumentPath.Subpaths.Count == 0 || ActiveDocumentPath.Subpaths[^1].IsClosed)
+                {
+                    ActiveDocumentPath.Subpaths.Add(new VectorSubpath());
+                }
+
+                var currentSub = ActiveDocumentPath.Subpaths[^1];
+                double closeHitRadius = 10.0 / _zoom;
+
+                if (currentSub.Knots.Count > 2 && Point.Distance(canvasPt, currentSub.Knots[0].Anchor) <= closeHitRadius)
+                {
+                    currentSub.IsClosed = true;
+                    _isDraggingPenHandle = false;
+                    _penActiveKnot = null;
+                }
+                else
+                {
+                    var newKnot = new PathKnot(canvasPt);
+                    currentSub.Knots.Add(newKnot);
+                    _penActiveKnot = newKnot;
+                    _isDraggingPenHandle = true;
+                }
+
+                e.Pointer.Capture(this);
+                e.Handled = true;
+                InvalidateVisual();
+                return;
+            }
+            if (ActiveToolMode == "pathselection")
+            {
+                if (ActiveDocumentPath != null)
+                {
+                    double hitRadius = 8.0 / _zoom;
+                    _selectedPathKnot = null;
+                    foreach (var sub in ActiveDocumentPath.Subpaths)
+                    {
+                        foreach (var knot in sub.Knots)
+                        {
+                            if (Point.Distance(canvasPt, knot.Anchor) <= hitRadius)
+                            {
+                                _selectedPathKnot = knot;
+                                _isDraggingPathKnot = true;
+                                break;
+                            }
+                        }
+                        if (_selectedPathKnot != null) break;
+                    }
+
+                    if (_selectedPathKnot != null)
+                    {
+                        e.Pointer.Capture(this);
+                        e.Handled = true;
+                        InvalidateVisual();
+                        return;
+                    }
+                }
+            }
             if (ActiveToolMode == "eraser")
             {
                 var erasedElement = _elements.OrderByDescending(el => el.ZIndex)
@@ -1222,6 +1298,7 @@ public class EditorCanvasControl : Control
                 _isPlacingShape = true;
                 _shapeDragStart = canvasPt;
                 _shapeDragEnd = canvasPt;
+                e.Pointer.Capture(this);
             }
             else if (ActiveToolMode == "eyedropper")
             {
@@ -1267,6 +1344,7 @@ public class EditorCanvasControl : Control
                         if (affectsWidth) textEl.IsWidthAutoFitEnabled = false;
                         if (affectsHeight) textEl.IsHeightAutoFitEnabled = false;
                     }
+                    e.Pointer.Capture(this);
                     e.Handled = true;
                     return;
                 }
@@ -1291,6 +1369,7 @@ public class EditorCanvasControl : Control
                     _groupResizeHandle = i;
                     _groupResizeOrigBounds = groupBounds;
                     _groupResizeOrigins = _selection.ToDictionary(el => el, el => new Rect(el.X, el.Y, el.Width, el.Height));
+                    e.Pointer.Capture(this);
                     e.Handled = true;
                     return;
                 }
@@ -1312,12 +1391,13 @@ public class EditorCanvasControl : Control
                 _rotationPivot = axisBounds.Center;
                 _rotationStartAngle = Math.Atan2(canvasPt.Y - _rotationPivot.Y, canvasPt.X - _rotationPivot.X);
                 _rotationOrigins = _selection.ToDictionary(el => el, el => (el.X, el.Y, el.RotationDegrees));
+                e.Pointer.Capture(this);
                 e.Handled = true;
                 return;
             }
         }
 
-        // 7. Double-click on a TextElement while the Select tool is active → inline edit.
+        // 7. Double-click on an element while the Select tool is active.
         if (e.ClickCount >= 2)
         {
             var doubleClickHit = _elements.OrderByDescending(el => el.ZIndex)
@@ -1328,6 +1408,16 @@ public class EditorCanvasControl : Control
                 _selection.Add(textHit);
                 NotifySelectionChanged();
                 TextEditRequested?.Invoke(textHit);
+                InvalidateVisual();
+                e.Handled = true;
+                return;
+            }
+            else if (doubleClickHit != null)
+            {
+                _selection.Clear();
+                _selection.Add(doubleClickHit);
+                NotifySelectionChanged();
+                ElementDoubleClicked?.Invoke(doubleClickHit);
                 InvalidateVisual();
                 e.Handled = true;
                 return;
@@ -1361,6 +1451,7 @@ public class EditorCanvasControl : Control
                 _isDragging = true;
                 _pressedElement = hit;
                 _groupDragOrigins = _selection.ToDictionary(el => el, el => new Point(el.X, el.Y));
+                e.Pointer.Capture(this);
             }
         }
         else
@@ -1370,6 +1461,7 @@ public class EditorCanvasControl : Control
             _isMarqueeSelecting = true;
             _marqueeStart = canvasPt;
             _marqueeEnd = canvasPt;
+            e.Pointer.Capture(this);
             NotifySelectionChanged();
         }
 
@@ -1447,6 +1539,24 @@ public class EditorCanvasControl : Control
                 _currentRetouchPoints.Add(pos);
                 InvalidateVisual();
             }
+            return;
+        }
+
+        if (_isDraggingPenHandle && _penActiveKnot != null)
+        {
+            _penActiveKnot.SetHandleOutMirrored(pos);
+            InvalidateVisual();
+            return;
+        }
+
+        if (_isDraggingPathKnot && _selectedPathKnot != null)
+        {
+            Point delta = pos - _dragStart;
+            _selectedPathKnot.Anchor = pos;
+            _selectedPathKnot.HandleIn = _selectedPathKnot.HandleIn + delta;
+            _selectedPathKnot.HandleOut = _selectedPathKnot.HandleOut + delta;
+            _dragStart = pos;
+            InvalidateVisual();
             return;
         }
 
@@ -1670,6 +1780,15 @@ public class EditorCanvasControl : Control
             _currentRetouchPoints.Clear();
             InvalidateVisual();
         }
+        else if (_isDraggingPenHandle || _isDraggingPathKnot)
+        {
+            _isDraggingPenHandle = false;
+            _penActiveKnot = null;
+            _isDraggingPathKnot = false;
+            _selectedPathKnot = null;
+            e.Pointer.Capture(null);
+            InvalidateVisual();
+        }
         else if (_isPlacingShape)
         {
             double dragDist = Point.Distance(_shapeDragStart, _shapeDragEnd);
@@ -1750,6 +1869,7 @@ public class EditorCanvasControl : Control
         _pressedElement = null;
         _activeGuides.Clear();
 
+        e.Pointer.Capture(null);
         InvalidateVisual();
     }
 
@@ -2365,5 +2485,41 @@ public class EditorCanvasControl : Control
         dc.DrawLine(darkPen, new Point(pt.X, pt.Y - s), new Point(pt.X, pt.Y + s));
         dc.DrawLine(lightPen, new Point(pt.X - s, pt.Y), new Point(pt.X + s, pt.Y));
         dc.DrawLine(lightPen, new Point(pt.X, pt.Y - s), new Point(pt.X, pt.Y + s));
+    }
+
+    private static void DrawVectorPathOverlay(DrawingContext dc, VectorDocumentPath docPath, double zoom)
+    {
+        var strokePen = new Pen(new SolidColorBrush(Color.FromRgb(55, 142, 240)), 1.5 / zoom);
+        var handlePen = new Pen(new SolidColorBrush(Color.FromArgb(180, 160, 160, 160)), 1.0 / zoom);
+        var anchorFill = Brushes.White;
+        var anchorPen = new Pen(new SolidColorBrush(Color.FromRgb(55, 142, 240)), 1.2 / zoom);
+        var handleFill = new SolidColorBrush(Color.FromRgb(55, 142, 240));
+
+        double knotSize = 6.0 / zoom;
+        double handleDotSize = 4.0 / zoom;
+
+        foreach (var sub in docPath.Subpaths)
+        {
+            if (sub.Knots.Count == 0) continue;
+            var geom = sub.ToAvaloniaGeometry();
+            dc.DrawGeometry(null, strokePen, geom);
+
+            foreach (var knot in sub.Knots)
+            {
+                if (knot.HasHandleIn)
+                {
+                    dc.DrawLine(handlePen, knot.Anchor, knot.HandleIn);
+                    dc.DrawEllipse(handleFill, null, knot.HandleIn, handleDotSize / 2, handleDotSize / 2);
+                }
+                if (knot.HasHandleOut)
+                {
+                    dc.DrawLine(handlePen, knot.Anchor, knot.HandleOut);
+                    dc.DrawEllipse(handleFill, null, knot.HandleOut, handleDotSize / 2, handleDotSize / 2);
+                }
+
+                var anchorRect = new Rect(knot.Anchor.X - knotSize / 2, knot.Anchor.Y - knotSize / 2, knotSize, knotSize);
+                dc.DrawRectangle(anchorFill, anchorPen, anchorRect);
+            }
+        }
     }
 }

@@ -90,6 +90,7 @@ public partial class ImageEditorView : UserControl
         // Inline double-click text editing: overlay a real TextBox positioned/sized to match
         // the element, live only while editing.
         CanvasControl.TextEditRequested += BeginInlineTextEdit;
+        CanvasControl.ElementDoubleClicked += _ => vm.OpenLayerStyleDialogCommand.Execute(null);
 
         // Brush shortcuts and events
         CanvasControl.BrushSizeAdjusted += delta => vm.AdjustBrushSize(delta);
@@ -171,6 +172,11 @@ public partial class ImageEditorView : UserControl
             {
                 CanvasControl.CloneAligned = vm.CloneAligned;
             }
+            else if (args.PropertyName == nameof(ImageEditorViewModel.ActiveDocumentPath))
+            {
+                CanvasControl.ActiveDocumentPath = vm.ActiveDocumentPath;
+                CanvasControl.InvalidateVisual();
+            }
             else if (_editingTextElement is { } editing &&
                      (args.PropertyName == nameof(ImageEditorViewModel.IsBold) ||
                       args.PropertyName == nameof(ImageEditorViewModel.IsItalic) ||
@@ -182,6 +188,7 @@ public partial class ImageEditorView : UserControl
             }
         };
         CanvasControl.ActiveToolMode = vm.ActiveToolMode;
+        CanvasControl.ActiveDocumentPath = vm.ActiveDocumentPath;
         CanvasControl.BrushThickness = vm.BrushThickness;
         CanvasControl.BrushHardness = vm.BrushHardness;
         CanvasControl.BrushRoundness = vm.BrushRoundness / 100.0;
@@ -404,7 +411,7 @@ public partial class ImageEditorView : UserControl
             return;
         }
 
-        // Single-key Photoshop tools
+        // Single-key FryImage tools
         switch (e.Key)
         {
             case Key.V: vm.SetToolCommand.Execute("select"); e.Handled = true; break;

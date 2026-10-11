@@ -38,7 +38,7 @@ public abstract class CanvasElement
     /// <summary>Fill opacity (0..1) affecting the layer contents without diminishing exterior effects like drop shadow.</summary>
     public double FillOpacity { get; set; } = 1.0;
 
-    /// <summary>Photoshop standard layer blend mode.</summary>
+    /// <summary>Layer blend mode.</summary>
     public LayerBlendMode BlendMode { get; set; } = LayerBlendMode.Normal;
 
     /// <summary>Layer styles (Drop Shadow, Outer Glow, Inner Shadow, Color Overlay, Stroke).</summary>

@@ -8,8 +8,7 @@ using PdfEditorApp.Plugins.ImageEditor.Core.Paint;
 namespace PdfEditorApp.Plugins.ImageEditor.Controls;
 
 /// <summary>
-/// Real-time Photoshop-grade Brush Tip and S-Curve Stroke preview control
-/// inspired directly by Photocraft's brush_preview.rs and Photoshop's Brush Settings panel.
+/// Real-time FryImage Brush Tip and S-Curve Stroke preview control.
 /// </summary>
 public class BrushPreviewControl : Control
 {

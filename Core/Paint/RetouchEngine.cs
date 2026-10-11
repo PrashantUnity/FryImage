@@ -8,7 +8,7 @@ using PdfEditorApp.Plugins.ImageEditor.Core.Coloring;
 namespace PdfEditorApp.Plugins.ImageEditor.Core.Paint;
 
 /// <summary>
-/// Professional retouching tool engine ported directly from Photocraft (crates/paint/src/retouch.rs).
+/// Professional retouching tool engine for FryImage.
 /// Implements high-performance pixel-level modifications for:
 /// - Clone Stamp (aligned / non-aligned source sampling with hardness falloff)
 /// - Spot Healing & Healing Brush (texture cloning with illumination matching)

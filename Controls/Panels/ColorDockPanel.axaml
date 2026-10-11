@@ -90,9 +90,20 @@
             <!-- Mode 2: Swatches Grid -->
             <Grid Grid.Row="1" Margin="8,6" RowDefinitions="Auto,*"
                   IsVisible="{Binding ActiveColorDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Swatches'}">
-                <Grid Grid.Row="0" Margin="0,0,0,6" ColumnDefinitions="*,Auto">
-                    <TextBlock Text="Preset Palette" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="1" Text="30 Swatches" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                <Grid Grid.Row="0" Margin="0,0,0,6" ColumnDefinitions="*,Auto,Auto">
+                    <TextBlock Text="Palette" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding SwatchesList.Count, StringFormat='{}{0} Swatches'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <Button Grid.Column="2" Classes="ps-opt-btn" Width="18" Height="18" ToolTip.Tip="Swatch Palette Options">
+                        <materialIcons:MaterialIcon Kind="DotsVertical" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
+                        <Button.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                <MenuItem Header="Import Swatches (.aco, .ase)..." Command="{Binding ImportSwatchesCommand}" />
+                                <MenuItem Header="Export Swatches (.aco)..." Command="{Binding ExportSwatchesCommand}" />
+                                <Separator />
+                                <MenuItem Header="Reset Default Swatches" Command="{Binding ResetDefaultSwatchesCommand}" />
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
                 </Grid>
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" MaxHeight="140">
                     <ItemsControl ItemsSource="{Binding SwatchesList}">

@@ -709,7 +709,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         finally { _isApplyingHistory = false; }
     }
 
-    // ── Time-Travel History Stack (/ Photoshop History Panel) ───
+    // ── Time-Travel History Stack (FryImage History Panel) ───
     [ObservableProperty]
     private ObservableCollection<HistoryItemViewModel> _historyItems = new();
 

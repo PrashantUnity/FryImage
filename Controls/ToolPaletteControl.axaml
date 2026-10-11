@@ -21,7 +21,7 @@
                 </Button>
             </Border>
 
-            <!-- Center: Vertical Stack of Photoshop / FryImage Tools in Order -->
+            <!-- Center: Vertical Stack of FryImage Studio Tools in Order -->
             <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                 <StackPanel Spacing="1" HorizontalAlignment="Center" Margin="0,3">
 
@@ -107,7 +107,8 @@
 
                     <!-- 10. History Brush (Y) -->
                     <Button Classes="ps-tool-btn"
-                            Command="{Binding SetToolCommand}" CommandParameter="select"
+                            Classes.active="{Binding IsHistoryBrushToolActive}"
+                            Command="{Binding SetToolCommand}" CommandParameter="historybrush"
                             ToolTip.Tip="History Brush Tool (Y)">
                         <materialIcons:MaterialIcon Kind="History" Width="15" Height="15" />
                     </Button>
@@ -146,7 +147,8 @@
 
                     <!-- 15. Pen Tool (P) -->
                     <Button Classes="ps-tool-btn"
-                            Command="{Binding SetToolCommand}" CommandParameter="select"
+                            Classes.active="{Binding IsPenToolActive}"
+                            Command="{Binding SetToolCommand}" CommandParameter="pen"
                             ToolTip.Tip="Pen Tool (P)">
                         <materialIcons:MaterialIcon Kind="Pen" Width="15" Height="15" />
                     </Button>
@@ -161,7 +163,8 @@
 
                     <!-- 17. Path Selection (A) -->
                     <Button Classes="ps-tool-btn"
-                            Command="{Binding SetToolCommand}" CommandParameter="select"
+                            Classes.active="{Binding IsPathSelectionToolActive}"
+                            Command="{Binding SetToolCommand}" CommandParameter="pathselection"
                             ToolTip.Tip="Path Selection Tool (A)">
                         <materialIcons:MaterialIcon Kind="NearMe" Width="15" Height="15" />
                     </Button>

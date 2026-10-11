@@ -10,7 +10,7 @@ namespace PdfEditorApp.Plugins.ImageEditor.Models;
 /// <summary>
 /// A freehand digital drawing element (Brush, Pencil, Calligraphy, Highlighter, Wet Media).
 /// Powered by the FryImage Core Paint Engine with support for:
-/// - Photoshop-grade brush presets and tip profiles
+/// - Professional brush presets and tip profiles
 /// - Hardness, Roundness, Angle, Spacing, Flow dynamics
 /// - Pencil mode (aliased 1-bit crisp rendering)
 /// - Watercolor wet edges (darkened edge perimeter)

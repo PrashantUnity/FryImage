@@ -9,7 +9,7 @@ using SkiaSharp;
 namespace PdfEditorApp.Plugins.ImageEditor.Core.Codecs;
 
 /// <summary>
-/// Lightweight, zero-dependency Photoshop PSD file format codec ported to C#.
+/// Lightweight, zero-dependency PSD file format codec.
 /// Supports reading and writing layered 8-bit RGB PSD documents (8BPS),
 /// extracting layers with bounds, names, opacities, and pixel data.
 /// </summary>
@@ -44,7 +44,7 @@ public static class PsdCodec
     }
 
     /// <summary>
-    /// Reads a Photoshop PSD document from a stream.
+    /// Reads a layered PSD document from a stream.
     /// </summary>
     public static PsdDocument Decode(Stream stream)
     {
@@ -603,7 +603,7 @@ public static class PsdCodec
         return true;
     }
 
-    private sealed class BigEndianBinaryReader : BinaryReader
+    internal sealed class BigEndianBinaryReader : BinaryReader
     {
         public BigEndianBinaryReader(Stream stream, Encoding encoding, bool leaveOpen)
             : base(stream, encoding, leaveOpen) { }
@@ -631,9 +631,17 @@ public static class PsdCodec
             byte[] b = ReadBytes(4);
             return (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3];
         }
+
+        public override float ReadSingle()
+        {
+            byte[] b = ReadBytes(4);
+            if (BitConverter.IsLittleEndian)
+                Array.Reverse(b);
+            return BitConverter.ToSingle(b, 0);
+        }
     }
 
-    private sealed class BigEndianBinaryWriter : BinaryWriter
+    internal sealed class BigEndianBinaryWriter : BinaryWriter
     {
         public BigEndianBinaryWriter(Stream stream, Encoding encoding = null!, bool leaveOpen = false)
             : base(stream, encoding ?? Encoding.UTF8, leaveOpen) { }

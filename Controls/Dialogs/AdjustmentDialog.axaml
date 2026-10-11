@@ -12,7 +12,7 @@
 
     <!-- Modal Backdrop -->
     <Border Background="#90000000" IsVisible="{Binding IsAdjustmentDialogOpen}">
-        <Border Width="520" Height="440"
+        <Border Width="520" Height="480"
                 Background="{DynamicResource PsPanelBrush}"
                 BorderBrush="{DynamicResource PsBorderBrush}"
                 BorderThickness="1"
@@ -196,6 +196,154 @@
                                 </Grid>
                                 <Slider Minimum="2" Maximum="64" Value="{Binding AdjPosterizeLevels, Mode=TwoWay}" />
                             </StackPanel>
+                        </StackPanel>
+
+                        <!-- 8. Exposure View -->
+                        <StackPanel Spacing="12" IsVisible="{Binding ActiveAdjustmentMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Exposure'}">
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Exposure" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding AdjExposure, StringFormat='{}{0:+0.00;-0.00;0.00} EV'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="-5.0" Maximum="5.0" Value="{Binding AdjExposure, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Offset" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding AdjExposureOffset, StringFormat='{}{0:+0.0000;-0.0000;0.0000}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="-0.5" Maximum="0.5" Value="{Binding AdjExposureOffset, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Gamma Correction" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding AdjExposureGamma, StringFormat='{}{0:0.00}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="0.1" Maximum="9.9" Value="{Binding AdjExposureGamma, Mode=TwoWay}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- 9. Selective Color View -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ActiveAdjustmentMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='SelectiveColor'}">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <TextBlock Grid.Column="0" Text="Colors:" Classes="ps-label" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                <ComboBox Grid.Column="1" SelectedIndex="{Binding AdjSelectiveColorRangeIndex, Mode=TwoWay}" HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="Reds" />
+                                    <ComboBoxItem Content="Yellows" />
+                                    <ComboBoxItem Content="Greens" />
+                                    <ComboBoxItem Content="Cyans" />
+                                    <ComboBoxItem Content="Blues" />
+                                    <ComboBoxItem Content="Magentas" />
+                                    <ComboBoxItem Content="Whites" />
+                                    <ComboBoxItem Content="Neutrals" />
+                                    <ComboBoxItem Content="Blacks" />
+                                </ComboBox>
+                            </Grid>
+
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Cyan" Classes="ps-label" Foreground="#4EC9B0" />
+                                    <TextBlock Grid.Column="1" Text="{Binding AdjSelectiveCyan, StringFormat='{}{0:+0;-0;0}%'}" TextAlignment="Center" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                    <TextBlock Grid.Column="2" Text="" Width="30" />
+                                </Grid>
+                                <Slider Minimum="-100" Maximum="100" Value="{Binding AdjSelectiveCyan, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Magenta" Classes="ps-label" Foreground="#D16D9E" />
+                                    <TextBlock Grid.Column="1" Text="{Binding AdjSelectiveMagenta, StringFormat='{}{0:+0;-0;0}%'}" TextAlignment="Center" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                    <TextBlock Grid.Column="2" Text="" Width="30" />
+                                </Grid>
+                                <Slider Minimum="-100" Maximum="100" Value="{Binding AdjSelectiveMagenta, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Yellow" Classes="ps-label" Foreground="#DCDCAA" />
+                                    <TextBlock Grid.Column="1" Text="{Binding AdjSelectiveYellow, StringFormat='{}{0:+0;-0;0}%'}" TextAlignment="Center" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                    <TextBlock Grid.Column="2" Text="" Width="30" />
+                                </Grid>
+                                <Slider Minimum="-100" Maximum="100" Value="{Binding AdjSelectiveYellow, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Black" Classes="ps-label" Foreground="#CCCCCC" />
+                                    <TextBlock Grid.Column="1" Text="{Binding AdjSelectiveBlack, StringFormat='{}{0:+0;-0;0}%'}" TextAlignment="Center" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                    <TextBlock Grid.Column="2" Text="" Width="30" />
+                                </Grid>
+                                <Slider Minimum="-100" Maximum="100" Value="{Binding AdjSelectiveBlack, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,4,0,0">
+                                <RadioButton Content="Relative" IsChecked="{Binding AdjSelectiveRelative, Mode=TwoWay}" />
+                                <RadioButton Content="Absolute" IsChecked="{Binding !AdjSelectiveRelative, Mode=OneWay}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- 10. Color Lookup (3D LUT) View -->
+                        <StackPanel Spacing="12" IsVisible="{Binding ActiveAdjustmentMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='ColorLookup'}">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="3D LUT File / Preset" Classes="ps-label" />
+                                <ComboBox SelectedValue="{Binding AdjLutPreset, Mode=TwoWay}" SelectedValueBinding="{Binding (ComboBoxItem).Tag}" HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="Teal &amp; Orange (Cinematic)" Tag="TealAndOrange" />
+                                    <ComboBoxItem Content="Warm Sunset (Golden Hour)" Tag="WarmSunset" />
+                                    <ComboBoxItem Content="Cool Noir (Stylized B&amp;W)" Tag="CoolNoir" />
+                                    <ComboBoxItem Content="Bleach Bypass (High Contrast)" Tag="BleachBypass" />
+                                    <ComboBoxItem Content="Vintage 70s (Warm Analog)" Tag="Vintage70s" />
+                                    <ComboBoxItem Content="Custom 3D LUT (.CUBE)" Tag="Custom" />
+                                </ComboBox>
+                            </StackPanel>
+
+                            <Button Classes="ps-btn" Content="Load Custom .cube File..." Command="{Binding LoadCustomLutFileCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                            <TextBlock Text="{Binding AdjCustomLutName, StringFormat='Active: {0}'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" IsVisible="{Binding AdjCustomLutName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+                            <CheckBox Content="Tetrahedral Interpolation (Higher Gamut Fidelity)" IsChecked="{Binding AdjLutTetrahedral, Mode=TwoWay}" Margin="0,4,0,0" />
+                        </StackPanel>
+
+                        <!-- 11. Gradient Map View -->
+                        <StackPanel Spacing="12" IsVisible="{Binding ActiveAdjustmentMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='GradientMap'}">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Gradient Preset" Classes="ps-label" />
+                                <ComboBox SelectedValue="{Binding AdjGradientPreset, Mode=TwoWay}" SelectedValueBinding="{Binding (ComboBoxItem).Tag}" HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="Black to White" Tag="BlackWhite" />
+                                    <ComboBoxItem Content="Warm Sunset (Red-Orange-Yellow)" Tag="WarmSunset" />
+                                    <ComboBoxItem Content="Ocean Waves (Navy-Teal-Cyan)" Tag="OceanWaves" />
+                                    <ComboBoxItem Content="Violet Aurora (Purple-Magenta-Peach)" Tag="VioletAurora" />
+                                    <ComboBoxItem Content="Sepia Vintage (Espresso-Ochre-Cream)" Tag="SepiaVintage" />
+                                    <ComboBoxItem Content="Cyberpunk Neon (Midnight-Cyan-HotPink)" Tag="Cyberpunk" />
+                                </ComboBox>
+                            </StackPanel>
+
+                            <CheckBox Content="Reverse Gradient" IsChecked="{Binding AdjGradientReverse, Mode=TwoWay}" Margin="0,4,0,0" />
+                        </StackPanel>
+
+                        <!-- 12. Photo Filter View -->
+                        <StackPanel Spacing="12" IsVisible="{Binding ActiveAdjustmentMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='PhotoFilter'}">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Filter" Classes="ps-label" />
+                                <ComboBox SelectedValue="{Binding AdjPhotoFilterPreset, Mode=TwoWay}" SelectedValueBinding="{Binding (ComboBoxItem).Tag}" HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="Warming Filter (85)" Tag="Warming85" />
+                                    <ComboBoxItem Content="Cooling Filter (80)" Tag="Cooling80" />
+                                    <ComboBoxItem Content="Sepia" Tag="Sepia" />
+                                    <ComboBoxItem Content="Deep Red" Tag="DeepRed" />
+                                    <ComboBoxItem Content="Deep Blue" Tag="DeepBlue" />
+                                    <ComboBoxItem Content="Deep Emerald" Tag="DeepEmerald" />
+                                </ComboBox>
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Density" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding AdjPhotoFilterDensity, StringFormat='{}{0}%'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="1" Maximum="100" Value="{Binding AdjPhotoFilterDensity, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <CheckBox Content="Preserve Luminosity" IsChecked="{Binding AdjPhotoFilterPreserveLuminosity, Mode=TwoWay}" Margin="0,4,0,0" />
                         </StackPanel>
 
                         <!-- Live Preview Toggle -->

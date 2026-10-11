@@ -2,8 +2,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!-- ============================================================
-         PHOTOSHOP / PHOTOCRAFT DESIGN SYSTEM TOKENS
-         Sampled directly from FryImage (ThemeKind::Pro / ProMedium)
+         FRYIMAGE STUDIO DESIGN SYSTEM TOKENS
+         Sampled directly for FryImage (ThemeKind::Pro / ProMedium)
          ============================================================ -->
     <Styles.Resources>
         <Color x:Key="PsChromeColor">#1F1F1F</Color>
@@ -138,7 +138,7 @@
         <Setter Property="BorderThickness" Value="0,0,0,2" />
     </Style>
 
-    <!-- Photoshop Field Inputs (Numeric / Text) -->
+    <!-- Studio Field Inputs (Numeric / Text) -->
     <Style Selector="TextBox.ps-field, TextBox.ps-input">
         <Setter Property="Background" Value="{StaticResource PsFieldBrush}" />
         <Setter Property="Foreground" Value="{StaticResource PsTextBrush}" />
@@ -153,7 +153,7 @@
         <Setter Property="BorderBrush" Value="{StaticResource PsAccentBrush}" />
     </Style>
 
-    <!-- Photoshop NumericUpDown -->
+    <!-- Studio NumericUpDown -->
     <Style Selector="NumericUpDown.ps-num">
         <Setter Property="Background" Value="{StaticResource PsFieldBrush}" />
         <Setter Property="Foreground" Value="{StaticResource PsTextBrush}" />
@@ -165,7 +165,7 @@
         <Setter Property="FontSize" Value="11" />
     </Style>
 
-    <!-- Photoshop ComboBox -->
+    <!-- Studio ComboBox -->
     <Style Selector="ComboBox.ps-combo">
         <Setter Property="Background" Value="{StaticResource PsFieldBrush}" />
         <Setter Property="Foreground" Value="{StaticResource PsTextBrush}" />

@@ -20,7 +20,7 @@ namespace PdfEditorApp.Plugins.ImageEditor.Core.Raster;
 /// - High Pass Filter
 /// - Monochromatic & Chromatic Noise
 /// </summary>
-public static class ImageAdjustmentEngine
+public static partial class ImageAdjustmentEngine
 {
     // Standard Rec. 709 / sRGB luma coefficients
     private const double LumaR = 0.2126;

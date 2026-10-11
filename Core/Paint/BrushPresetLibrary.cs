@@ -6,7 +6,7 @@ using System.Linq;
 namespace PdfEditorApp.Plugins.ImageEditor.Core.Paint;
 
 /// <summary>
-/// Built-in Photoshop / Photocraft brush preset library.
+/// Built-in FryImage brush preset library.
 /// Categorized into General, Dry Media, Wet Media, and Special Effects.
 /// </summary>
 public static class BrushPresetLibrary

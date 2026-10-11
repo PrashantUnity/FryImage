@@ -7,7 +7,7 @@ using PdfEditorApp.Plugins.ImageEditor.Models;
 namespace PdfEditorApp.Plugins.ImageEditor.Core.Paint;
 
 /// <summary>
-/// What drives a dynamic brush parameter (similar to Photoshop / Photocraft Control pop-ups).
+/// What drives a dynamic brush parameter (Control pop-ups).
 /// </summary>
 public enum BrushControl
 {

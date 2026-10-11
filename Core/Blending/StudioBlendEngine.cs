@@ -5,10 +5,9 @@ using PdfEditorApp.Plugins.ImageEditor.Models;
 namespace PdfEditorApp.Plugins.ImageEditor.Core.Blending;
 
 /// <summary>
-/// Exact Photoshop / FryImage pixel-level blend functions ported from
-/// FryImage compose crate (crates/compose/src/psblend.rs).
+/// FryImage pixel-level layer blend mode functions for professional compositing.
 /// </summary>
-public static class PhotoshopBlendEngine
+public static class StudioBlendEngine
 {
     private const float Edge = 1e-4f;
 

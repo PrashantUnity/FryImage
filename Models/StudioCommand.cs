@@ -3,7 +3,7 @@ using System;
 namespace PdfEditorApp.Plugins.ImageEditor.Models;
 
 /// <summary>
-/// Professional command descriptor for Photoshop / PhotoCraft parity command palette and action routing.
+/// Professional command descriptor for FryImage Studio command palette and action routing.
 /// </summary>
 public sealed class StudioCommand
 {

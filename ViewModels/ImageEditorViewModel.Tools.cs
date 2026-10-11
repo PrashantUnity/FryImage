@@ -99,7 +99,7 @@ public partial class ImageEditorViewModel
     [ObservableProperty]
     private SymmetryMode _activeSymmetryMode = SymmetryMode.Off;
 
-    // ── Retouching Tool State (Photocraft Parity) ─────────────────────────
+    // ── Retouching Tool State ──────────────────────────────────────────
     [ObservableProperty]
     private bool _cloneAligned = true;
 
@@ -156,6 +156,7 @@ public partial class ImageEditorViewModel
     // Retouch predicates
     public bool IsCloneStampToolActive => ActiveToolMode == "clonestamp";
     public bool IsHealingToolActive => ActiveToolMode == "healing";
+    public bool IsHistoryBrushToolActive => ActiveToolMode == "historybrush";
     public bool IsBlurToolActive => ActiveToolMode == "blur";
     public bool IsSharpenToolActive => ActiveToolMode == "sharpen";
     public bool IsSmudgeToolActive => ActiveToolMode == "smudge";
@@ -164,7 +165,11 @@ public partial class ImageEditorViewModel
     public bool IsSpongeToolActive => ActiveToolMode == "sponge";
     public bool IsBlurSharpenSmudgeActive => ActiveToolMode is "blur" or "sharpen" or "smudge";
     public bool IsDodgeBurnSpongeActive => ActiveToolMode is "dodge" or "burn" or "sponge";
-    public bool IsRetouchToolActive => ActiveToolMode is "clonestamp" or "healing" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge";
+    public bool IsRetouchToolActive => ActiveToolMode is "clonestamp" or "healing" or "historybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge";
+
+    // Vector Path tool predicates
+    public bool IsPenToolActive => ActiveToolMode is "pen" or "freepen";
+    public bool IsPathSelectionToolActive => ActiveToolMode is "pathselection" or "directselection";
 
     public bool HasContextualToolOptions => true;
 
@@ -187,6 +192,7 @@ public partial class ImageEditorViewModel
         OnPropertyChanged(nameof(IsZoomToolActive));
         OnPropertyChanged(nameof(IsCloneStampToolActive));
         OnPropertyChanged(nameof(IsHealingToolActive));
+        OnPropertyChanged(nameof(IsHistoryBrushToolActive));
         OnPropertyChanged(nameof(IsBlurToolActive));
         OnPropertyChanged(nameof(IsSharpenToolActive));
         OnPropertyChanged(nameof(IsSmudgeToolActive));
@@ -196,6 +202,8 @@ public partial class ImageEditorViewModel
         OnPropertyChanged(nameof(IsBlurSharpenSmudgeActive));
         OnPropertyChanged(nameof(IsDodgeBurnSpongeActive));
         OnPropertyChanged(nameof(IsRetouchToolActive));
+        OnPropertyChanged(nameof(IsPenToolActive));
+        OnPropertyChanged(nameof(IsPathSelectionToolActive));
         OnPropertyChanged(nameof(HasContextualToolOptions));
 
         if (value == "pencil")
@@ -208,6 +216,18 @@ public partial class ImageEditorViewModel
             StatusMessage = CloneSourcePoint.HasValue
                 ? $"Clone Stamp active (Source: {Math.Round(CloneSourcePoint.Value.X)}, {Math.Round(CloneSourcePoint.Value.Y)}). Paint to stamp."
                 : "Option/Alt-click on the canvas to define a source point to clone from.";
+        }
+        else if (value == "historybrush")
+        {
+            StatusMessage = "History Brush: Paint over modified pixels to restore the original/snapshot state.";
+        }
+        else if (value == "pen")
+        {
+            StatusMessage = "Pen Tool: Click to create vector anchor points, drag for smooth Bezier handles.";
+        }
+        else if (value == "pathselection")
+        {
+            StatusMessage = "Path Selection Tool: Click to select, move, or transform vector subpaths.";
         }
         else if (value == "dodge")
         {

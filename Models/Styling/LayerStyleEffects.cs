@@ -3,7 +3,7 @@ using Avalonia.Media;
 namespace PdfEditorApp.Plugins.ImageEditor.Models;
 
 /// <summary>
-/// Photoshop / Layer Styles (Layer Effects).
+/// FryImage Layer Styles (Layer Effects).
 /// </summary>
 public sealed class LayerStyleEffects
 {

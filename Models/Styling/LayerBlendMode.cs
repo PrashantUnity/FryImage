@@ -1,7 +1,7 @@
 namespace PdfEditorApp.Plugins.ImageEditor.Models;
 
 /// <summary>
-/// Photoshop / standard layer blend modes.
+/// FryImage standard layer blend modes.
 /// </summary>
 public enum LayerBlendMode
 {

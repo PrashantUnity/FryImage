@@ -1,7 +1,7 @@
 namespace PdfEditorApp.Plugins.ImageEditor.Models.Undo;
 
 /// <summary>
-/// Represents a discrete state entry in the / Photoshop-style History panel.
+/// Represents a discrete state entry in the FryImage History panel.
 /// </summary>
 public sealed class HistoryItemViewModel
 {

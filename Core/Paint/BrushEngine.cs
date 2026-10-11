@@ -7,11 +7,11 @@ using PdfEditorApp.Plugins.ImageEditor.Core.Coloring;
 namespace PdfEditorApp.Plugins.ImageEditor.Core.Paint;
 
 /// <summary>
-/// Advanced digital brush engine ported and expanded from FryImage / Photocraft (crates/paint).
+/// Advanced digital brush engine for FryImage.
 /// Features:
 /// - Weighted moving-average stroke stabilizer & lazy-mouse pulled string
 /// - Equidistant dab interpolation with continuous spacing
-/// - Photoshop-grade Shape Dynamics (Size jitter, Angle jitter, Roundness jitter, Direction tracking)
+/// - Advanced Shape Dynamics (Size jitter, Angle jitter, Roundness jitter, Direction tracking)
 /// - Scattering dynamics (perpendicular or radial displacement)
 /// - Color Dynamics (FG/BG blend jitter, hue/saturation/brightness variations)
 /// - Transfer dynamics (opacity and flow jitter)

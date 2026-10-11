@@ -1,9 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.IO;
+using System.Threading.Tasks;
 using Avalonia.Media;
+using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PdfEditorApp.Plugins.ImageEditor.Core.Coloring;
+using PdfEditorApp.Plugins.ImageEditor.Core.Codecs;
 using PdfEditorApp.Plugins.ImageEditor.Models;
 
 namespace PdfEditorApp.Plugins.ImageEditor;
@@ -28,7 +33,7 @@ public partial class ImageEditorViewModel
 
     public string PrimaryColorHex => ColorConversions.ToHexRgb(PrimaryColor);
 
-    public IReadOnlyList<Color> SwatchesList { get; } =
+    private static readonly Color[] DefaultSwatches =
     [
         // Row 1: Grayscale
         Color.FromRgb(0, 0, 0), Color.FromRgb(32, 32, 32), Color.FromRgb(64, 64, 64),
@@ -50,6 +55,104 @@ public partial class ImageEditorViewModel
         Color.FromRgb(244, 63, 94), Color.FromRgb(236, 72, 153), Color.FromRgb(20, 184, 166),
         Color.FromRgb(6, 182, 212), Color.FromRgb(99, 102, 241), Color.FromRgb(139, 92, 246)
     ];
+
+    public ObservableCollection<Color> SwatchesList { get; } = new(DefaultSwatches);
+
+    [RelayCommand]
+    public async Task ImportSwatches()
+    {
+        try
+        {
+            var topLevel = GetTopLevel();
+            if (topLevel?.StorageProvider is not { } storage) return;
+
+            var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Import Swatches (.aco, .ase)",
+                AllowMultiple = false,
+                FileTypeFilter =
+                [
+                    new FilePickerFileType("Color Swatches (*.aco, *.ase)") { Patterns = ["*.aco", "*.ase"] },
+                    new FilePickerFileType("Color Swatch (*.aco)") { Patterns = ["*.aco"] },
+                    new FilePickerFileType("Swatch Exchange (*.ase)") { Patterns = ["*.ase"] }
+                ]
+            });
+
+            if (files.Count == 0) return;
+
+            var file = files[0];
+            await using var stream = await file.OpenReadAsync();
+            var ext = Path.GetExtension(file.Name).ToLowerInvariant();
+
+            List<SwatchItem> items = ext == ".ase" ? SwatchCodec.DecodeAse(stream) : SwatchCodec.DecodeAco(stream);
+
+            if (items.Count > 0)
+            {
+                SwatchesList.Clear();
+                foreach (var item in items)
+                {
+                    SwatchesList.Add(item.Color);
+                }
+                StatusMessage = $"Imported {items.Count} swatches from {file.Name}.";
+            }
+            else
+            {
+                StatusMessage = "No swatches found in selected file.";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Swatch import failed: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    public async Task ExportSwatches()
+    {
+        try
+        {
+            var topLevel = GetTopLevel();
+            if (topLevel?.StorageProvider is not { } storage) return;
+
+            var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = "Export Color Swatches (.aco)",
+                SuggestedFileName = "palette.aco",
+                DefaultExtension = ".aco",
+                FileTypeChoices =
+                [
+                    new FilePickerFileType("Color Swatch (*.aco)") { Patterns = ["*.aco"] }
+                ]
+            });
+
+            if (file == null) return;
+
+            var swatchItems = new List<SwatchItem>();
+            for (int i = 0; i < SwatchesList.Count; i++)
+            {
+                swatchItems.Add(new SwatchItem($"Swatch {i + 1}", SwatchesList[i]));
+            }
+
+            await using var stream = await file.OpenWriteAsync();
+            SwatchCodec.EncodeAco(stream, swatchItems);
+            StatusMessage = $"Exported {swatchItems.Count} swatches to {file.Name}.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Swatch export failed: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    public void ResetDefaultSwatches()
+    {
+        SwatchesList.Clear();
+        foreach (var c in DefaultSwatches)
+        {
+            SwatchesList.Add(c);
+        }
+        StatusMessage = "Reset palette to 30 studio swatches.";
+    }
 
     [RelayCommand]
     private void SelectColorDockTab(string tab) => ActiveColorDockTab = tab;

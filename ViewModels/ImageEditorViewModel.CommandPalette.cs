@@ -37,10 +37,13 @@ public partial class ImageEditorViewModel
         AddCmd("tool.brush", "Brush Tool", "Tools", "B", "Brush", () => SetTool("brush"));
         AddCmd("tool.pencil", "Pencil Tool", "Tools", "P", "Pencil", () => SetTool("pencil"));
         AddCmd("tool.clonestamp", "Clone Stamp Tool", "Tools", "S", "Stamp", () => SetTool("clonestamp"));
+        AddCmd("tool.historybrush", "History Brush Tool", "Tools", "Y", "History", () => SetTool("historybrush"));
         AddCmd("tool.eraser", "Eraser Tool", "Tools", "E", "Eraser", () => SetTool("eraser"));
         AddCmd("tool.gradient", "Gradient Tool", "Tools", "G", "GradientHorizontal", () => SetTool("gradient"));
         AddCmd("tool.blur", "Blur / Sharpen / Smudge Tool", "Tools", "R", "Blur", () => SetTool("blur"));
         AddCmd("tool.dodge", "Dodge / Burn / Sponge Tool", "Tools", "O", "WhiteBalanceSunny", () => SetTool("dodge"));
+        AddCmd("tool.pen", "Pen Tool (Vector Paths)", "Tools", "P", "VectorPen", () => SetTool("pen"));
+        AddCmd("tool.pathselection", "Path Selection Tool", "Tools", "A", "CursorPointer", () => SetTool("pathselection"));
         AddCmd("tool.text", "Horizontal Type Tool", "Tools", "T", "FormatColorText", () => SetTool("text"));
         AddCmd("tool.rect", "Rectangle Tool", "Tools", "U", "RectangleOutline", () => SelectShapeTool("rect"));
         AddCmd("tool.ellipse", "Ellipse Tool", "Tools", "U", "CircleOutline", () => SelectShapeTool("ellipse"));
@@ -48,29 +51,61 @@ public partial class ImageEditorViewModel
         AddCmd("tool.zoom", "Zoom Tool", "Tools", "Z", "Magnify", () => SetTool("zoom"));
 
         // ── 2. Filters ───────────────────────────────────────
+        AddCmd("filter.cameraraw", "Camera Raw Filter...", "Filter", "Shift+Ctrl+A", "CameraIris", () => OpenFilterDialog("CameraRaw"));
+        AddCmd("filter.blur.tiltshift", "Tilt-Shift Blur...", "Filter", null, "BlurRadial", () => OpenFilterDialog("TiltShift"));
+        AddCmd("filter.blur.iris", "Iris Blur...", "Filter", null, "EyeOutline", () => OpenFilterDialog("IrisBlur"));
         AddCmd("filter.blur.gaussian", "Gaussian Blur...", "Filter", null, "Blur", () => OpenFilterDialog("GaussianBlur"));
         AddCmd("filter.blur.motion", "Motion Blur...", "Filter", null, "MotionBlur", () => OpenFilterDialog("MotionBlur"));
         AddCmd("filter.blur.radial", "Radial Blur...", "Filter", null, "RotateRight", () => OpenFilterDialog("RadialBlur"));
         AddCmd("filter.sharpen.unsharp", "Unsharp Mask...", "Filter", null, "ShieldHalfFull", () => OpenFilterDialog("UnsharpMask"));
+        AddCmd("filter.stylize.oilpaint", "Oil Paint...", "Filter", null, "PaletteSwatch", () => OpenFilterDialog("OilPaint"));
+        AddCmd("filter.stylize.facet", "Facet...", "Filter", null, "DiamondOutline", () => OpenFilterDialog("Facet"));
+        AddCmd("filter.distort.wave", "Wave Distortion...", "Filter", null, "Wave", () => OpenFilterDialog("Wave"));
+        AddCmd("filter.distort.ripple", "Ripple Distortion...", "Filter", null, "Water", () => OpenFilterDialog("Ripple"));
+        AddCmd("filter.distort.pinch", "Pinch Distortion...", "Filter", null, "ArrowCollapseAll", () => OpenFilterDialog("Pinch"));
+        AddCmd("filter.distort.polar", "Polar Coordinates...", "Filter", null, "CompassOutline", () => OpenFilterDialog("PolarCoordinates"));
         AddCmd("filter.distort.twirl", "Twirl Distortion...", "Filter", null, "Restore", () => OpenFilterDialog("Twirl"));
         AddCmd("filter.distort.spherize", "Spherize Distortion...", "Filter", null, "Sphere", () => OpenFilterDialog("Spherize"));
+        AddCmd("filter.pixelate.halftone", "Color Halftone...", "Filter", null, "DotsGrid", () => OpenFilterDialog("ColorHalftone"));
+        AddCmd("filter.pixelate.crystallize", "Crystallize...", "Filter", null, "HexagonMultipleOutline", () => OpenFilterDialog("Crystallize"));
+        AddCmd("filter.pixelate.pointillize", "Pointillize...", "Filter", null, "ScatterPlot", () => OpenFilterDialog("Pointillize"));
         AddCmd("filter.pixelate.mosaic", "Mosaic Pixelate...", "Filter", null, "ViewGridPlusOutline", () => OpenFilterDialog("Mosaic"));
         AddCmd("filter.stylize.emboss", "Emboss Relief...", "Filter", null, "TextureBox", () => OpenFilterDialog("Emboss"));
         AddCmd("filter.noise.add", "Add Noise...", "Filter", null, "Grain", () => OpenFilterDialog("AddNoise"));
         AddCmd("filter.other.highpass", "High Pass Filter...", "Filter", null, "ContrastBox", () => OpenFilterDialog("HighPass"));
+        AddCmd("filter.render.clouds", "Clouds...", "Filter", null, "CloudOutline", () => OpenFilterDialog("Clouds"));
+        AddCmd("filter.render.lensflare", "Lens Flare...", "Filter", null, "Flare", () => OpenFilterDialog("LensFlare"));
 
         // ── 3. Adjustments ───────────────────────────────────
         AddCmd("adjust.brightness", "Brightness / Contrast...", "Adjustments", null, "Brightness6", () => OpenAdjustmentDialog("BrightnessContrast"));
         AddCmd("adjust.levels", "Levels...", "Adjustments", "Ctrl+L", "Tune", () => OpenAdjustmentDialog("Levels"));
+        AddCmd("adjust.exposure", "Exposure...", "Adjustments", null, "Exposure", () => OpenAdjustmentDialog("Exposure"));
         AddCmd("adjust.curves", "Curves...", "Adjustments", "Ctrl+M", "ChartTimelineVariantShaped", () => OpenAdjustmentDialog("Curves"));
         AddCmd("adjust.huesat", "Hue / Saturation...", "Adjustments", "Ctrl+U", "Palette", () => OpenAdjustmentDialog("HueSaturation"));
         AddCmd("adjust.vibrance", "Vibrance...", "Adjustments", null, "Sparkles", () => OpenAdjustmentDialog("Vibrance"));
         AddCmd("adjust.colorbalance", "Color Balance...", "Adjustments", "Ctrl+B", "ScaleBalance", () => OpenAdjustmentDialog("ColorBalance"));
+        AddCmd("adjust.selectivecolor", "Selective Color...", "Adjustments", null, "SelectColor", () => OpenAdjustmentDialog("SelectiveColor"));
+        AddCmd("adjust.colorlookup", "Color Lookup (3D LUT)...", "Adjustments", null, "TableFilter", () => OpenAdjustmentDialog("ColorLookup"));
+        AddCmd("adjust.photofilter", "Photo Filter...", "Adjustments", null, "CameraFilter", () => OpenAdjustmentDialog("PhotoFilter"));
+        AddCmd("adjust.gradientmap", "Gradient Map...", "Adjustments", null, "GradientHorizontal", () => OpenAdjustmentDialog("GradientMap"));
+        AddCmd("adjust.threshold", "Threshold...", "Adjustments", null, "CircleHalfFull", () => OpenAdjustmentDialog("Threshold"));
+        AddCmd("adjust.posterize", "Posterize...", "Adjustments", null, "ChartBarStacked", () => OpenAdjustmentDialog("Posterize"));
         AddCmd("adjust.autotone", "Auto Tone", "Adjustments", "Shift+Ctrl+L", "AutoFix", ApplyAutoTone);
         AddCmd("adjust.autocontrast", "Auto Contrast", "Adjustments", "Alt+Shift+Ctrl+L", "Contrast", ApplyAutoContrast);
         AddCmd("adjust.autocolor", "Auto Color", "Adjustments", "Shift+Ctrl+B", "FormatColorFill", ApplyAutoColor);
         AddCmd("adjust.equalize", "Equalize Histogram", "Adjustments", null, "Equalizer", ApplyEqualize);
         AddCmd("adjust.invert", "Invert Colors", "Adjustments", "Ctrl+I", "InvertColors", ApplyInvert);
+
+        // ── Selection & Masks ────────────────────────────────
+        AddCmd("select.andmask", "Select and Mask...", "Select", "Ctrl+Alt+R", "SelectDrag", OpenSelectAndMaskDialog);
+        AddCmd("select.all", "Select All Elements", "Select", "Ctrl+A", "SelectAll", SelectAllElements);
+        AddCmd("select.deselect", "Deselect All", "Select", "Ctrl+D", "SelectOff", DeselectAll);
+        AddCmd("select.inverse", "Invert Selection Mask", "Select", "Shift+Ctrl+I", "SelectInverse", InvertSelection);
+
+        // ── Color Swatches ───────────────────────────────────
+        AddCmd("swatches.import", "Import Swatches (.aco, .ase)...", "Color", null, "FileImportOutline", () => _ = ImportSwatches());
+        AddCmd("swatches.export", "Export Swatches (.aco)...", "Color", null, "FileExportOutline", () => _ = ExportSwatches());
+        AddCmd("swatches.reset", "Reset Default Swatches", "Color", null, "Restore", ResetDefaultSwatches);
 
         // ── 4. Layers & Styling ──────────────────────────────
         AddCmd("layer.duplicate", "Duplicate Layer", "Layer", "Ctrl+J", "ContentCopy", Duplicate);

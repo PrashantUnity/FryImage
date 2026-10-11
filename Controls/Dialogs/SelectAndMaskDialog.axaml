@@ -1,0 +1,143 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Dialogs.SelectAndMaskDialog"
+             x:DataType="local:ImageEditorViewModel">
+
+    <!-- Modal Backdrop -->
+    <Border Background="#90000000" IsVisible="{Binding IsSelectAndMaskDialogOpen}">
+        <Border Width="500" MaxHeight="620" MinHeight="420"
+                VerticalAlignment="Center" HorizontalAlignment="Center"
+                Background="{DynamicResource PsPanelBrush}"
+                BorderBrush="{DynamicResource PsBorderBrush}"
+                BorderThickness="1"
+                BoxShadow="0 10 36 #B0000000"
+                CornerRadius="2"
+                ClipToBounds="True">
+            <Grid RowDefinitions="34,*,46">
+
+                <!-- Header -->
+                <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="14,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <materialIcons:MaterialIcon Kind="AutoFix" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+                            <TextBlock Text="Select and Mask (Natural Matting Engine)" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="ps-opt-btn" Command="{Binding CancelSelectAndMaskDialogCommand}" ToolTip.Tip="Cancel (Esc)">
+                            <materialIcons:MaterialIcon Kind="Close" Width="12" Height="12" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Body Controls -->
+                <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Margin="16,12">
+                    <StackPanel Spacing="14">
+
+                        <!-- View Mode Section -->
+                        <Border Background="{DynamicResource PsOptionsBrush}" CornerRadius="2" Padding="10,8">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="View Mode" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource PsAccentBrush}" />
+                                <Grid ColumnDefinitions="Auto,*">
+                                    <TextBlock Grid.Column="0" Text="View:" Classes="ps-label" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <ComboBox Grid.Column="1" Classes="ps-combo"
+                                              ItemsSource="{Binding AvailableMattingViewModes}"
+                                              SelectedItem="{Binding MattingViewMode, Mode=TwoWay}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Edge Detection (Guided Filtering) -->
+                        <Border Background="{DynamicResource PsOptionsBrush}" CornerRadius="2" Padding="10,8">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Edge Detection (Guided Color Filter)" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource PsAccentBrush}" />
+
+                                <StackPanel Spacing="3">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="Radius" Classes="ps-label" />
+                                        <TextBlock Grid.Column="1" Text="{Binding MattingRadius, StringFormat='{}{0:0.0} px'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                    </Grid>
+                                    <Slider Minimum="0.1" Maximum="50.0" Value="{Binding MattingRadius, Mode=TwoWay}" />
+                                </StackPanel>
+
+                                <CheckBox Content="Smart Radius (Adaptive Edge Tangent)" IsChecked="{Binding MattingSmartRadius, Mode=TwoWay}" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Global Refinements -->
+                        <Border Background="{DynamicResource PsOptionsBrush}" CornerRadius="2" Padding="10,8">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Global Refinements" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource PsAccentBrush}" />
+
+                                <StackPanel Spacing="3">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="Smooth" Classes="ps-label" />
+                                        <TextBlock Grid.Column="1" Text="{Binding MattingSmooth, StringFormat='{}{0:0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                    </Grid>
+                                    <Slider Minimum="0" Maximum="100" Value="{Binding MattingSmooth, Mode=TwoWay}" />
+                                </StackPanel>
+
+                                <StackPanel Spacing="3">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="Feather" Classes="ps-label" />
+                                        <TextBlock Grid.Column="1" Text="{Binding MattingFeather, StringFormat='{}{0:0.0} px'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                    </Grid>
+                                    <Slider Minimum="0.0" Maximum="50.0" Value="{Binding MattingFeather, Mode=TwoWay}" />
+                                </StackPanel>
+
+                                <StackPanel Spacing="3">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="Contrast" Classes="ps-label" />
+                                        <TextBlock Grid.Column="1" Text="{Binding MattingContrast, StringFormat='{}{0:0}%'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                    </Grid>
+                                    <Slider Minimum="0" Maximum="100" Value="{Binding MattingContrast, Mode=TwoWay}" />
+                                </StackPanel>
+
+                                <StackPanel Spacing="3">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="Shift Edge" Classes="ps-label" />
+                                        <TextBlock Grid.Column="1" Text="{Binding MattingShiftEdge, StringFormat='{}{0:+0;-0;0}%'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                    </Grid>
+                                    <Slider Minimum="-100" Maximum="100" Value="{Binding MattingShiftEdge, Mode=TwoWay}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Output Settings -->
+                        <Border Background="{DynamicResource PsOptionsBrush}" CornerRadius="2" Padding="10,8">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Output Settings" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource PsAccentBrush}" />
+
+                                <CheckBox Content="Decontaminate Colors (Fringe Suppression)" IsChecked="{Binding MattingDecontaminateColors, Mode=TwoWay}" />
+
+                                <StackPanel Spacing="3" IsVisible="{Binding MattingDecontaminateColors}">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="Amount" Classes="ps-label" />
+                                        <TextBlock Grid.Column="1" Text="{Binding MattingDecontaminateAmount, StringFormat='{}{0:0}%'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                    </Grid>
+                                    <Slider Minimum="1" Maximum="100" Value="{Binding MattingDecontaminateAmount, Mode=TwoWay}" />
+                                </StackPanel>
+
+                                <Grid ColumnDefinitions="Auto,*">
+                                    <TextBlock Grid.Column="0" Text="Output To:" Classes="ps-label" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <ComboBox Grid.Column="1" Classes="ps-combo"
+                                              ItemsSource="{Binding AvailableMattingOutputModes}"
+                                              SelectedItem="{Binding MattingOutputMode, Mode=TwoWay}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Footer Action Buttons -->
+                <Border Grid.Row="2" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="14,8">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                        <Button Classes="ps-btn" Content="Cancel" Command="{Binding CancelSelectAndMaskDialogCommand}" Padding="14,5" />
+                        <Button Classes="ps-btn ps-btn-primary" Content="OK" Command="{Binding ConfirmSelectAndMaskDialogCommand}" Padding="18,5" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Border>
+</UserControl>

@@ -11,10 +11,10 @@
              Background="#1E1E1E">
 
     <UserControl.Styles>
-        <StyleInclude Source="avares://ImageEditorPlugin/Styles/PhotoshopStudioStyles.axaml" />
+        <StyleInclude Source="avares://ImageEditorPlugin/Styles/StudioStyles.axaml" />
     </UserControl.Styles>
 
-    <!-- Master Grid Layout (Photoshop / FryImage 1:1 Architecture)
+    <!-- Master Grid Layout (FryImage Studio Architecture)
          Row 0: Top Menu Bar (Height 28)
          Row 1: Tool Options Bar (Height 34)
          Row 2: Document Tab Strip (Height 26)
@@ -24,7 +24,7 @@
     <Grid RowDefinitions="28,34,26,*,24">
 
         <!-- Row 0: Top Menu Bar -->
-        <controls:PhotoshopMenuBar Grid.Row="0" />
+        <controls:StudioMenuBar Grid.Row="0" />
 
         <!-- Row 1: Tool Options Bar -->
         <controls:ToolOptionsBar Grid.Row="1" />
@@ -123,7 +123,7 @@
             <!-- Column 2: Vertical Splitter -->
             <GridSplitter Grid.Column="2" Classes="ps-splitter" Width="3" VerticalAlignment="Stretch" />
 
-            <!-- Column 3: Photoshop Right Dock Panels Stack (Image 2 Parity) -->
+            <!-- Column 3: Studio Right Dock Panels Stack -->
             <Border Grid.Column="3"
                     Background="{DynamicResource PsPanelBrush}"
                     BorderBrush="{DynamicResource PsBorderBrush}"
@@ -147,12 +147,13 @@
         <controls:StatusBarControl Grid.Row="4" />
 
         <!-- Modal Dialogs -->
-        <dialogs:LayerStyleDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" />
-        <dialogs:ExportAsDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" />
-        <dialogs:NewDocumentDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" />
-        <dialogs:AdjustmentDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" />
-        <dialogs:FilterDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" />
-        <dialogs:CommandPaletteDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="600" />
+        <dialogs:LayerStyleDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsLayerStyleDialogOpen}" />
+        <dialogs:ExportAsDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsExportDialogOpen}" />
+        <dialogs:NewDocumentDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsNewDocumentDialogOpen}" />
+        <dialogs:AdjustmentDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsAdjustmentDialogOpen}" />
+        <dialogs:FilterDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsFilterDialogOpen}" />
+        <dialogs:SelectAndMaskDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsSelectAndMaskDialogOpen}" />
+        <dialogs:CommandPaletteDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="600" IsVisible="{Binding IsCommandPaletteOpen}" />
 
     </Grid>
 </UserControl>

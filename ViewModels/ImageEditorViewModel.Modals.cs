@@ -279,6 +279,38 @@ public partial class ImageEditorViewModel
     [ObservableProperty] private int _adjYellowBlue;
     [ObservableProperty] private int _adjThreshold = 128;
     [ObservableProperty] private int _adjPosterizeLevels = 4;
+
+    // Exposure parameters
+    [ObservableProperty] private double _adjExposure;
+    [ObservableProperty] private double _adjExposureOffset;
+    [ObservableProperty] private double _adjExposureGamma = 1.0;
+
+    // Selective Color parameters
+    [ObservableProperty] private int _adjSelectiveColorRangeIndex; // 0..8 (Reds, Yellows, Greens, Cyans, Blues, Magentas, Whites, Neutrals, Blacks)
+    [ObservableProperty] private double _adjSelectiveCyan;
+    [ObservableProperty] private double _adjSelectiveMagenta;
+    [ObservableProperty] private double _adjSelectiveYellow;
+    [ObservableProperty] private double _adjSelectiveBlack;
+    [ObservableProperty] private bool _adjSelectiveRelative = true;
+    private double[,] _adjSelectiveAdjustments = new double[9, 4];
+
+    // Color Lookup (3D LUT) parameters
+    [ObservableProperty] private string _adjLutPreset = "TealAndOrange";
+    [ObservableProperty] private bool _adjLutTetrahedral = true;
+    [ObservableProperty] private string _adjCustomLutName = string.Empty;
+    private float[]? _adjCustomLutData;
+    private int _adjCustomLutSize;
+
+    // Gradient Map parameters
+    [ObservableProperty] private string _adjGradientPreset = "BlackWhite";
+    [ObservableProperty] private bool _adjGradientReverse;
+
+    // Photo Filter parameters
+    [ObservableProperty] private string _adjPhotoFilterPreset = "Warming85";
+    [ObservableProperty] private Color _adjPhotoFilterColor = Color.FromRgb(0xEC, 0x8A, 0x28);
+    [ObservableProperty] private int _adjPhotoFilterDensity = 25;
+    [ObservableProperty] private bool _adjPhotoFilterPreserveLuminosity = true;
+
     [ObservableProperty] private bool _adjPreviewEnabled = true;
 
     private byte[]? _adjOriginalImageBytes;
@@ -297,6 +329,11 @@ public partial class ImageEditorViewModel
             "ColorBalance" => "Color Balance",
             "Threshold" => "Threshold",
             "Posterize" => "Posterize",
+            "Exposure" => "Exposure",
+            "SelectiveColor" => "Selective Color",
+            "ColorLookup" => "Color Lookup (3D LUT)",
+            "GradientMap" => "Gradient Map",
+            "PhotoFilter" => "Photo Filter",
             _ => "Adjustment"
         };
 
@@ -318,6 +355,27 @@ public partial class ImageEditorViewModel
         AdjYellowBlue = 0;
         AdjThreshold = 128;
         AdjPosterizeLevels = 4;
+
+        // Reset advanced adjustments
+        AdjExposure = 0.0;
+        AdjExposureOffset = 0.0;
+        AdjExposureGamma = 1.0;
+        _adjSelectiveAdjustments = new double[9, 4];
+        AdjSelectiveColorRangeIndex = 0;
+        AdjSelectiveCyan = 0;
+        AdjSelectiveMagenta = 0;
+        AdjSelectiveYellow = 0;
+        AdjSelectiveBlack = 0;
+        AdjSelectiveRelative = true;
+        AdjLutPreset = "TealAndOrange";
+        AdjLutTetrahedral = true;
+        AdjGradientPreset = "BlackWhite";
+        AdjGradientReverse = false;
+        AdjPhotoFilterPreset = "Warming85";
+        AdjPhotoFilterColor = Color.FromRgb(0xEC, 0x8A, 0x28);
+        AdjPhotoFilterDensity = 25;
+        AdjPhotoFilterPreserveLuminosity = true;
+
         AdjPreviewEnabled = true;
 
         _adjTargetImageElement = SelectedElement as ImageElement ?? Elements.OfType<ImageElement>().LastOrDefault();
@@ -344,6 +402,200 @@ public partial class ImageEditorViewModel
     partial void OnAdjThresholdChanged(int value) => ApplyAdjustmentPreview();
     partial void OnAdjPosterizeLevelsChanged(int value) => ApplyAdjustmentPreview();
 
+    partial void OnAdjExposureChanged(double value) => ApplyAdjustmentPreview();
+    partial void OnAdjExposureOffsetChanged(double value) => ApplyAdjustmentPreview();
+    partial void OnAdjExposureGammaChanged(double value) => ApplyAdjustmentPreview();
+
+    partial void OnAdjSelectiveColorRangeIndexChanged(int value)
+    {
+        if (value >= 0 && value < 9)
+        {
+            _adjSelectiveCyan = _adjSelectiveAdjustments[value, 0] * 100.0;
+            _adjSelectiveMagenta = _adjSelectiveAdjustments[value, 1] * 100.0;
+            _adjSelectiveYellow = _adjSelectiveAdjustments[value, 2] * 100.0;
+            _adjSelectiveBlack = _adjSelectiveAdjustments[value, 3] * 100.0;
+            OnPropertyChanged(nameof(AdjSelectiveCyan));
+            OnPropertyChanged(nameof(AdjSelectiveMagenta));
+            OnPropertyChanged(nameof(AdjSelectiveYellow));
+            OnPropertyChanged(nameof(AdjSelectiveBlack));
+        }
+    }
+
+    partial void OnAdjSelectiveCyanChanged(double value)
+    {
+        if (AdjSelectiveColorRangeIndex >= 0 && AdjSelectiveColorRangeIndex < 9)
+            _adjSelectiveAdjustments[AdjSelectiveColorRangeIndex, 0] = value / 100.0;
+        ApplyAdjustmentPreview();
+    }
+
+    partial void OnAdjSelectiveMagentaChanged(double value)
+    {
+        if (AdjSelectiveColorRangeIndex >= 0 && AdjSelectiveColorRangeIndex < 9)
+            _adjSelectiveAdjustments[AdjSelectiveColorRangeIndex, 1] = value / 100.0;
+        ApplyAdjustmentPreview();
+    }
+
+    partial void OnAdjSelectiveYellowChanged(double value)
+    {
+        if (AdjSelectiveColorRangeIndex >= 0 && AdjSelectiveColorRangeIndex < 9)
+            _adjSelectiveAdjustments[AdjSelectiveColorRangeIndex, 2] = value / 100.0;
+        ApplyAdjustmentPreview();
+    }
+
+    partial void OnAdjSelectiveBlackChanged(double value)
+    {
+        if (AdjSelectiveColorRangeIndex >= 0 && AdjSelectiveColorRangeIndex < 9)
+            _adjSelectiveAdjustments[AdjSelectiveColorRangeIndex, 3] = value / 100.0;
+        ApplyAdjustmentPreview();
+    }
+
+    partial void OnAdjSelectiveRelativeChanged(bool value) => ApplyAdjustmentPreview();
+
+    partial void OnAdjLutPresetChanged(string value) => ApplyAdjustmentPreview();
+    partial void OnAdjLutTetrahedralChanged(bool value) => ApplyAdjustmentPreview();
+
+    partial void OnAdjGradientPresetChanged(string value) => ApplyAdjustmentPreview();
+    partial void OnAdjGradientReverseChanged(bool value) => ApplyAdjustmentPreview();
+
+    partial void OnAdjPhotoFilterPresetChanged(string value)
+    {
+        _adjPhotoFilterColor = value switch
+        {
+            "Warming85" => Color.FromRgb(0xEC, 0x8A, 0x28),
+            "Cooling80" => Color.FromRgb(0x1C, 0x68, 0xD2),
+            "Sepia" => Color.FromRgb(0xAE, 0x8B, 0x5E),
+            "DeepRed" => Color.FromRgb(0xD4, 0x2B, 0x2B),
+            "DeepBlue" => Color.FromRgb(0x1D, 0x3B, 0xB7),
+            "DeepEmerald" => Color.FromRgb(0x15, 0x80, 0x3D),
+            _ => _adjPhotoFilterColor
+        };
+        OnPropertyChanged(nameof(AdjPhotoFilterColor));
+        ApplyAdjustmentPreview();
+    }
+
+    partial void OnAdjPhotoFilterColorChanged(Color value) => ApplyAdjustmentPreview();
+    partial void OnAdjPhotoFilterDensityChanged(int value) => ApplyAdjustmentPreview();
+    partial void OnAdjPhotoFilterPreserveLuminosityChanged(bool value) => ApplyAdjustmentPreview();
+
+    [RelayCommand]
+    public async Task LoadCustomLutFile()
+    {
+        try
+        {
+            var topLevel = GetTopLevel();
+            if (topLevel?.StorageProvider is not { } storage) return;
+
+            var files = await storage.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
+            {
+                Title = "Select 3D LUT (.cube)",
+                AllowMultiple = false,
+                FileTypeFilter =
+                [
+                    new Avalonia.Platform.Storage.FilePickerFileType("3D LUT File (*.cube)") { Patterns = ["*.cube"] }
+                ]
+            });
+
+            if (files.Count == 0) return;
+
+            var file = files[0];
+            await using var stream = await file.OpenReadAsync();
+            using var reader = new StreamReader(stream);
+            string text = await reader.ReadToEndAsync();
+
+            var (size, data) = ImageAdjustmentEngine.Lut3DHelper.ParseCube(text);
+            if (size > 0 && data.Length >= size * size * size * 3)
+            {
+                _adjCustomLutSize = size;
+                _adjCustomLutData = data;
+                AdjCustomLutName = file.Name;
+                AdjLutPreset = "Custom";
+                ApplyAdjustmentPreview();
+                StatusMessage = $"Loaded 3D LUT {file.Name} ({size}×{size}×{size}).";
+            }
+            else
+            {
+                StatusMessage = "Failed to parse 3D LUT file.";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error loading LUT: {ex.Message}";
+        }
+    }
+
+    private byte[] ExecuteAdjustmentMode(byte[] bgra, int width, int height)
+    {
+        return ActiveAdjustmentMode switch
+        {
+            "BrightnessContrast" => ImageAdjustmentEngine.ApplyBrightnessContrast(bgra, AdjBrightness, AdjContrast),
+            "Levels" => ImageAdjustmentEngine.ApplyLevels(bgra, AdjLevelsInBlack, AdjLevelsGamma, AdjLevelsInWhite, AdjLevelsOutBlack, AdjLevelsOutWhite),
+            "HueSaturation" => ImageAdjustmentEngine.ApplyHueSaturation(bgra, AdjHue, AdjSaturation, AdjLightness, AdjColorize),
+            "Vibrance" => ImageAdjustmentEngine.ApplyVibrance(bgra, AdjVibrance, AdjSaturation),
+            "ColorBalance" => ImageAdjustmentEngine.ApplyColorBalance(bgra, AdjCyanRed, AdjMagentaGreen, AdjYellowBlue),
+            "Threshold" => ImageAdjustmentEngine.ApplyThreshold(bgra, AdjThreshold),
+            "Posterize" => ImageAdjustmentEngine.ApplyPosterize(bgra, AdjPosterizeLevels),
+            "Exposure" => ImageAdjustmentEngine.ApplyExposure(bgra, AdjExposure, AdjExposureOffset, AdjExposureGamma),
+            "SelectiveColor" => ImageAdjustmentEngine.ApplySelectiveColor(bgra, AdjSelectiveRelative, _adjSelectiveAdjustments),
+            "ColorLookup" => ExecuteColorLookup(bgra),
+            "GradientMap" => ExecuteGradientMap(bgra),
+            "PhotoFilter" => ImageAdjustmentEngine.ApplyPhotoFilter(bgra, AdjPhotoFilterColor, AdjPhotoFilterDensity, AdjPhotoFilterPreserveLuminosity),
+            _ => bgra
+        };
+    }
+
+    private byte[] ExecuteColorLookup(byte[] bgra)
+    {
+        if (AdjLutPreset == "Custom" && _adjCustomLutData != null && _adjCustomLutSize > 0)
+        {
+            return ImageAdjustmentEngine.ApplyColorLookup(bgra, _adjCustomLutSize, _adjCustomLutData, AdjLutTetrahedral);
+        }
+
+        var (size, data) = ImageAdjustmentEngine.Lut3DHelper.CreatePresetLut(AdjLutPreset, 17);
+        return ImageAdjustmentEngine.ApplyColorLookup(bgra, size, data, AdjLutTetrahedral);
+    }
+
+    private byte[] ExecuteGradientMap(byte[] bgra)
+    {
+        Color[] colors;
+        float[] stops;
+
+        switch (AdjGradientPreset)
+        {
+            case "WarmSunset":
+                colors = [Color.FromRgb(0x5E, 0x12, 0x24), Color.FromRgb(0xF9, 0x73, 0x16), Color.FromRgb(0xFE, 0xF0, 0x8A)];
+                stops = [0.0f, 0.5f, 1.0f];
+                break;
+            case "OceanWaves":
+                colors = [Color.FromRgb(0x0B, 0x19, 0x2C), Color.FromRgb(0x06, 0xB6, 0xD4), Color.FromRgb(0xE0, 0xF2, 0xFE)];
+                stops = [0.0f, 0.5f, 1.0f];
+                break;
+            case "VioletAurora":
+                colors = [Color.FromRgb(0x2E, 0x08, 0x54), Color.FromRgb(0xEC, 0x48, 0x99), Color.FromRgb(0xFD, 0xBA, 0x74)];
+                stops = [0.0f, 0.5f, 1.0f];
+                break;
+            case "SepiaVintage":
+                colors = [Color.FromRgb(0x2B, 0x18, 0x10), Color.FromRgb(0xA3, 0x70, 0x4C), Color.FromRgb(0xFB, 0xF5, 0xE6)];
+                stops = [0.0f, 0.5f, 1.0f];
+                break;
+            case "Cyberpunk":
+                colors = [Color.FromRgb(0x0A, 0x0A, 0x1A), Color.FromRgb(0x00, 0xFF, 0xFF), Color.FromRgb(0xFF, 0x00, 0x7F)];
+                stops = [0.0f, 0.5f, 1.0f];
+                break;
+            case "BlackWhite":
+            default:
+                colors = [Colors.Black, Colors.White];
+                stops = [0.0f, 1.0f];
+                break;
+        }
+
+        if (AdjGradientReverse)
+        {
+            colors = colors.Reverse().ToArray();
+        }
+
+        return ImageAdjustmentEngine.ApplyGradientMap(bgra, colors, stops);
+    }
+
     private void ApplyAdjustmentPreview()
     {
         if (!IsAdjustmentDialogOpen || !AdjPreviewEnabled || _adjTargetImageElement == null || _adjOriginalImageBytes == null)
@@ -355,17 +607,7 @@ public partial class ImageEditorViewModel
             if (srcBmp == null) return;
 
             byte[] bgra = srcBmp.Bytes;
-            byte[] adjustedBgra = ActiveAdjustmentMode switch
-            {
-                "BrightnessContrast" => ImageAdjustmentEngine.ApplyBrightnessContrast(bgra, AdjBrightness, AdjContrast),
-                "Levels" => ImageAdjustmentEngine.ApplyLevels(bgra, AdjLevelsInBlack, AdjLevelsGamma, AdjLevelsInWhite, AdjLevelsOutBlack, AdjLevelsOutWhite),
-                "HueSaturation" => ImageAdjustmentEngine.ApplyHueSaturation(bgra, AdjHue, AdjSaturation, AdjLightness, AdjColorize),
-                "Vibrance" => ImageAdjustmentEngine.ApplyVibrance(bgra, AdjVibrance, AdjSaturation),
-                "ColorBalance" => ImageAdjustmentEngine.ApplyColorBalance(bgra, AdjCyanRed, AdjMagentaGreen, AdjYellowBlue),
-                "Threshold" => ImageAdjustmentEngine.ApplyThreshold(bgra, AdjThreshold),
-                "Posterize" => ImageAdjustmentEngine.ApplyPosterize(bgra, AdjPosterizeLevels),
-                _ => bgra
-            };
+            byte[] adjustedBgra = ExecuteAdjustmentMode(bgra, srcBmp.Width, srcBmp.Height);
 
             using var adjustedBmp = new SKBitmap(srcBmp.Width, srcBmp.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
             var pin = System.Runtime.InteropServices.GCHandle.Alloc(adjustedBgra, System.Runtime.InteropServices.GCHandleType.Pinned);
@@ -393,11 +635,55 @@ public partial class ImageEditorViewModel
     [RelayCommand]
     public void ConfirmAdjustmentDialog()
     {
-        if (_adjTargetImageElement != null && _adjTargetImageElement.AdjustedSource != null)
+        if (_adjTargetImageElement != null && _adjOriginalImageBytes != null)
         {
-            // Bake the adjustment into the image element
-            StatusMessage = $"Applied {ActiveAdjustmentTitle}.";
-            ScheduleHistogramUpdate();
+            var beforeBytes = _adjOriginalImageBytes;
+            try
+            {
+                using var srcBmp = SKBitmap.Decode(beforeBytes);
+                if (srcBmp != null)
+                {
+                    byte[] bgra = srcBmp.Bytes;
+                    byte[] adjustedBgra = ExecuteAdjustmentMode(bgra, srcBmp.Width, srcBmp.Height);
+
+                    using var adjustedBmp = new SKBitmap(srcBmp.Width, srcBmp.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
+                    var pin = System.Runtime.InteropServices.GCHandle.Alloc(adjustedBgra, System.Runtime.InteropServices.GCHandleType.Pinned);
+                    try
+                    {
+                        adjustedBmp.InstallPixels(adjustedBmp.Info, pin.AddrOfPinnedObject());
+                        using var img = SKImage.FromBitmap(adjustedBmp);
+                        using var enc = img.Encode(SKEncodedImageFormat.Png, 100);
+                        byte[] afterBytes = enc.ToArray();
+                        _adjTargetImageElement.OriginalImageBytes = afterBytes;
+                        _adjTargetImageElement.AdjustedSource?.Dispose();
+                        _adjTargetImageElement.AdjustedSource = null;
+                        _adjTargetImageElement.Source = new Bitmap(new MemoryStream(afterBytes));
+
+                        var el = _adjTargetImageElement;
+                        var title = ActiveAdjustmentTitle;
+                        var undoCmd = new RetouchImageCommand(el, beforeBytes, afterBytes, title, (targetEl, b) =>
+                        {
+                            targetEl.OriginalImageBytes = b;
+                            targetEl.AdjustedSource?.Dispose();
+                            targetEl.AdjustedSource = null;
+                            targetEl.Source = new Bitmap(new MemoryStream(b));
+                            RefreshCanvas();
+                        });
+                        if (!_isApplyingHistory) History.Push(undoCmd);
+                        StatusMessage = $"Applied {ActiveAdjustmentTitle}.";
+                        ScheduleHistogramUpdate();
+                        RefreshCanvas();
+                    }
+                    finally
+                    {
+                        pin.Free();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ConfirmAdjustmentDialog] error: {ex}");
+            }
         }
         IsAdjustmentDialogOpen = false;
     }
@@ -647,7 +933,7 @@ public partial class ImageEditorViewModel
     [ObservableProperty] private bool _filterNoiseMonochromatic = true;
     [ObservableProperty] private bool _filterPreviewEnabled = true;
 
-    // Additional Photoshop filter properties
+    // Additional Studio filter properties
     [ObservableProperty] private double _filterMotionAngle = 0.0;
     [ObservableProperty] private double _filterMotionDistance = 15.0;
     [ObservableProperty] private double _filterRadialAmount = 20.0;
@@ -658,6 +944,67 @@ public partial class ImageEditorViewModel
     [ObservableProperty] private double _filterSpherizeAmount = 50.0;
     [ObservableProperty] private double _filterEmbossAngle = 135.0;
     [ObservableProperty] private int _filterEmbossDepth = 3;
+
+    // Advanced Studio Optical & Creative Filters
+    [ObservableProperty] private double _filterTiltShiftBlur = 25.0;
+    [ObservableProperty] private double _filterTiltShiftAngle = 0.0;
+    [ObservableProperty] private double _filterTiltShiftFocus = 0.15;
+    [ObservableProperty] private double _filterTiltShiftTransition = 0.25;
+
+    [ObservableProperty] private double _filterIrisBlur = 25.0;
+    [ObservableProperty] private double _filterIrisRadiusX = 0.35;
+    [ObservableProperty] private double _filterIrisRadiusY = 0.25;
+    [ObservableProperty] private double _filterIrisAngle = 0.0;
+    [ObservableProperty] private double _filterIrisFeather = 0.4;
+
+    [ObservableProperty] private double _filterOilStylization = 4.0;
+    [ObservableProperty] private double _filterOilCleanliness = 2.0;
+    [ObservableProperty] private double _filterOilScale = 1.0;
+    [ObservableProperty] private double _filterOilBristleDetail = 5.0;
+    [ObservableProperty] private bool _filterOilLighting = true;
+    [ObservableProperty] private double _filterOilAngle = 45.0;
+    [ObservableProperty] private double _filterOilShine = 0.5;
+
+    [ObservableProperty] private int _filterFacetRadius = 2;
+
+    [ObservableProperty] private int _filterWaveGenerators = 5;
+    [ObservableProperty] private double _filterWaveMinWavelength = 10.0;
+    [ObservableProperty] private double _filterWaveMaxWavelength = 120.0;
+    [ObservableProperty] private double _filterWaveMinAmplitude = 5.0;
+    [ObservableProperty] private double _filterWaveMaxAmplitude = 35.0;
+    [ObservableProperty] private int _filterWaveType = 0; // 0=Sine, 1=Triangle, 2=Square
+
+    [ObservableProperty] private double _filterRippleAmount = 50.0;
+    [ObservableProperty] private int _filterRippleSize = 1; // 0=Small, 1=Medium, 2=Large
+
+    [ObservableProperty] private double _filterPinchAmount = 50.0;
+    [ObservableProperty] private bool _filterPolarRectangularToPolar = true;
+
+    [ObservableProperty] private double _filterHalftoneMaxRadius = 8.0;
+    [ObservableProperty] private double _filterHalftoneAngle1 = 108.0;
+    [ObservableProperty] private double _filterHalftoneAngle2 = 162.0;
+    [ObservableProperty] private double _filterHalftoneAngle3 = 90.0;
+    [ObservableProperty] private double _filterHalftoneAngle4 = 45.0;
+
+    [ObservableProperty] private int _filterCrystallizeCellSize = 20;
+    [ObservableProperty] private int _filterPointillizeCellSize = 10;
+
+    [ObservableProperty] private double _filterRawExposure = 0.0;
+    [ObservableProperty] private double _filterRawTemperature = 0.0;
+    [ObservableProperty] private double _filterRawTint = 0.0;
+    [ObservableProperty] private double _filterRawContrast = 0.0;
+    [ObservableProperty] private double _filterRawHighlights = 0.0;
+    [ObservableProperty] private double _filterRawShadows = 0.0;
+    [ObservableProperty] private double _filterRawWhites = 0.0;
+    [ObservableProperty] private double _filterRawBlacks = 0.0;
+    [ObservableProperty] private double _filterRawClarity = 0.0;
+    [ObservableProperty] private double _filterRawDehaze = 0.0;
+    [ObservableProperty] private double _filterRawVibrance = 0.0;
+    [ObservableProperty] private double _filterRawSaturation = 0.0;
+
+    [ObservableProperty] private double _filterLensBrightness = 100.0;
+    [ObservableProperty] private int _filterLensType = 0;
+    [ObservableProperty] private int _filterSolarizeThreshold = 128;
 
     private ImageElement? _filterTargetImageElement;
     private byte[]? _filterOriginalBytes;
@@ -671,12 +1018,29 @@ public partial class ImageEditorViewModel
             "GaussianBlur" => "Gaussian Blur",
             "MotionBlur" => "Motion Blur",
             "RadialBlur" => "Radial Blur",
+            "TiltShift" => "Tilt-Shift",
+            "IrisBlur" => "Iris Blur",
             "UnsharpMask" => "Unsharp Mask",
             "HighPass" => "High Pass",
             "AddNoise" => "Add Noise",
             "Mosaic" => "Mosaic",
             "Twirl" => "Twirl",
             "Spherize" => "Spherize",
+            "Pinch" => "Pinch",
+            "Ripple" => "Ripple",
+            "Wave" => "Wave",
+            "PolarCoordinates" => "Polar Coordinates",
+            "ColorHalftone" => "Color Halftone",
+            "Crystallize" => "Crystallize",
+            "Pointillize" => "Pointillize",
+            "Facet" => "Facet",
+            "OilPaint" => "Oil Paint",
+            "CameraRaw" => "Camera Raw Filter",
+            "LensFlare" => "Lens Flare",
+            "Clouds" => "Clouds",
+            "DifferenceClouds" => "Difference Clouds",
+            "FindEdges" => "Find Edges",
+            "Solarize" => "Solarize",
             "Emboss" => "Emboss",
             _ => "Filter"
         };
@@ -704,6 +1068,51 @@ public partial class ImageEditorViewModel
         FilterSpherizeAmount = 50.0;
         FilterEmbossAngle = 135.0;
         FilterEmbossDepth = 3;
+        FilterTiltShiftBlur = 25.0;
+        FilterTiltShiftAngle = 0.0;
+        FilterTiltShiftFocus = 0.15;
+        FilterTiltShiftTransition = 0.25;
+        FilterIrisBlur = 25.0;
+        FilterIrisRadiusX = 0.35;
+        FilterIrisRadiusY = 0.25;
+        FilterIrisAngle = 0.0;
+        FilterIrisFeather = 0.4;
+        FilterOilStylization = 4.0;
+        FilterOilCleanliness = 2.0;
+        FilterOilScale = 1.0;
+        FilterOilBristleDetail = 5.0;
+        FilterOilLighting = true;
+        FilterOilAngle = 45.0;
+        FilterOilShine = 0.5;
+        FilterFacetRadius = 2;
+        FilterWaveGenerators = 5;
+        FilterWaveMinWavelength = 10.0;
+        FilterWaveMaxWavelength = 120.0;
+        FilterWaveMinAmplitude = 5.0;
+        FilterWaveMaxAmplitude = 35.0;
+        FilterWaveType = 0;
+        FilterRippleAmount = 50.0;
+        FilterRippleSize = 1;
+        FilterPinchAmount = 50.0;
+        FilterPolarRectangularToPolar = true;
+        FilterHalftoneMaxRadius = 8.0;
+        FilterCrystallizeCellSize = 20;
+        FilterPointillizeCellSize = 10;
+        FilterRawExposure = 0.0;
+        FilterRawTemperature = 0.0;
+        FilterRawTint = 0.0;
+        FilterRawContrast = 0.0;
+        FilterRawHighlights = 0.0;
+        FilterRawShadows = 0.0;
+        FilterRawWhites = 0.0;
+        FilterRawBlacks = 0.0;
+        FilterRawClarity = 0.0;
+        FilterRawDehaze = 0.0;
+        FilterRawVibrance = 0.0;
+        FilterRawSaturation = 0.0;
+        FilterLensBrightness = 100.0;
+        FilterLensType = 0;
+        FilterSolarizeThreshold = 128;
         FilterPreviewEnabled = true;
 
         IsFilterDialogOpen = true;
@@ -722,6 +1131,86 @@ public partial class ImageEditorViewModel
     partial void OnFilterSpherizeAmountChanged(double value) => ApplyFilterPreview();
     partial void OnFilterEmbossAngleChanged(double value) => ApplyFilterPreview();
     partial void OnFilterEmbossDepthChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterTiltShiftBlurChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterTiltShiftAngleChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterTiltShiftFocusChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterTiltShiftTransitionChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterIrisBlurChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterIrisRadiusXChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterIrisRadiusYChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterIrisAngleChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterIrisFeatherChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterOilStylizationChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterOilCleanlinessChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterOilScaleChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterOilBristleDetailChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterOilLightingChanged(bool value) => ApplyFilterPreview();
+    partial void OnFilterOilAngleChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterOilShineChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterFacetRadiusChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterWaveGeneratorsChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterWaveMinWavelengthChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterWaveMaxWavelengthChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterWaveMinAmplitudeChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterWaveMaxAmplitudeChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterWaveTypeChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterRippleAmountChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterRippleSizeChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterPinchAmountChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterPolarRectangularToPolarChanged(bool value) => ApplyFilterPreview();
+    partial void OnFilterHalftoneMaxRadiusChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterCrystallizeCellSizeChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterPointillizeCellSizeChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterRawExposureChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterRawTemperatureChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterRawTintChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterRawContrastChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterRawHighlightsChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterRawShadowsChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterRawWhitesChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterRawBlacksChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterRawClarityChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterRawDehazeChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterRawVibranceChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterRawSaturationChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterLensBrightnessChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterLensTypeChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterSolarizeThresholdChanged(int value) => ApplyFilterPreview();
+
+    private byte[] ExecuteFilterMode(byte[] bgra, int width, int height)
+    {
+        return ActiveFilterMode switch
+        {
+            "GaussianBlur" => ImageAdjustmentEngine.ApplyGaussianBlur(bgra, width, height, FilterBlurRadius),
+            "MotionBlur" => ImageAdjustmentEngine.ApplyMotionBlur(bgra, width, height, FilterMotionAngle, FilterMotionDistance),
+            "RadialBlur" => ImageAdjustmentEngine.ApplyRadialBlur(bgra, width, height, FilterRadialAmount, FilterRadialIsZoom),
+            "TiltShift" => ImageAdjustmentEngine.ApplyTiltShift(bgra, width, height, FilterTiltShiftBlur, angleDegrees: FilterTiltShiftAngle, focus: FilterTiltShiftFocus, transition: FilterTiltShiftTransition),
+            "IrisBlur" => ImageAdjustmentEngine.ApplyIrisBlur(bgra, width, height, FilterIrisBlur, radiusX: FilterIrisRadiusX, radiusY: FilterIrisRadiusY, angleDegrees: FilterIrisAngle, feather: FilterIrisFeather),
+            "UnsharpMask" => ImageAdjustmentEngine.ApplySharpen(bgra, width, height, FilterSharpenAmount / 100.0, FilterSharpenRadius, FilterSharpenThreshold),
+            "HighPass" => ImageAdjustmentEngine.ApplyHighPass(bgra, width, height, FilterHighPassRadius),
+            "AddNoise" => ImageAdjustmentEngine.ApplyAddNoise(bgra, FilterNoiseAmount, FilterNoiseMonochromatic),
+            "Mosaic" => ImageAdjustmentEngine.ApplyMosaic(bgra, width, height, FilterMosaicCellSize),
+            "Twirl" => ImageAdjustmentEngine.ApplyTwirl(bgra, width, height, FilterTwirlAngle, FilterTwirlRadius),
+            "Spherize" => ImageAdjustmentEngine.ApplySpherize(bgra, width, height, FilterSpherizeAmount),
+            "Pinch" => ImageAdjustmentEngine.ApplyPinch(bgra, width, height, FilterPinchAmount),
+            "Ripple" => ImageAdjustmentEngine.ApplyRipple(bgra, width, height, FilterRippleAmount, FilterRippleSize),
+            "Wave" => ImageAdjustmentEngine.ApplyWave(bgra, width, height, FilterWaveGenerators, FilterWaveMinWavelength, FilterWaveMaxWavelength, FilterWaveMinAmplitude, FilterWaveMaxAmplitude, FilterWaveType),
+            "PolarCoordinates" => ImageAdjustmentEngine.ApplyPolarCoordinates(bgra, width, height, FilterPolarRectangularToPolar),
+            "ColorHalftone" => ImageAdjustmentEngine.ApplyColorHalftone(bgra, width, height, FilterHalftoneMaxRadius, FilterHalftoneAngle1, FilterHalftoneAngle2, FilterHalftoneAngle3, FilterHalftoneAngle4),
+            "Crystallize" => ImageAdjustmentEngine.ApplyCrystallize(bgra, width, height, FilterCrystallizeCellSize),
+            "Pointillize" => ImageAdjustmentEngine.ApplyPointillize(bgra, width, height, FilterPointillizeCellSize),
+            "Facet" => ImageAdjustmentEngine.ApplyFacet(bgra, width, height, FilterFacetRadius),
+            "OilPaint" => ImageAdjustmentEngine.ApplyOilPaint(bgra, width, height, FilterOilStylization, FilterOilCleanliness, FilterOilScale, FilterOilBristleDetail, FilterOilLighting, FilterOilAngle, FilterOilShine),
+            "CameraRaw" => ImageAdjustmentEngine.ApplyCameraRaw(bgra, width, height, FilterRawExposure, FilterRawTemperature, FilterRawTint, FilterRawContrast, FilterRawHighlights, FilterRawShadows, FilterRawWhites, FilterRawBlacks, FilterRawClarity, FilterRawDehaze, FilterRawVibrance, FilterRawSaturation),
+            "LensFlare" => ImageAdjustmentEngine.ApplyLensFlare(bgra, width, height, FilterLensBrightness, lensType: FilterLensType),
+            "Clouds" => ImageAdjustmentEngine.ApplyClouds(bgra, width, height, PrimaryColor, SecondaryColor, false),
+            "DifferenceClouds" => ImageAdjustmentEngine.ApplyClouds(bgra, width, height, PrimaryColor, SecondaryColor, true),
+            "FindEdges" => ImageAdjustmentEngine.ApplyFindEdges(bgra, width, height),
+            "Solarize" => ImageAdjustmentEngine.ApplySolarize(bgra, FilterSolarizeThreshold),
+            "Emboss" => ImageAdjustmentEngine.ApplyEmboss(bgra, width, height, FilterEmbossAngle, FilterEmbossDepth),
+            _ => bgra
+        };
+    }
 
     private void ApplyFilterPreview()
     {
@@ -734,20 +1223,7 @@ public partial class ImageEditorViewModel
             if (srcBmp == null) return;
 
             byte[] bgra = srcBmp.Bytes;
-            byte[] filteredBgra = ActiveFilterMode switch
-            {
-                "GaussianBlur" => ImageAdjustmentEngine.ApplyGaussianBlur(bgra, srcBmp.Width, srcBmp.Height, FilterBlurRadius),
-                "MotionBlur" => ImageAdjustmentEngine.ApplyMotionBlur(bgra, srcBmp.Width, srcBmp.Height, FilterMotionAngle, FilterMotionDistance),
-                "RadialBlur" => ImageAdjustmentEngine.ApplyRadialBlur(bgra, srcBmp.Width, srcBmp.Height, FilterRadialAmount, FilterRadialIsZoom),
-                "UnsharpMask" => ImageAdjustmentEngine.ApplySharpen(bgra, srcBmp.Width, srcBmp.Height, FilterSharpenAmount / 100.0, FilterSharpenRadius, FilterSharpenThreshold),
-                "HighPass" => ImageAdjustmentEngine.ApplyHighPass(bgra, srcBmp.Width, srcBmp.Height, FilterHighPassRadius),
-                "AddNoise" => ImageAdjustmentEngine.ApplyAddNoise(bgra, FilterNoiseAmount, FilterNoiseMonochromatic),
-                "Mosaic" => ImageAdjustmentEngine.ApplyMosaic(bgra, srcBmp.Width, srcBmp.Height, FilterMosaicCellSize),
-                "Twirl" => ImageAdjustmentEngine.ApplyTwirl(bgra, srcBmp.Width, srcBmp.Height, FilterTwirlAngle, FilterTwirlRadius),
-                "Spherize" => ImageAdjustmentEngine.ApplySpherize(bgra, srcBmp.Width, srcBmp.Height, FilterSpherizeAmount),
-                "Emboss" => ImageAdjustmentEngine.ApplyEmboss(bgra, srcBmp.Width, srcBmp.Height, FilterEmbossAngle, FilterEmbossDepth),
-                _ => bgra
-            };
+            byte[] filteredBgra = ExecuteFilterMode(bgra, srcBmp.Width, srcBmp.Height);
 
             using var filteredBmp = new SKBitmap(srcBmp.Width, srcBmp.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
             var pin = System.Runtime.InteropServices.GCHandle.Alloc(filteredBgra, System.Runtime.InteropServices.GCHandleType.Pinned);
@@ -784,20 +1260,7 @@ public partial class ImageEditorViewModel
                 if (srcBmp != null)
                 {
                     byte[] bgra = srcBmp.Bytes;
-                    byte[] filteredBgra = ActiveFilterMode switch
-                    {
-                        "GaussianBlur" => ImageAdjustmentEngine.ApplyGaussianBlur(bgra, srcBmp.Width, srcBmp.Height, FilterBlurRadius),
-                        "MotionBlur" => ImageAdjustmentEngine.ApplyMotionBlur(bgra, srcBmp.Width, srcBmp.Height, FilterMotionAngle, FilterMotionDistance),
-                        "RadialBlur" => ImageAdjustmentEngine.ApplyRadialBlur(bgra, srcBmp.Width, srcBmp.Height, FilterRadialAmount, FilterRadialIsZoom),
-                        "UnsharpMask" => ImageAdjustmentEngine.ApplySharpen(bgra, srcBmp.Width, srcBmp.Height, FilterSharpenAmount / 100.0, FilterSharpenRadius, FilterSharpenThreshold),
-                        "HighPass" => ImageAdjustmentEngine.ApplyHighPass(bgra, srcBmp.Width, srcBmp.Height, FilterHighPassRadius),
-                        "AddNoise" => ImageAdjustmentEngine.ApplyAddNoise(bgra, FilterNoiseAmount, FilterNoiseMonochromatic),
-                        "Mosaic" => ImageAdjustmentEngine.ApplyMosaic(bgra, srcBmp.Width, srcBmp.Height, FilterMosaicCellSize),
-                        "Twirl" => ImageAdjustmentEngine.ApplyTwirl(bgra, srcBmp.Width, srcBmp.Height, FilterTwirlAngle, FilterTwirlRadius),
-                        "Spherize" => ImageAdjustmentEngine.ApplySpherize(bgra, srcBmp.Width, srcBmp.Height, FilterSpherizeAmount),
-                        "Emboss" => ImageAdjustmentEngine.ApplyEmboss(bgra, srcBmp.Width, srcBmp.Height, FilterEmbossAngle, FilterEmbossDepth),
-                        _ => bgra
-                    };
+                    byte[] filteredBgra = ExecuteFilterMode(bgra, srcBmp.Width, srcBmp.Height);
 
                     using var filteredBmp = new SKBitmap(srcBmp.Width, srcBmp.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
                     var pin = System.Runtime.InteropServices.GCHandle.Alloc(filteredBgra, System.Runtime.InteropServices.GCHandleType.Pinned);
@@ -864,7 +1327,7 @@ public partial class ImageEditorViewModel
 
             var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                Title = "Open Image or Photoshop PSD",
+                Title = "Open Image or PSD Document",
                 AllowMultiple = false,
                 FileTypeFilter =
                 [
@@ -872,7 +1335,7 @@ public partial class ImageEditorViewModel
                     {
                         Patterns = ["*.psd", "*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp", "*.gif"]
                     },
-                    new FilePickerFileType("Photoshop PSD (*.psd)") { Patterns = ["*.psd"] },
+                    new FilePickerFileType("Layered Document (*.psd)") { Patterns = ["*.psd"] },
                     new FilePickerFileType("All Files") { Patterns = ["*.*"] }
                 ]
             });
@@ -1001,12 +1464,12 @@ public partial class ImageEditorViewModel
 
             var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
             {
-                Title = "Save Photoshop PSD Document",
+                Title = "Save Layered PSD Document",
                 SuggestedFileName = $"{Path.GetFileNameWithoutExtension(DocumentTitle)}.psd",
                 DefaultExtension = ".psd",
                 FileTypeChoices =
                 [
-                    new FilePickerFileType("Photoshop Document (*.psd)") { Patterns = ["*.psd"] }
+                    new FilePickerFileType("Layered Document (*.psd)") { Patterns = ["*.psd"] }
                 ]
             });
 

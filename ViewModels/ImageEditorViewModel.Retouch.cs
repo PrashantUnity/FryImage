@@ -246,6 +246,35 @@ public partial class ImageEditorViewModel
                     }
                     break;
                 }
+
+                case "historybrush":
+                {
+                    byte[]? snapBytes = _historyBrushSnapshotBytes;
+                    byte[]? snapBgra = null;
+                    int snapW = imgW, snapH = imgH;
+                    if (snapBytes != null && snapBytes.Length > 0)
+                    {
+                        using var snapBmp = SKBitmap.Decode(snapBytes);
+                        if (snapBmp != null)
+                        {
+                            snapBgra = snapBmp.Bytes;
+                            snapW = snapBmp.Width;
+                            snapH = snapBmp.Height;
+                        }
+                    }
+
+                    snapBgra ??= target.OriginalImageBytes != null ? SKBitmap.Decode(target.OriginalImageBytes)?.Bytes ?? beforeBytes : beforeBytes;
+
+                    foreach (var pt in pixelPoints)
+                    {
+                        RetouchEngine.ApplyCloneStampDab(
+                            bgra, imgW, imgH,
+                            snapBgra, snapW, snapH,
+                            pt, pt,
+                            pixelRadius, hardness, BrushOpacity, BrushFlow);
+                    }
+                    break;
+                }
             }
 
             // 5. Bake modified pixels back into target ImageElement
@@ -266,6 +295,7 @@ public partial class ImageEditorViewModel
                 {
                     "clonestamp" => "Clone Stamp",
                     "healing" => "Healing Brush",
+                    "historybrush" => "History Brush",
                     "dodge" => "Dodge",
                     "burn" => "Burn",
                     "sponge" => "Sponge",

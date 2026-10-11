@@ -1,0 +1,208 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:controls="using:PdfEditorApp.Plugins.ImageEditor.Controls"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Dialogs.LiquifyDialog"
+             x:DataType="local:ImageEditorViewModel">
+
+    <!-- Modal Backdrop -->
+    <Border Background="#B0000000" IsVisible="{Binding IsLiquifyDialogOpen}">
+        <Border Width="1060" Height="700"
+                HorizontalAlignment="Center" VerticalAlignment="Center"
+                Background="{DynamicResource PsPanelBrush}"
+                BorderBrush="{DynamicResource PsBorderBrush}"
+                BorderThickness="1"
+                BoxShadow="0 16 48 #C0000000"
+                CornerRadius="3"
+                ClipToBounds="True">
+            <Grid RowDefinitions="36,*,46">
+
+                <!-- Header -->
+                <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="14,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <materialIcons:MaterialIcon Kind="Waves" Width="16" Height="16" Foreground="{DynamicResource PsAccentBrush}" />
+                            <TextBlock Text="Liquify (Studio Displacement Mesh)" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text="• Interactive Inverse Bilinear Engine" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="6,0,0,0" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="ps-opt-btn" Command="{Binding CancelLiquifyDialogCommand}" ToolTip.Tip="Cancel (Esc)">
+                            <materialIcons:MaterialIcon Kind="Close" Width="12" Height="12" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Workspace Body -->
+                <Grid Grid.Row="1" ColumnDefinitions="42,*,280">
+
+                    <!-- Left Liquify Tool Palette -->
+                    <Border Grid.Column="0" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,1,0" Padding="3,6">
+                        <StackPanel Spacing="3" HorizontalAlignment="Center">
+                            <!-- 1. Forward Warp (W) -->
+                            <Button Classes="ps-tool-btn" Width="32" Height="32"
+                                    Command="{Binding SetLiquifyToolCommand}" CommandParameter="ForwardWarp"
+                                    ToolTip.Tip="Forward Warp Tool (W)">
+                                <materialIcons:MaterialIcon Kind="CursorMove" Width="16" Height="16" />
+                            </Button>
+
+                            <!-- 2. Reconstruct (R) -->
+                            <Button Classes="ps-tool-btn" Width="32" Height="32"
+                                    Command="{Binding SetLiquifyToolCommand}" CommandParameter="Reconstruct"
+                                    ToolTip.Tip="Reconstruct Tool (R)">
+                                <materialIcons:MaterialIcon Kind="History" Width="16" Height="16" />
+                            </Button>
+
+                            <!-- 3. Smooth (S) -->
+                            <Button Classes="ps-tool-btn" Width="32" Height="32"
+                                    Command="{Binding SetLiquifyToolCommand}" CommandParameter="Smooth"
+                                    ToolTip.Tip="Smooth Tool (S)">
+                                <materialIcons:MaterialIcon Kind="WaterOutline" Width="16" Height="16" />
+                            </Button>
+
+                            <!-- 4. Twirl Clockwise (C) -->
+                            <Button Classes="ps-tool-btn" Width="32" Height="32"
+                                    Command="{Binding SetLiquifyToolCommand}" CommandParameter="TwirlCw"
+                                    ToolTip.Tip="Twirl Clockwise Tool (C)">
+                                <materialIcons:MaterialIcon Kind="RotateRight" Width="16" Height="16" />
+                            </Button>
+
+                            <!-- 5. Twirl Counter-Clockwise (CC) -->
+                            <Button Classes="ps-tool-btn" Width="32" Height="32"
+                                    Command="{Binding SetLiquifyToolCommand}" CommandParameter="TwirlCcw"
+                                    ToolTip.Tip="Twirl Counter-Clockwise Tool">
+                                <materialIcons:MaterialIcon Kind="RotateLeft" Width="16" Height="16" />
+                            </Button>
+
+                            <!-- 6. Pucker (P) -->
+                            <Button Classes="ps-tool-btn" Width="32" Height="32"
+                                    Command="{Binding SetLiquifyToolCommand}" CommandParameter="Pucker"
+                                    ToolTip.Tip="Pucker Tool (P)">
+                                <materialIcons:MaterialIcon Kind="ArrowCollapseAll" Width="16" Height="16" />
+                            </Button>
+
+                            <!-- 7. Bloat (B) -->
+                            <Button Classes="ps-tool-btn" Width="32" Height="32"
+                                    Command="{Binding SetLiquifyToolCommand}" CommandParameter="Bloat"
+                                    ToolTip.Tip="Bloat Tool (B)">
+                                <materialIcons:MaterialIcon Kind="ArrowExpandAll" Width="16" Height="16" />
+                            </Button>
+
+                            <!-- 8. Push Left (O) -->
+                            <Button Classes="ps-tool-btn" Width="32" Height="32"
+                                    Command="{Binding SetLiquifyToolCommand}" CommandParameter="PushLeft"
+                                    ToolTip.Tip="Push Left Tool (O)">
+                                <materialIcons:MaterialIcon Kind="ArrowLeftBoldOutline" Width="16" Height="16" />
+                            </Button>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Center Interactive Viewport -->
+                    <Border Grid.Column="1" Background="#14171E" ClipToBounds="True">
+                        <controls:LiquifyPreviewCanvasControl x:Name="LiquifyCanvas"
+                                                              HorizontalAlignment="Stretch"
+                                                              VerticalAlignment="Stretch"
+                                                              ActiveTool="{Binding LiquifyActiveTool}"
+                                                              BrushSize="{Binding LiquifyBrushSize}"
+                                                              BrushDensity="{Binding LiquifyBrushDensity}"
+                                                              BrushPressure="{Binding LiquifyBrushPressure}"
+                                                              BrushRate="{Binding LiquifyBrushRate}"
+                                                              ShowMesh="{Binding LiquifyShowMesh}"
+                                                              ShowBackdrop="{Binding LiquifyShowBackdrop}" />
+                    </Border>
+
+                    <!-- Right Properties & Options Inspector -->
+                    <Border Grid.Column="2" Background="{DynamicResource PsPanelBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1,0,0,0">
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Margin="14,12">
+                            <StackPanel Spacing="16">
+
+                                <!-- Brush Tool Options -->
+                                <Border Background="{DynamicResource PsOptionsBrush}" CornerRadius="2" Padding="10,8">
+                                    <StackPanel Spacing="10">
+                                        <TextBlock Text="Brush Tool Options" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource PsAccentBrush}" />
+
+                                        <!-- Size -->
+                                        <StackPanel Spacing="3">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <TextBlock Grid.Column="0" Text="Size" Classes="ps-label" />
+                                                <TextBlock Grid.Column="1" Text="{Binding LiquifyBrushSize, StringFormat='{}{0:0} px'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                            </Grid>
+                                            <Slider Minimum="2" Maximum="500" Value="{Binding LiquifyBrushSize, Mode=TwoWay}" />
+                                        </StackPanel>
+
+                                        <!-- Density -->
+                                        <StackPanel Spacing="3">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <TextBlock Grid.Column="0" Text="Density" Classes="ps-label" />
+                                                <TextBlock Grid.Column="1" Text="{Binding LiquifyBrushDensity, StringFormat='{}{0:0}%'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                            </Grid>
+                                            <Slider Minimum="0" Maximum="100" Value="{Binding LiquifyBrushDensity, Mode=TwoWay}" />
+                                        </StackPanel>
+
+                                        <!-- Pressure -->
+                                        <StackPanel Spacing="3">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <TextBlock Grid.Column="0" Text="Pressure" Classes="ps-label" />
+                                                <TextBlock Grid.Column="1" Text="{Binding LiquifyBrushPressure, StringFormat='{}{0:0}%'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                            </Grid>
+                                            <Slider Minimum="1" Maximum="100" Value="{Binding LiquifyBrushPressure, Mode=TwoWay}" />
+                                        </StackPanel>
+
+                                        <!-- Rate -->
+                                        <StackPanel Spacing="3">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <TextBlock Grid.Column="0" Text="Rate" Classes="ps-label" />
+                                                <TextBlock Grid.Column="1" Text="{Binding LiquifyBrushRate, StringFormat='{}{0:0}%'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                            </Grid>
+                                            <Slider Minimum="1" Maximum="100" Value="{Binding LiquifyBrushRate, Mode=TwoWay}" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- View Options -->
+                                <Border Background="{DynamicResource PsOptionsBrush}" CornerRadius="2" Padding="10,8">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="View Options" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource PsAccentBrush}" />
+                                        <CheckBox Content="Show Mesh (Displacement Grid)" IsChecked="{Binding LiquifyShowMesh, Mode=TwoWay}" />
+                                        <CheckBox Content="Show Backdrop (Original Image)" IsChecked="{Binding LiquifyShowBackdrop, Mode=TwoWay}" />
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Reconstruction Options -->
+                                <Border Background="{DynamicResource PsOptionsBrush}" CornerRadius="2" Padding="10,8">
+                                    <StackPanel Spacing="10">
+                                        <TextBlock Text="Reconstruction" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource PsAccentBrush}" />
+
+                                        <StackPanel Spacing="3">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <TextBlock Grid.Column="0" Text="Amount" Classes="ps-label" />
+                                                <TextBlock Grid.Column="1" Text="{Binding LiquifyReconstructAmount, StringFormat='{}{0:0}%'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                            </Grid>
+                                            <Slider Minimum="1" Maximum="100" Value="{Binding LiquifyReconstructAmount, Mode=TwoWay}" />
+                                        </StackPanel>
+
+                                        <Button Classes="ps-btn" Content="Reconstruct..." Command="{Binding ReconstructLiquifyCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,2,0,0" />
+                                        <Button Classes="ps-btn" Content="Restore All" Command="{Binding ResetLiquifyCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+
+                <!-- Footer -->
+                <Border Grid.Row="2" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="14,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <materialIcons:MaterialIcon Kind="InformationOutline" Width="13" Height="13" Foreground="{DynamicResource PsTextDimBrush}" />
+                            <TextBlock Text="Click and drag over the image to deform. Use [ / ] to resize brush." FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <Button Classes="ps-btn" Content="Cancel" Command="{Binding CancelLiquifyDialogCommand}" Padding="16,6" />
+                            <Button Classes="ps-btn ps-btn-primary" Content="OK" Command="{Binding ConfirmLiquifyDialogCommand}" Padding="20,6" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+    </Border>
+</UserControl>

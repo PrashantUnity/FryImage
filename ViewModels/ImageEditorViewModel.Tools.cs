@@ -414,11 +414,31 @@ public partial class ImageEditorViewModel
     [ObservableProperty]
     private bool _isQuickMaskMode;
 
+    partial void OnIsQuickMaskModeChanged(bool value)
+    {
+        if (CanvasControl != null)
+        {
+            CanvasControl.IsQuickMaskMode = value;
+            if (value)
+            {
+                int w = (int)Math.Max(1, CanvasWidth);
+                int h = (int)Math.Max(1, CanvasHeight);
+                if (CanvasControl.QuickMaskBuffer == null || CanvasControl.QuickMaskBuffer.Length != w * h)
+                {
+                    var buf = new byte[w * h];
+                    Array.Fill(buf, (byte)255);
+                    CanvasControl.QuickMaskBuffer = buf;
+                }
+            }
+            CanvasControl.InvalidateVisual();
+        }
+        StatusMessage = value ? "Quick Mask Mode enabled (Paint with Black to mask, White to reveal)." : "Standard Editing Mode.";
+    }
+
     [RelayCommand]
     public void ToggleQuickMask()
     {
         IsQuickMaskMode = !IsQuickMaskMode;
-        StatusMessage = IsQuickMaskMode ? "Quick Mask Mode enabled." : "Standard Editing Mode.";
     }
 
     [RelayCommand]

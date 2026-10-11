@@ -77,6 +77,11 @@ public class EditorCanvasControl : Control
     public Point? CloneSourcePoint { get; set; }
     public bool CloneAligned { get; set; } = true;
 
+    // Quick Mask mode state
+    public bool IsQuickMaskMode { get; set; }
+    public byte[]? QuickMaskBuffer { get; set; }
+    private bool _isDrawingQuickMask;
+
     // Vector Path state (Pen & Path Selection tools)
     public VectorDocumentPath? ActiveDocumentPath { get; set; }
     private bool _isDraggingPenHandle;
@@ -545,6 +550,12 @@ public class EditorCanvasControl : Control
                 DrawVectorPathOverlay(dc, ActiveDocumentPath, _zoom);
             }
 
+            // Quick Mask Mode ruby overlay
+            if (IsQuickMaskMode && QuickMaskBuffer != null)
+            {
+                DrawQuickMaskOverlay(dc, QuickMaskBuffer, _logicalWidth, _logicalHeight);
+            }
+
             if (_isDrawingDoodle && _currentDoodlePoints.Count > 0)
             {
                 var strokeColor = BrushColor;
@@ -619,7 +630,7 @@ public class EditorCanvasControl : Control
 
             // Draw brush tip cursor outline under mouse pointer
             if (_cursorCanvasPos is { } cursorPt
-                && (ActiveToolMode is "brush" or "pencil" or "eraser" or "clonestamp" or "healing" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge")
+                && (ActiveToolMode is "brush" or "pencil" or "eraser" or "clonestamp" or "healing" or "historybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" or "bgeraser" or "colorreplacement")
                 && !_isPanning && !_spaceHeld)
             {
                 DrawBrushCursor(dc, cursorPt, BrushThickness, BrushRoundness, BrushAngle, _zoom);
@@ -639,6 +650,20 @@ public class EditorCanvasControl : Control
             if (_activeGuides.Count > 0)
             {
                 DrawAlignmentGuides(dc, _activeGuides, _zoom);
+            }
+        }
+
+        // Eyedropper Magnifier Loupe (Screen-space floating HUD)
+        if (ActiveToolMode == "eyedropper" && _cursorCanvasPos is { } eyeCursor && !_isPanning && !_spaceHeld)
+        {
+            var screenPos = CanvasToScreen(eyeCursor);
+            int cx = (int)Math.Floor(eyeCursor.X);
+            int cy = (int)Math.Floor(eyeCursor.Y);
+            if (cx >= 0 && cy >= 0 && cx < _logicalWidth && cy < _logicalHeight)
+            {
+                var grid = SampleLocalColorGrid(cx, cy, 5);
+                var sampledColor = grid[5, 5];
+                DrawEyedropperLoupe(dc, screenPos, grid, sampledColor);
             }
         }
     }
@@ -1182,6 +1207,15 @@ public class EditorCanvasControl : Control
         {
             if (ActiveToolMode is "brush" or "pencil")
             {
+                if (IsQuickMaskMode && QuickMaskBuffer != null)
+                {
+                    _isDrawingQuickMask = true;
+                    ApplyQuickMaskDab(canvasPt, BrushThickness, BrushColor);
+                    e.Pointer.Capture(this);
+                    e.Handled = true;
+                    InvalidateVisual();
+                    return;
+                }
                 _isDrawingDoodle = true;
                 _currentDoodlePoints.Clear();
                 _currentDoodlePoints.Add(canvasPt);
@@ -1190,7 +1224,16 @@ public class EditorCanvasControl : Control
                 InvalidateVisual();
                 return;
             }
-            if (ActiveToolMode is "clonestamp" or "healing" or "historybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge")
+            if (ActiveToolMode == "eraser" && IsQuickMaskMode && QuickMaskBuffer != null)
+            {
+                _isDrawingQuickMask = true;
+                ApplyQuickMaskDab(canvasPt, BrushThickness, Colors.White);
+                e.Pointer.Capture(this);
+                e.Handled = true;
+                InvalidateVisual();
+                return;
+            }
+            if (ActiveToolMode is "clonestamp" or "healing" or "historybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" or "bgeraser" or "colorreplacement")
             {
                 if ((ActiveToolMode is "clonestamp" or "healing") && e.KeyModifiers.HasFlag(KeyModifiers.Alt))
                 {
@@ -1510,14 +1553,28 @@ public class EditorCanvasControl : Control
         CursorPositionChanged?.Invoke(pos);
         _cursorCanvasPos = pos;
 
-        if (ActiveToolMode is "brush" or "pencil" or "eraser" or "clonestamp" or "healing" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" && !_isDrawingDoodle && !_isDrawingRetouch)
+        if ((ActiveToolMode is "brush" or "pencil" or "eraser" or "clonestamp" or "healing" or "historybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" or "bgeraser" or "colorreplacement" or "eyedropper") && !_isDrawingDoodle && !_isDrawingRetouch)
         {
             InvalidateVisual();
+        }
+
+        if (ActiveToolMode == "eyedropper" && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            var sampled = SampleColorAtCanvasPoint(pos);
+            if (sampled is { } color) ColorSampled?.Invoke(color);
         }
 
         if (_isCropDragging)
         {
             HandleCropPointerMoved(pos);
+            InvalidateVisual();
+            return;
+        }
+
+        if (_isDrawingQuickMask && QuickMaskBuffer != null)
+        {
+            Color dabColor = (ActiveToolMode == "eraser") ? Colors.White : BrushColor;
+            ApplyQuickMaskDab(pos, BrushThickness, dabColor);
             InvalidateVisual();
             return;
         }
@@ -1750,6 +1807,12 @@ public class EditorCanvasControl : Control
         {
             _isCropDragging = false;
             _cropResizeHandle = -1;
+        }
+        else if (_isDrawingQuickMask)
+        {
+            _isDrawingQuickMask = false;
+            e.Pointer.Capture(null);
+            InvalidateVisual();
         }
         else if (_isDrawingDoodle)
         {
@@ -2278,6 +2341,227 @@ public class EditorCanvasControl : Control
         finally
         {
             Marshal.FreeHGlobal(buffer);
+        }
+    }
+
+    public Point CanvasToScreen(Point canvasPt) => canvasPt.Transform(GetViewportMatrix());
+
+    private Color[,] SampleLocalColorGrid(int centerX, int centerY, int halfGrid = 5)
+    {
+        int size = halfGrid * 2 + 1;
+        var grid = new Color[size, size];
+        int startX = centerX - halfGrid;
+        int startY = centerY - halfGrid;
+
+        var pixelSize = new PixelSize(size, size);
+        try
+        {
+            using var rtb = new RenderTargetBitmap(pixelSize);
+            using (var dc = rtb.CreateDrawingContext())
+            {
+                if (_backgroundColor.A > 0)
+                {
+                    dc.DrawRectangle(new SolidColorBrush(_backgroundColor), null, new Rect(0, 0, size, size));
+                }
+                using (dc.PushTransform(Matrix.CreateTranslation(-startX, -startY)))
+                {
+                    var localRect = new Rect(startX, startY, size, size);
+                    foreach (var el in _elements.OrderBy(e => e.ZIndex))
+                    {
+                        if (el.IsVisible && el.Bounds.Intersects(localRect))
+                        {
+                            DrawElement(dc, el);
+                        }
+                    }
+                }
+            }
+
+            int byteCount = size * size * 4;
+            var buffer = Marshal.AllocHGlobal(byteCount);
+            try
+            {
+                rtb.CopyPixels(new PixelRect(0, 0, size, size), buffer, byteCount, size * 4);
+                byte[] raw = new byte[byteCount];
+                Marshal.Copy(buffer, raw, 0, byteCount);
+
+                for (int gy = 0; gy < size; gy++)
+                {
+                    for (int gx = 0; gx < size; gx++)
+                    {
+                        int idx = (gy * size + gx) * 4;
+                        byte a = raw[idx + 3];
+                        byte r = raw[idx + 2];
+                        byte g = raw[idx + 1];
+                        byte b = raw[idx];
+                        grid[gx, gy] = a == 0 ? Colors.Transparent : Color.FromArgb(a, r, g, b);
+                    }
+                }
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(buffer);
+            }
+        }
+        catch
+        {
+            for (int gy = 0; gy < size; gy++)
+                for (int gx = 0; gx < size; gx++)
+                    grid[gx, gy] = _backgroundColor;
+        }
+
+        return grid;
+    }
+
+    private void DrawEyedropperLoupe(DrawingContext dc, Point screenPos, Color[,] grid, Color sampledColor)
+    {
+        const int half = 5;
+        const int size = half * 2 + 1; // 11
+        const double cell = 6.0;
+        const double gridPx = size * cell; // 66.0 px
+
+        double cardW = 124.0;
+        double cardH = gridPx + 70.0;
+
+        // Position offset from cursor with viewport boundary clamping
+        double targetX = screenPos.X + 24.0;
+        double targetY = screenPos.Y + 24.0;
+
+        if (targetX + cardW > Bounds.Width - 10) targetX = screenPos.X - cardW - 16.0;
+        if (targetY + cardH > Bounds.Height - 10) targetY = screenPos.Y - cardH - 16.0;
+
+        targetX = Math.Max(10, targetX);
+        targetY = Math.Max(10, targetY);
+
+        var cardRect = new Rect(targetX, targetY, cardW, cardH);
+
+        // 1. Drop shadow & card backdrop
+        dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(90, 0, 0, 0)), null, cardRect.Inflate(2));
+        dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x1F, 0x23, 0x29)), new Pen(new SolidColorBrush(Color.FromRgb(0x3E, 0x44, 0x51)), 1), cardRect, 4, 4);
+
+        // 2. Magnified pixel grid (11x11)
+        double gridLeft = targetX + (cardW - gridPx) / 2.0;
+        double gridTop = targetY + 8.0;
+
+        for (int gy = 0; gy < size; gy++)
+        {
+            for (int gx = 0; gx < size; gx++)
+            {
+                var c = grid[gx, gy];
+                var cellRect = new Rect(gridLeft + gx * cell, gridTop + gy * cell, cell, cell);
+                dc.DrawRectangle(new SolidColorBrush(c), null, cellRect);
+            }
+        }
+
+        // Hairline grid outline
+        dc.DrawRectangle(null, new Pen(new SolidColorBrush(Color.FromArgb(80, 0, 0, 0)), 1), new Rect(gridLeft, gridTop, gridPx, gridPx));
+
+        // Center pixel highlight (1px white inner, 1px black outer)
+        var centerCell = new Rect(gridLeft + half * cell, gridTop + half * cell, cell, cell);
+        dc.DrawRectangle(null, new Pen(new SolidColorBrush(Colors.Black), 2), centerCell.Inflate(1));
+        dc.DrawRectangle(null, new Pen(new SolidColorBrush(Colors.White), 1), centerCell);
+
+        // 3. Swatch & Hex / RGB label
+        double infoTop = gridTop + gridPx + 8.0;
+
+        // Color preview bar
+        var swatchRect = new Rect(targetX + 10, infoTop, 18, 18);
+        dc.DrawRectangle(new SolidColorBrush(sampledColor), new Pen(new SolidColorBrush(Colors.White), 1), swatchRect, 2, 2);
+
+        // Hex Code
+        string hex = $"#{sampledColor.R:X2}{sampledColor.G:X2}{sampledColor.B:X2}";
+        var hexText = new FormattedText(hex, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+            new Typeface("Consolas, Courier New, monospace", FontStyle.Normal, FontWeight.Bold), 10, new SolidColorBrush(Colors.White));
+        dc.DrawText(hexText, new Point(targetX + 34, infoTop + 1));
+
+        // RGB Values
+        string rgb = $"R:{sampledColor.R} G:{sampledColor.G} B:{sampledColor.B}";
+        var rgbText = new FormattedText(rgb, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+            new Typeface(FontFamily.Default, FontStyle.Normal, FontWeight.Normal), 8.5, new SolidColorBrush(Color.FromRgb(0x9D, 0xA5, 0xB4)));
+        dc.DrawText(rgbText, new Point(targetX + 10, infoTop + 24));
+
+        // Subtitle
+        var subText = new FormattedText("Eyedropper 11×11", System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+            new Typeface(FontFamily.Default, FontStyle.Normal, FontWeight.Light), 7.5, new SolidColorBrush(Color.FromRgb(0x6A, 0x73, 0x82)));
+        dc.DrawText(subText, new Point(targetX + 10, infoTop + 38));
+    }
+
+    private void DrawQuickMaskOverlay(DrawingContext dc, byte[] maskBuffer, double width, double height)
+    {
+        int w = (int)Math.Max(1, Math.Round(width));
+        int h = (int)Math.Max(1, Math.Round(height));
+        if (maskBuffer.Length < w * h) return;
+
+        using var bmp = new SkiaSharp.SKBitmap(w, h, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+        var pin = Marshal.AllocHGlobal(w * h * 4);
+        try
+        {
+            byte[] bgra = new byte[w * h * 4];
+            Parallel.For(0, h, y =>
+            {
+                int rowOffset = y * w;
+                for (int x = 0; x < w; x++)
+                {
+                    int mIdx = rowOffset + x;
+                    int bIdx = mIdx * 4;
+                    byte m = maskBuffer[mIdx];
+                    if (m < 255)
+                    {
+                        byte alpha = (byte)((255 - m) * 0.5);
+                        bgra[bIdx] = 0x62;     // B
+                        bgra[bIdx + 1] = 0x5B; // G
+                        bgra[bIdx + 2] = 0xEC; // R
+                        bgra[bIdx + 3] = alpha; // A
+                    }
+                }
+            });
+
+            Marshal.Copy(bgra, 0, pin, bgra.Length);
+            bmp.InstallPixels(bmp.Info, pin);
+
+            using var img = SkiaSharp.SKImage.FromBitmap(bmp);
+            using var enc = img.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+            using var ms = new System.IO.MemoryStream(enc.ToArray());
+            var avBmp = new Bitmap(ms);
+            dc.DrawImage(avBmp, new Rect(0, 0, width, height));
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(pin);
+        }
+    }
+
+    private void ApplyQuickMaskDab(Point center, double thickness, Color color)
+    {
+        int w = (int)Math.Max(1, Math.Round(_logicalWidth));
+        int h = (int)Math.Max(1, Math.Round(_logicalHeight));
+        if (QuickMaskBuffer == null || QuickMaskBuffer.Length < w * h) return;
+
+        double radius = Math.Max(1.0, thickness / 2.0);
+        double radSq = radius * radius;
+        byte targetVal = (byte)Math.Clamp(Math.Round(0.299 * color.R + 0.587 * color.G + 0.114 * color.B), 0, 255);
+
+        int minX = (int)Math.Max(0, Math.Floor(center.X - radius));
+        int maxX = (int)Math.Min(w - 1, Math.Ceiling(center.X + radius));
+        int minY = (int)Math.Max(0, Math.Floor(center.Y - radius));
+        int maxY = (int)Math.Min(h - 1, Math.Ceiling(center.Y + radius));
+
+        for (int y = minY; y <= maxY; y++)
+        {
+            int rowOffset = y * w;
+            for (int x = minX; x <= maxX; x++)
+            {
+                double dx = x - center.X;
+                double dy = y - center.Y;
+                double distSq = dx * dx + dy * dy;
+                if (distSq <= radSq)
+                {
+                    double dist = Math.Sqrt(distSq);
+                    double falloff = 1.0 - (dist / radius);
+                    int idx = rowOffset + x;
+                    byte cur = QuickMaskBuffer[idx];
+                    QuickMaskBuffer[idx] = (byte)Math.Clamp(Math.Round(cur + (targetVal - cur) * falloff), 0, 255);
+                }
+            }
         }
     }
 

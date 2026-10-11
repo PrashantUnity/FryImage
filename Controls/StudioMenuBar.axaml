@@ -73,6 +73,7 @@
                             <MenuItem Header="Adjustments">
                                 <MenuItem Header="Brightness / Contrast..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="BrightnessContrast" />
                                 <MenuItem Header="Levels..." InputGesture="Ctrl+L" Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Levels" />
+                                <MenuItem Header="Curves..." InputGesture="Ctrl+M" Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Curves" />
                                 <MenuItem Header="Exposure..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Exposure" />
                                 <Separator />
                                 <MenuItem Header="Hue / Saturation..." InputGesture="Ctrl+U" Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="HueSaturation" />
@@ -112,6 +113,7 @@
                             <MenuItem Header="New Adjustment Layer">
                                 <MenuItem Header="Brightness / Contrast..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="BrightnessContrast" />
                                 <MenuItem Header="Levels..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Levels" />
+                                <MenuItem Header="Curves..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Curves" />
                                 <MenuItem Header="Exposure..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Exposure" />
                                 <MenuItem Header="Hue / Saturation..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="HueSaturation" />
                                 <MenuItem Header="Vibrance..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Vibrance" />
@@ -163,6 +165,7 @@
                     <Button.Flyout>
                         <MenuFlyout Placement="BottomEdgeAlignedLeft">
                             <MenuItem Header="Camera Raw Filter..." InputGesture="Ctrl+Shift+A" Command="{Binding OpenFilterDialogCommand}" CommandParameter="CameraRaw" />
+                            <MenuItem Header="Liquify..." InputGesture="Ctrl+Shift+X" Command="{Binding OpenLiquifyDialogCommand}" />
                             <Separator />
                             <MenuItem Header="Blur Gallery">
                                 <MenuItem Header="Tilt-Shift..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="TiltShift" />

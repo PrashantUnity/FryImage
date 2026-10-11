@@ -324,6 +324,7 @@ public partial class ImageEditorViewModel
         {
             "BrightnessContrast" => "Brightness / Contrast",
             "Levels" => "Levels",
+            "Curves" => "Curves",
             "HueSaturation" => "Hue / Saturation",
             "Vibrance" => "Vibrance",
             "ColorBalance" => "Color Balance",
@@ -529,6 +530,7 @@ public partial class ImageEditorViewModel
         {
             "BrightnessContrast" => ImageAdjustmentEngine.ApplyBrightnessContrast(bgra, AdjBrightness, AdjContrast),
             "Levels" => ImageAdjustmentEngine.ApplyLevels(bgra, AdjLevelsInBlack, AdjLevelsGamma, AdjLevelsInWhite, AdjLevelsOutBlack, AdjLevelsOutWhite),
+            "Curves" => ExecuteCurvesAdjustment(bgra),
             "HueSaturation" => ImageAdjustmentEngine.ApplyHueSaturation(bgra, AdjHue, AdjSaturation, AdjLightness, AdjColorize),
             "Vibrance" => ImageAdjustmentEngine.ApplyVibrance(bgra, AdjVibrance, AdjSaturation),
             "ColorBalance" => ImageAdjustmentEngine.ApplyColorBalance(bgra, AdjCyanRed, AdjMagentaGreen, AdjYellowBlue),

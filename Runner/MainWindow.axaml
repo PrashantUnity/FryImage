@@ -61,6 +61,7 @@
                         <NativeMenu>
                             <NativeMenuItem Header="Brightness / Contrast..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="BrightnessContrast" />
                             <NativeMenuItem Header="Levels..." Gesture="Meta+L" Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Levels" />
+                            <NativeMenuItem Header="Curves..." Gesture="Meta+M" Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Curves" />
                             <NativeMenuItem Header="Hue / Saturation..." Gesture="Meta+U" Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="HueSaturation" />
                             <NativeMenuItem Header="Vibrance..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Vibrance" />
                             <NativeMenuItem Header="Color Balance..." Gesture="Meta+B" Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="ColorBalance" />
@@ -94,6 +95,7 @@
                         <NativeMenu>
                             <NativeMenuItem Header="Brightness / Contrast..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="BrightnessContrast" />
                             <NativeMenuItem Header="Levels..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Levels" />
+                            <NativeMenuItem Header="Curves..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Curves" />
                             <NativeMenuItem Header="Hue / Saturation..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="HueSaturation" />
                             <NativeMenuItem Header="Vibrance..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Vibrance" />
                         </NativeMenu>
@@ -130,6 +132,8 @@
             <!-- Filter Menu -->
             <NativeMenuItem Header="Filter">
                 <NativeMenu>
+                    <NativeMenuItem Header="Liquify..." Gesture="Meta+Shift+X" Command="{Binding OpenLiquifyDialogCommand}" />
+                    <NativeMenuItemSeparator />
                     <NativeMenuItem Header="Blur">
                         <NativeMenu>
                             <NativeMenuItem Header="Gaussian Blur..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="GaussianBlur" />

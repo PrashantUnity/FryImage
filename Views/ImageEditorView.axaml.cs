@@ -292,6 +292,12 @@ public partial class ImageEditorView : UserControl
             e.Handled = true;
             return;
         }
+        if (ctrl && shift && !alt && e.Key == Key.X)
+        {
+            vm.OpenLiquifyDialogCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
 
         // Undo / Redo
         if (ctrl && shift && e.Key == Key.Z)

@@ -440,4 +440,97 @@ public static class RetouchEngine
 
         return Math.Clamp(weight, 0.0, 1.0);
     }
+
+    /// <summary>
+    /// Applies a Background Eraser dab that samples a background color under the crosshair
+    /// and erases matching pixels within tolerance, preserving edge boundaries.
+    /// </summary>
+    public static void ApplyBackgroundEraserDab(
+        byte[] bgra, int width, int height,
+        Point center, Color sampledBgColor,
+        double radius, double hardness, double tolerance = 32.0, double opacity = 100.0)
+    {
+        int minX = (int)Math.Max(0, Math.Floor(center.X - radius));
+        int maxX = (int)Math.Min(width - 1, Math.Ceiling(center.X + radius));
+        int minY = (int)Math.Max(0, Math.Floor(center.Y - radius));
+        int maxY = (int)Math.Min(height - 1, Math.Ceiling(center.Y + radius));
+
+        double factor = opacity / 100.0;
+        if (factor <= 0.0) return;
+
+        double targetB = sampledBgColor.B;
+        double targetG = sampledBgColor.G;
+        double targetR = sampledBgColor.R;
+        double maxDist = Math.Max(1.0, tolerance * 4.4167); // scale 0-100 to max RGB Euclidean dist (~441.67)
+
+        Parallel.For(minY, maxY + 1, y =>
+        {
+            for (int x = minX; x <= maxX; x++)
+            {
+                double dist = Math.Sqrt((x - center.X) * (x - center.X) + (y - center.Y) * (y - center.Y));
+                double cov = DabCoverage(dist, radius, hardness);
+                if (cov <= 0.0) continue;
+
+                int idx = (y * width + x) * 4;
+                byte b = bgra[idx];
+                byte g = bgra[idx + 1];
+                byte r = bgra[idx + 2];
+                byte a = bgra[idx + 3];
+                if (a == 0) continue;
+
+                double colorDist = Math.Sqrt((r - targetR) * (r - targetR) + (g - targetG) * (g - targetG) + (b - targetB) * (b - targetB));
+                if (colorDist <= maxDist)
+                {
+                    double matchWeight = 1.0 - (colorDist / maxDist);
+                    double eraseAlpha = cov * matchWeight * factor;
+                    bgra[idx + 3] = (byte)Math.Clamp(Math.Round(a * (1.0 - eraseAlpha)), 0, 255);
+                }
+            }
+        });
+    }
+
+    /// <summary>
+    /// Applies Color Replacement dab that replaces target Hue and Saturation with replacement color
+    /// while strictly preserving original pixel luminosity.
+    /// </summary>
+    public static void ApplyColorReplacementDab(
+        byte[] bgra, int width, int height,
+        Point center, Color replacementColor,
+        double radius, double hardness, double opacity = 100.0)
+    {
+        int minX = (int)Math.Max(0, Math.Floor(center.X - radius));
+        int maxX = (int)Math.Min(width - 1, Math.Ceiling(center.X + radius));
+        int minY = (int)Math.Max(0, Math.Floor(center.Y - radius));
+        int maxY = (int)Math.Min(height - 1, Math.Ceiling(center.Y + radius));
+
+        double factor = opacity / 100.0;
+        if (factor <= 0.0) return;
+
+        var (repH, repS, _) = ColorConversions.RgbToHsl(replacementColor);
+
+        Parallel.For(minY, maxY + 1, y =>
+        {
+            for (int x = minX; x <= maxX; x++)
+            {
+                double dist = Math.Sqrt((x - center.X) * (x - center.X) + (y - center.Y) * (y - center.Y));
+                double cov = DabCoverage(dist, radius, hardness);
+                if (cov <= 0.0) continue;
+
+                int idx = (y * width + x) * 4;
+                byte b = bgra[idx];
+                byte g = bgra[idx + 1];
+                byte r = bgra[idx + 2];
+                byte a = bgra[idx + 3];
+                if (a == 0) continue;
+
+                var (_, _, origL) = ColorConversions.RgbToHsl(Color.FromArgb(255, r, g, b));
+                var newColor = ColorConversions.HslToRgb(repH, repS, origL);
+
+                double k = Math.Clamp(cov * factor, 0.0, 1.0);
+                bgra[idx] = (byte)Math.Clamp(Math.Round(b + (newColor.B - b) * k), 0, 255);
+                bgra[idx + 1] = (byte)Math.Clamp(Math.Round(g + (newColor.G - g) * k), 0, 255);
+                bgra[idx + 2] = (byte)Math.Clamp(Math.Round(r + (newColor.R - r) * k), 0, 255);
+            }
+        });
+    }
 }

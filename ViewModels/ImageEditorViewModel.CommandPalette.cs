@@ -52,6 +52,7 @@ public partial class ImageEditorViewModel
 
         // ── 2. Filters ───────────────────────────────────────
         AddCmd("filter.cameraraw", "Camera Raw Filter...", "Filter", "Shift+Ctrl+A", "CameraIris", () => OpenFilterDialog("CameraRaw"));
+        AddCmd("filter.liquify", "Liquify (Studio Displacement Mesh)...", "Filter", "Shift+Ctrl+X", "Waves", OpenLiquifyDialog);
         AddCmd("filter.blur.tiltshift", "Tilt-Shift Blur...", "Filter", null, "BlurRadial", () => OpenFilterDialog("TiltShift"));
         AddCmd("filter.blur.iris", "Iris Blur...", "Filter", null, "EyeOutline", () => OpenFilterDialog("IrisBlur"));
         AddCmd("filter.blur.gaussian", "Gaussian Blur...", "Filter", null, "Blur", () => OpenFilterDialog("GaussianBlur"));
@@ -98,6 +99,7 @@ public partial class ImageEditorViewModel
 
         // ── Selection & Masks ────────────────────────────────
         AddCmd("select.andmask", "Select and Mask...", "Select", "Ctrl+Alt+R", "SelectDrag", OpenSelectAndMaskDialog);
+        AddCmd("select.quickmask", "Quick Mask Mode", "Select", "Q", "CircleHalfFull", ToggleQuickMask);
         AddCmd("select.all", "Select All Elements", "Select", "Ctrl+A", "SelectAll", SelectAllElements);
         AddCmd("select.deselect", "Deselect All", "Select", "Ctrl+D", "SelectOff", DeselectAll);
         AddCmd("select.inverse", "Invert Selection Mask", "Select", "Shift+Ctrl+I", "SelectInverse", InvertSelection);

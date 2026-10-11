@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Avalonia;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using PdfEditorApp.Plugins.ImageEditor.Core.Paint;
 using PdfEditorApp.Plugins.ImageEditor.Models;
@@ -275,6 +276,39 @@ public partial class ImageEditorViewModel
                     }
                     break;
                 }
+
+                case "bgeraser":
+                {
+                    Color sampledBg = SecondaryColor;
+                    if (pixelPoints.Count > 0)
+                    {
+                        int sx = (int)Math.Clamp(pixelPoints[0].X, 0, imgW - 1);
+                        int sy = (int)Math.Clamp(pixelPoints[0].Y, 0, imgH - 1);
+                        int idx = (sy * imgW + sx) * 4;
+                        sampledBg = Color.FromArgb(bgra[idx + 3], bgra[idx + 2], bgra[idx + 1], bgra[idx]);
+                    }
+                    foreach (var pt in pixelPoints)
+                    {
+                        RetouchEngine.ApplyBackgroundEraserDab(
+                            bgra, imgW, imgH,
+                            pt, sampledBg, pixelRadius, hardness,
+                            tolerance: 32.0, opacity: BrushOpacity);
+                    }
+                    break;
+                }
+
+                case "colorreplacement":
+                {
+                    Color repColor = PrimaryColor;
+                    foreach (var pt in pixelPoints)
+                    {
+                        RetouchEngine.ApplyColorReplacementDab(
+                            bgra, imgW, imgH,
+                            pt, repColor, pixelRadius, hardness,
+                            opacity: BrushOpacity);
+                    }
+                    break;
+                }
             }
 
             // 5. Bake modified pixels back into target ImageElement
@@ -296,6 +330,8 @@ public partial class ImageEditorViewModel
                     "clonestamp" => "Clone Stamp",
                     "healing" => "Healing Brush",
                     "historybrush" => "History Brush",
+                    "bgeraser" => "Background Eraser",
+                    "colorreplacement" => "Color Replacement",
                     "dodge" => "Dodge",
                     "burn" => "Burn",
                     "sponge" => "Sponge",

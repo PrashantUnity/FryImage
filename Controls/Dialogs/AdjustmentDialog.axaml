@@ -98,6 +98,54 @@
                             </Grid>
                         </StackPanel>
 
+                        <!-- 2b. Curves View (with interactive Tone Spline Curve Graph) -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ActiveAdjustmentMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Curves'}">
+                            <!-- Preset & Channel Header -->
+                            <Grid ColumnDefinitions="*,12,*">
+                                <StackPanel Grid.Column="0" Spacing="2">
+                                    <TextBlock Text="Preset" Classes="ps-label" FontSize="10" />
+                                    <ComboBox Classes="ps-combo" HorizontalAlignment="Stretch"
+                                              ItemsSource="{Binding AvailableCurvesPresets}"
+                                              SelectedItem="{Binding SelectedCurvesPreset, Mode=TwoWay}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Spacing="2">
+                                    <TextBlock Text="Channel" Classes="ps-label" FontSize="10" />
+                                    <ComboBox Classes="ps-combo" HorizontalAlignment="Stretch"
+                                              ItemsSource="{Binding AvailableCurvesChannels}"
+                                              SelectedItem="{Binding AdjCurvesChannel, Mode=TwoWay}" />
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Interactive Curves Graph (220x220) -->
+                            <Border Background="#141822" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" CornerRadius="2" Height="220" HorizontalAlignment="Center" Width="220">
+                                <views:CurveGraphControl x:Name="CurvesGraph"
+                                                         HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                                         Points="{Binding ActiveCurvesPoints}"
+                                                         ChannelName="{Binding AdjCurvesChannel}"
+                                                         HistogramBins="{Binding HistogramLuminance}" />
+                            </Border>
+
+                            <!-- Point Coordinates & Point Actions -->
+                            <Grid ColumnDefinitions="*,10,*,Auto">
+                                <StackPanel Grid.Column="0" Spacing="2">
+                                    <TextBlock Text="Input" Classes="ps-label" FontSize="10" />
+                                    <NumericUpDown Classes="ps-num" Value="{Binding AdjCurvesSelectedIn}" Minimum="0" Maximum="255" IsEnabled="{Binding AdjCurvesHasSelectedPoint}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Spacing="2">
+                                    <TextBlock Text="Output" Classes="ps-label" FontSize="10" />
+                                    <NumericUpDown Classes="ps-num" Value="{Binding AdjCurvesSelectedOut}" Minimum="0" Maximum="255" IsEnabled="{Binding AdjCurvesHasSelectedPoint}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" VerticalAlignment="Bottom">
+                                    <Button Classes="ps-opt-btn" Command="{Binding DeleteSelectedCurvePointCommand}" ToolTip.Tip="Delete Selected Point" IsEnabled="{Binding AdjCurvesHasSelectedPoint}">
+                                        <materialIcons:MaterialIcon Kind="DeleteOutline" Width="14" Height="14" />
+                                    </Button>
+                                    <Button Classes="ps-opt-btn" Command="{Binding ResetCurvesCommand}" ToolTip.Tip="Reset Curves">
+                                        <materialIcons:MaterialIcon Kind="Refresh" Width="14" Height="14" />
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+
                         <!-- 3. Hue / Saturation View -->
                         <StackPanel Spacing="12" IsVisible="{Binding ActiveAdjustmentMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='HueSaturation'}">
                             <StackPanel Spacing="4">

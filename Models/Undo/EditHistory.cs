@@ -19,8 +19,37 @@ public sealed class EditHistory : IEditHistory
 
     public bool CanUndo => _undo.Count > 0;
     public bool CanRedo => _redo.Count > 0;
+    public int UndoCount => _undo.Count;
+    public int RedoCount => _redo.Count;
+    public IReadOnlyList<IUndoableCommand> UndoStack => _undo;
+    public IReadOnlyList<IUndoableCommand> RedoStack => _redo;
 
     public event EventHandler? HistoryChanged;
+
+    public void JumpToUndoDepth(int targetUndoCount)
+    {
+        if (targetUndoCount < 0) targetUndoCount = 0;
+        int max = _undo.Count + _redo.Count;
+        if (targetUndoCount > max) targetUndoCount = max;
+
+        while (_undo.Count > targetUndoCount && _undo.Count > 0)
+        {
+            var cmd = _undo[^1];
+            _undo.RemoveAt(_undo.Count - 1);
+            cmd.Undo();
+            _redo.Add(cmd);
+        }
+
+        while (_undo.Count < targetUndoCount && _redo.Count > 0)
+        {
+            var cmd = _redo[^1];
+            _redo.RemoveAt(_redo.Count - 1);
+            cmd.Redo();
+            _undo.Add(cmd);
+        }
+
+        HistoryChanged?.Invoke(this, EventArgs.Empty);
+    }
 
     public void Push(IUndoableCommand command)
     {

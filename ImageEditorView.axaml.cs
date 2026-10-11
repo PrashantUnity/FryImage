@@ -73,6 +73,8 @@ public partial class ImageEditorView : UserControl
         // Click-to-place: canvas reports where the user clicked/dragged for the active tool.
         CanvasControl.PlaceTextRequested += at => vm.PlaceTextElement(at);
         CanvasControl.ShapePlaced += (toolType, start, end) => vm.PlaceShapeElement(toolType, start, end);
+        CanvasControl.DoodlePlaced += pts => vm.PlaceDoodleElement(pts);
+        CanvasControl.ElementEraseRequested += el => vm.EraseElement(el);
 
         // Crop confirm/reset reports before/after state so the ViewModel can push undo.
         CanvasControl.ElementCropped += (el, before, after) => vm.RecordElementCropped(el, before, after);
@@ -99,6 +101,18 @@ public partial class ImageEditorView : UserControl
             {
                 CanvasControl.ActiveToolMode = vm.ActiveToolMode;
             }
+            else if (args.PropertyName == nameof(ImageEditorViewModel.BrushThickness))
+            {
+                CanvasControl.BrushThickness = vm.BrushThickness;
+            }
+            else if (args.PropertyName == nameof(ImageEditorViewModel.IsHighlighterMode))
+            {
+                CanvasControl.IsHighlighterMode = vm.IsHighlighterMode;
+            }
+            else if (args.PropertyName == nameof(ImageEditorViewModel.PrimaryColor))
+            {
+                CanvasControl.BrushColor = vm.PrimaryColor;
+            }
             else if (_editingTextElement is { } editing &&
                      (args.PropertyName == nameof(ImageEditorViewModel.IsBold) ||
                       args.PropertyName == nameof(ImageEditorViewModel.IsItalic) ||
@@ -110,6 +124,9 @@ public partial class ImageEditorView : UserControl
             }
         };
         CanvasControl.ActiveToolMode = vm.ActiveToolMode;
+        CanvasControl.BrushThickness = vm.BrushThickness;
+        CanvasControl.IsHighlighterMode = vm.IsHighlighterMode;
+        CanvasControl.BrushColor = vm.PrimaryColor;
 
         // Initial canvas push
         CanvasControl.SetElements([.. vm.Elements]);
@@ -136,14 +153,82 @@ public partial class ImageEditorView : UserControl
         if (focused is TextBox or NumericUpDown) return;
 
         bool ctrl = e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta);
+        bool shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
+        bool alt = e.KeyModifiers.HasFlag(KeyModifiers.Alt);
 
-        if (ctrl && e.Key == Key.Z && e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+        // Escape: dismiss any open modal dialogs, cancel crop, deselect, or reset tool
+        if (e.Key == Key.Escape)
+        {
+            if (vm.IsNewDocumentDialogOpen) { vm.IsNewDocumentDialogOpen = false; e.Handled = true; return; }
+            if (vm.IsAdjustmentDialogOpen) { vm.CancelAdjustmentDialogCommand.Execute(null); e.Handled = true; return; }
+            if (vm.IsFilterDialogOpen) { vm.CancelFilterDialogCommand.Execute(null); e.Handled = true; return; }
+            if (vm.IsLayerStyleDialogOpen) { vm.IsLayerStyleDialogOpen = false; e.Handled = true; return; }
+            if (vm.SelectedElements.Count > 0) { vm.DeselectAllCommand.Execute(null); e.Handled = true; return; }
+            vm.SetToolCommand.Execute("select");
+            e.Handled = true;
+            return;
+        }
+
+        // File Operations
+        if (ctrl && !shift && !alt && e.Key == Key.N)
+        {
+            vm.OpenNewDocumentDialogCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+        if (ctrl && !shift && !alt && e.Key == Key.O)
+        {
+            vm.OpenPsdOrImageCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+        if (ctrl && !shift && !alt && e.Key == Key.S)
+        {
+            vm.SavePsdFileCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+        if (ctrl && (shift || alt) && e.Key == Key.S)
+        {
+            vm.OpenExportDialogCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+
+        // Adjustments
+        if (ctrl && !shift && !alt && e.Key == Key.L)
+        {
+            vm.OpenAdjustmentDialogCommand.Execute("Levels");
+            e.Handled = true;
+            return;
+        }
+        if (ctrl && !shift && !alt && e.Key == Key.U)
+        {
+            vm.OpenAdjustmentDialogCommand.Execute("HueSaturation");
+            e.Handled = true;
+            return;
+        }
+        if (ctrl && !shift && !alt && e.Key == Key.M)
+        {
+            vm.OpenAdjustmentDialogCommand.Execute("Curves");
+            e.Handled = true;
+            return;
+        }
+        if (ctrl && !shift && !alt && e.Key == Key.B)
+        {
+            vm.OpenAdjustmentDialogCommand.Execute("ColorBalance");
+            e.Handled = true;
+            return;
+        }
+
+        // Undo / Redo
+        if (ctrl && shift && e.Key == Key.Z)
         {
             vm.RedoCommand.Execute(null);
             e.Handled = true;
             return;
         }
-        if (ctrl && e.Key == Key.Z)
+        if (ctrl && !shift && e.Key == Key.Z)
         {
             vm.UndoCommand.Execute(null);
             e.Handled = true;
@@ -156,12 +241,67 @@ public partial class ImageEditorView : UserControl
             return;
         }
 
-        if (ctrl && e.Key == Key.D)
+        // Selection & Hierarchy
+        if (ctrl && !shift && e.Key == Key.A)
+        {
+            vm.SelectAllElementsCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+        if (ctrl && !shift && e.Key == Key.D)
+        {
+            vm.DeselectAllCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+        if (ctrl && !shift && (e.Key == Key.J || e.Key == Key.D))
         {
             vm.DuplicateCommand.Execute(null);
             e.Handled = true;
             return;
         }
+        if (ctrl && !shift && e.Key == Key.G)
+        {
+            vm.GroupSelectionCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+        if (ctrl && shift && e.Key == Key.G)
+        {
+            vm.UngroupSelectionCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+
+        // Layer Arrangement
+        if (ctrl && (e.Key == Key.OemOpenBrackets || e.Key == Key.Oem4))
+        {
+            vm.SendBackwardCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+        if (ctrl && (e.Key == Key.OemCloseBrackets || e.Key == Key.Oem6))
+        {
+            vm.BringForwardCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+
+        // Zoom Viewport
+        if (ctrl && (e.Key == Key.D0 || e.Key == Key.NumPad0))
+        {
+            vm.FitToWindowCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+        if (ctrl && (e.Key == Key.D1 || e.Key == Key.NumPad1))
+        {
+            vm.ResetZoomCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+
+        // Clipboard
         if (ctrl && e.Key == Key.C)
         {
             vm.CopyElementsCommand.Execute(null);
@@ -175,6 +315,7 @@ public partial class ImageEditorView : UserControl
             return;
         }
 
+        // Delete
         if (e.Key is Key.Delete or Key.Back)
         {
             vm.DeleteSelectedElementCommand.Execute(null);
@@ -184,8 +325,7 @@ public partial class ImageEditorView : UserControl
 
         if (ctrl) return; // avoid stealing other Ctrl+letter shortcuts as tool switches
 
-        // Bold/Italic only act when a TextElement is selected — otherwise fall through so B/I
-        // don't accidentally swallow other future single-letter shortcuts.
+        // Bold/Italic only act when a TextElement is selected
         if (e.Key == Key.B && vm.SelectedTextElement != null)
         {
             vm.IsBold = !vm.IsBold;
@@ -199,14 +339,26 @@ public partial class ImageEditorView : UserControl
             return;
         }
 
+        // Single-key Photoshop tools
         switch (e.Key)
         {
             case Key.V: vm.SetToolCommand.Execute("select"); e.Handled = true; break;
+            case Key.M: vm.SetToolCommand.Execute("marquee"); e.Handled = true; break;
+            case Key.L: vm.SetToolCommand.Execute("lasso"); e.Handled = true; break;
+            case Key.W: vm.SetToolCommand.Execute("wand"); e.Handled = true; break;
+            case Key.C: vm.SetToolCommand.Execute("crop"); e.Handled = true; break;
+            case Key.I: if (vm.SelectedTextElement == null) { vm.SetToolCommand.Execute("eyedropper"); e.Handled = true; } break;
+            case Key.B: if (vm.SelectedTextElement == null) { vm.SetToolCommand.Execute("brush"); e.Handled = true; } break;
+            case Key.E: vm.SetToolCommand.Execute("eraser"); e.Handled = true; break;
+            case Key.G: vm.SetToolCommand.Execute("gradient"); e.Handled = true; break;
             case Key.T: vm.SetToolCommand.Execute("text"); e.Handled = true; break;
-            case Key.R: vm.SetToolCommand.Execute("rect"); e.Handled = true; break;
-            case Key.E: vm.SetToolCommand.Execute("ellipse"); e.Handled = true; break;
-            case Key.A: vm.SetToolCommand.Execute("arrow"); e.Handled = true; break;
-            case Key.Escape: vm.SetToolCommand.Execute("select"); e.Handled = true; break;
+            case Key.U: vm.SetToolCommand.Execute(vm.SelectedShapeTool); e.Handled = true; break;
+            case Key.H: vm.SetToolCommand.Execute("hand"); e.Handled = true; break;
+            case Key.Z: vm.SetToolCommand.Execute("zoom"); e.Handled = true; break;
+            case Key.X: vm.SwapColorsCommand.Execute(null); e.Handled = true; break;
+            case Key.D: vm.ResetColorsCommand.Execute(null); e.Handled = true; break;
+            case Key.Q: vm.ToggleQuickMaskCommand.Execute(null); e.Handled = true; break;
+            case Key.F: vm.FitToWindowCommand.Execute(null); e.Handled = true; break;
         }
     }
 
@@ -330,6 +482,10 @@ public class ElementTypeToIconConverter : Avalonia.Data.Converters.IValueConvert
             "Ellipse" => Material.Icons.MaterialIconKind.EllipseOutline,
             "Arrow" => Material.Icons.MaterialIconKind.ArrowTopRight,
             "Image" => Material.Icons.MaterialIconKind.ImageOutline,
+            "Polygon" => Material.Icons.MaterialIconKind.HexagonOutline,
+            "Star" => Material.Icons.MaterialIconKind.StarOutline,
+            "Drawing" => Material.Icons.MaterialIconKind.Brush,
+            "Highlighter" => Material.Icons.MaterialIconKind.Marker,
             _ => Material.Icons.MaterialIconKind.ShapeOutline
         };
     }

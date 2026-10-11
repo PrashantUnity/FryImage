@@ -61,14 +61,21 @@ public class StarElement : CanvasElement, IHasFill, IHasStroke
 
     public override bool HitTest(Point pt) => PolygonGeometry.Contains(ComputeVertices(), pt);
 
-    public override CanvasElement Clone() => new StarElement
+    public override CanvasElement Clone()
     {
-        X = X, Y = Y, Width = Width, Height = Height, ZIndex = ZIndex,
-        RotationDegrees = RotationDegrees, FlipX = FlipX, FlipY = FlipY,
-        Opacity = Opacity, IsVisible = IsVisible, IsLocked = false, Name = Name, GroupId = null,
-        AspectLocked = AspectLocked,
-        FillColor = FillColor, Gradient = Gradient, StrokeColor = StrokeColor,
-        StrokeThickness = StrokeThickness, DashStyle = DashStyle,
-        PointCount = PointCount, InnerRadiusRatio = InnerRadiusRatio,
-    };
+        var copy = new StarElement
+        {
+            FillColor = FillColor,
+            Gradient = Gradient,
+            StrokeColor = StrokeColor,
+            StrokeThickness = StrokeThickness,
+            DashStyle = DashStyle,
+            PointCount = PointCount,
+            InnerRadiusRatio = InnerRadiusRatio,
+        };
+        CopyBasePropertiesTo(copy);
+        copy.IsLocked = false;
+        copy.GroupId = null;
+        return copy;
+    }
 }

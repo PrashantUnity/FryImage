@@ -65,15 +65,15 @@ public class CanvasRulerControl : Control
         set => SetValue(PageDimensionProperty, value);
     }
 
-    // Default Fallback Resources
-    private static readonly IBrush s_defBgBrush = new SolidColorBrush(Color.Parse("#F8FAFC"));
-    private static readonly IPen s_defBorderPen = new Pen(new SolidColorBrush(Color.Parse("#E2E8F0")), 1);
-    private static readonly IPen s_defTickPen = new Pen(new SolidColorBrush(Color.Parse("#94A3B8")), 1);
-    private static readonly IPen s_defMajorTickPen = new Pen(new SolidColorBrush(Color.Parse("#64748B")), 1);
-    private static readonly IPen s_defPageBorderPen = new Pen(new SolidColorBrush(Color.Parse("#CBD5E1")), 1.5);
-    private static readonly IPen s_cursorPen = new Pen(new SolidColorBrush(Color.Parse("#0F6CBD")), 1.5);
-    private static readonly IBrush s_defPageShadeBrush = new SolidColorBrush(Color.Parse("#FFFFFF"));
-    private static readonly IBrush s_defLabelBrush = new SolidColorBrush(Color.Parse("#64748B"));
+    // Default Fallback Resources (FryImage Pro Dark palette)
+    private static readonly IBrush s_defBgBrush = new SolidColorBrush(Color.Parse("#242424"));
+    private static readonly IPen s_defBorderPen = new Pen(new SolidColorBrush(Color.Parse("#383838")), 1);
+    private static readonly IPen s_defTickPen = new Pen(new SolidColorBrush(Color.Parse("#606060")), 1);
+    private static readonly IPen s_defMajorTickPen = new Pen(new SolidColorBrush(Color.Parse("#808080")), 1);
+    private static readonly IPen s_defPageBorderPen = new Pen(new SolidColorBrush(Color.Parse("#4A4A4A")), 1.5);
+    private static readonly IPen s_cursorPen = new Pen(new SolidColorBrush(Color.Parse("#378EF0")), 1.5);
+    private static readonly IBrush s_defPageShadeBrush = new SolidColorBrush(Color.Parse("#2D2D2D"));
+    private static readonly IBrush s_defLabelBrush = new SolidColorBrush(Color.Parse("#9A9A9A"));
     private static readonly Typeface s_typeface = new("Segoe UI, -apple-system, sans-serif");
 
     static CanvasRulerControl()
@@ -143,15 +143,15 @@ public class CanvasRulerControl : Control
 
         bool isHorizontal = Orientation == Orientation.Horizontal;
 
-        var bgBrush = (this.TryFindResource("WinInputBgBrush", out var bgObj) && bgObj is IBrush b1) ? b1 : s_defBgBrush;
-        var borderBrush = (this.TryFindResource("WinBorderBrush", out var bdrObj) && bdrObj is IBrush b2) ? b2 : s_defBorderPen.Brush;
-        var tickBrush = (this.TryFindResource("WinSubtleBrush", out var tObj) && tObj is IBrush b3) ? b3 : s_defTickPen.Brush;
-        var majorTickBrush = (this.TryFindResource("WinMutedBrush", out var mtObj) && mtObj is IBrush b4) ? b4 : s_defMajorTickPen.Brush;
+        var bgBrush = (this.TryFindResource("PsChromeBrush", out var bgObj) && bgObj is IBrush b1) ? b1 : s_defBgBrush;
+        var borderBrush = (this.TryFindResource("PsBorderBrush", out var bdrObj) && bdrObj is IBrush b2) ? b2 : s_defBorderPen.Brush;
+        var tickBrush = (this.TryFindResource("PsBorderLightBrush", out var tObj) && tObj is IBrush b3) ? b3 : s_defTickPen.Brush;
+        var majorTickBrush = (this.TryFindResource("PsTextDimBrush", out var mtObj) && mtObj is IBrush b4) ? b4 : s_defMajorTickPen.Brush;
 
         var borderPen = GetCachedPen(ref _borderPen, borderBrush);
         var tickPen = GetCachedPen(ref _tickPen, tickBrush);
         var majorTickPen = GetCachedPen(ref _majorTickPen, majorTickBrush);
-        var pageShadeBrush = (this.TryFindResource("WinPanelBrush", out var psObj) && psObj is IBrush b5) ? b5 : s_defPageShadeBrush;
+        var pageShadeBrush = (this.TryFindResource("PsPanelBrush", out var psObj) && psObj is IBrush b5) ? b5 : s_defPageShadeBrush;
         var labelBrush = majorTickBrush ?? s_defLabelBrush;
 
         context.FillRectangle(bgBrush, new Rect(0, 0, bounds.Width, bounds.Height));
@@ -160,8 +160,10 @@ public class CanvasRulerControl : Control
         {
             context.DrawLine(borderPen, new Point(0, bounds.Height), new Point(bounds.Width, bounds.Height));
 
-            double zoom = Math.Max(0.1, ZoomLevel);
-            double stepPts = Unit == RulerUnit.Inches ? 72.0 : (Unit == RulerUnit.Millimeters ? 72.0 / 2.54 : 50.0);
+            double zoom = Math.Max(0.05, ZoomLevel);
+            double targetScreenSpacing = 100.0;
+            double rawStep = targetScreenSpacing / zoom;
+            double stepPts = Unit == RulerUnit.Inches ? (rawStep < 72 ? 36.0 : 72.0) : ComputeAdaptiveRulerStep(rawStep);
             double minorStepPts = stepPts / 5.0;
 
             double startX = PageOffset;
@@ -171,7 +173,7 @@ public class CanvasRulerControl : Control
             context.DrawLine(borderPen, new Point(startX, 0), new Point(startX, bounds.Height));
             context.DrawLine(borderPen, new Point(endX, 0), new Point(endX, bounds.Height));
 
-            double maxPts = PageDimension + 200;
+            double maxPts = PageDimension + (bounds.Width / zoom);
             for (double pt = 0; pt <= maxPts; pt += minorStepPts)
             {
                 double x = startX + (pt * zoom);
@@ -186,7 +188,7 @@ public class CanvasRulerControl : Control
                 {
                     string label = Unit switch
                     {
-                        RulerUnit.Inches => $"{pt / 72.0:0}\"",
+                        RulerUnit.Inches => $"{pt / 72.0:0.#}\"",
                         RulerUnit.Millimeters => $"{pt * 25.4 / 72.0:0}",
                         _ => $"{pt:0}"
                     };
@@ -208,8 +210,10 @@ public class CanvasRulerControl : Control
         {
             context.DrawLine(borderPen, new Point(bounds.Width, 0), new Point(bounds.Width, bounds.Height));
 
-            double zoom = Math.Max(0.1, ZoomLevel);
-            double stepPts = Unit == RulerUnit.Inches ? 72.0 : (Unit == RulerUnit.Millimeters ? 72.0 / 2.54 : 50.0);
+            double zoom = Math.Max(0.05, ZoomLevel);
+            double targetScreenSpacing = 100.0;
+            double rawStep = targetScreenSpacing / zoom;
+            double stepPts = Unit == RulerUnit.Inches ? (rawStep < 72 ? 36.0 : 72.0) : ComputeAdaptiveRulerStep(rawStep);
             double minorStepPts = stepPts / 5.0;
 
             double startY = PageOffset;
@@ -219,7 +223,7 @@ public class CanvasRulerControl : Control
             context.DrawLine(borderPen, new Point(0, startY), new Point(bounds.Width, startY));
             context.DrawLine(borderPen, new Point(0, endY), new Point(bounds.Width, endY));
 
-            double maxPts = PageDimension + 200;
+            double maxPts = PageDimension + (bounds.Height / zoom);
             for (double pt = 0; pt <= maxPts; pt += minorStepPts)
             {
                 double y = startY + (pt * zoom);
@@ -234,7 +238,7 @@ public class CanvasRulerControl : Control
                 {
                     string label = Unit switch
                     {
-                        RulerUnit.Inches => $"{pt / 72.0:0}\"",
+                        RulerUnit.Inches => $"{pt / 72.0:0.#}\"",
                         RulerUnit.Millimeters => $"{pt * 25.4 / 72.0:0}",
                         _ => $"{pt:0}"
                     };
@@ -252,5 +256,20 @@ public class CanvasRulerControl : Control
                 }
             }
         }
+    }
+
+    private static double ComputeAdaptiveRulerStep(double rawStep)
+    {
+        if (rawStep <= 0 || double.IsNaN(rawStep) || double.IsInfinity(rawStep))
+            return 100.0;
+
+        double magnitude = Math.Pow(10, Math.Floor(Math.Log10(rawStep)));
+        double normalized = rawStep / magnitude;
+        double nice;
+        if (normalized < 1.5) nice = 1.0;
+        else if (normalized < 3.0) nice = 2.0;
+        else if (normalized < 7.0) nice = 5.0;
+        else nice = 10.0;
+        return nice * magnitude;
     }
 }

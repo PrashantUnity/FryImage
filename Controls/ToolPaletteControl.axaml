@@ -1,0 +1,242 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.ToolPaletteControl"
+             x:DataType="local:ImageEditorViewModel"
+             Width="36"
+             Background="{DynamicResource PsPanelBrush}">
+
+    <UserControl.Resources>
+        <local:ColorToBrushConverter x:Key="ColorToBrushConverter" />
+    </UserControl.Resources>
+
+    <Border BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,1,0">
+        <Grid RowDefinitions="Auto,*,Auto">
+
+            <!-- Top: Collapse Chevron Header (FryImage « button) -->
+            <Border Grid.Row="0" Height="22" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1">
+                <Button Classes="ps-opt-btn" HorizontalAlignment="Center" ToolTip.Tip="Collapse Toolbar">
+                    <TextBlock Text="«" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                </Button>
+            </Border>
+
+            <!-- Center: Vertical Stack of Photoshop / FryImage Tools in Order -->
+            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <StackPanel Spacing="1" HorizontalAlignment="Center" Margin="0,3">
+
+                    <!-- 1. Move Tool (V) -->
+                    <Button Classes="ps-tool-btn"
+                            Classes.active="{Binding IsSelectToolActive}"
+                            Command="{Binding SetToolCommand}" CommandParameter="select"
+                            ToolTip.Tip="Move Tool (V)">
+                        <materialIcons:MaterialIcon Kind="CursorDefaultOutline" Width="15" Height="15" />
+                    </Button>
+
+                    <!-- 2. Rectangular Marquee (M) -->
+                    <Button Classes="ps-tool-btn"
+                            Classes.active="{Binding IsMarqueeToolActive}"
+                            Command="{Binding SetToolCommand}" CommandParameter="marquee"
+                            ToolTip.Tip="Rectangular Marquee Tool (M)">
+                        <materialIcons:MaterialIcon Kind="SelectionDrag" Width="15" Height="15" />
+                    </Button>
+
+                    <!-- 3. Lasso Tool (L) -->
+                    <Button Classes="ps-tool-btn"
+                            Classes.active="{Binding IsLassoToolActive}"
+                            Command="{Binding SetToolCommand}" CommandParameter="lasso"
+                            ToolTip.Tip="Lasso Tool (L)">
+                        <materialIcons:MaterialIcon Kind="Lasso" Width="15" Height="15" />
+                    </Button>
+
+                    <!-- 4. Magic Wand / Object Selection (W) -->
+                    <Button Classes="ps-tool-btn"
+                            Classes.active="{Binding IsWandToolActive}"
+                            Command="{Binding SetToolCommand}" CommandParameter="wand"
+                            ToolTip.Tip="Magic Wand Tool (W)">
+                        <materialIcons:MaterialIcon Kind="MagicStaff" Width="15" Height="15" />
+                    </Button>
+
+                    <!-- 5. Crop Tool (C) -->
+                    <Button Classes="ps-tool-btn"
+                            Classes.active="{Binding IsCropToolActive}"
+                            Command="{Binding SetToolCommand}" CommandParameter="crop"
+                            ToolTip.Tip="Crop Tool (C)">
+                        <materialIcons:MaterialIcon Kind="Crop" Width="15" Height="15" />
+                    </Button>
+
+                    <!-- 6. Eyedropper Tool (I) -->
+                    <Button Classes="ps-tool-btn"
+                            Classes.active="{Binding IsEyedropperToolActive}"
+                            Command="{Binding SetToolCommand}" CommandParameter="eyedropper"
+                            ToolTip.Tip="Eyedropper Tool (I)">
+                        <materialIcons:MaterialIcon Kind="Eyedropper" Width="15" Height="15" />
+                    </Button>
+
+                    <!-- 7. Spot Healing Brush (J) -->
+                    <Button Classes="ps-tool-btn"
+                            Command="{Binding SetToolCommand}" CommandParameter="brush"
+                            ToolTip.Tip="Spot Healing Brush Tool (J)">
+                        <materialIcons:MaterialIcon Kind="Bandage" Width="15" Height="15" />
+                    </Button>
+
+                    <!-- 8. Brush Tool (B) -->
+                    <Button Classes="ps-tool-btn"
+                            Classes.active="{Binding IsBrushToolActive}"
+                            Command="{Binding SetToolCommand}" CommandParameter="brush"
+                            ToolTip.Tip="Brush Tool (B)">
+                        <materialIcons:MaterialIcon Kind="Brush" Width="15" Height="15" />
+                    </Button>
+
+                    <!-- 9. Clone Stamp (S) -->
+                    <Button Classes="ps-tool-btn"
+                            Command="{Binding SetToolCommand}" CommandParameter="select"
+                            ToolTip.Tip="Clone Stamp Tool (S)">
+                        <materialIcons:MaterialIcon Kind="Stamper" Width="15" Height="15" />
+                    </Button>
+
+                    <!-- 10. History Brush (Y) -->
+                    <Button Classes="ps-tool-btn"
+                            Command="{Binding SetToolCommand}" CommandParameter="select"
+                            ToolTip.Tip="History Brush Tool (Y)">
+                        <materialIcons:MaterialIcon Kind="History" Width="15" Height="15" />
+                    </Button>
+
+                    <!-- 11. Eraser Tool (E) -->
+                    <Button Classes="ps-tool-btn"
+                            Classes.active="{Binding IsEraserToolActive}"
+                            Command="{Binding SetToolCommand}" CommandParameter="eraser"
+                            ToolTip.Tip="Eraser Tool (E)">
+                        <materialIcons:MaterialIcon Kind="Eraser" Width="15" Height="15" />
+                    </Button>
+
+                    <!-- 12. Gradient / Bucket Tool (G) -->
+                    <Button Classes="ps-tool-btn"
+                            Classes.active="{Binding IsGradientToolActive}"
+                            Command="{Binding SetToolCommand}" CommandParameter="gradient"
+                            ToolTip.Tip="Gradient / Paint Bucket Tool (G)">
+                        <materialIcons:MaterialIcon Kind="FormatColorFill" Width="15" Height="15" />
+                    </Button>
+
+                    <!-- 13. Blur / Sharpen Tool -->
+                    <Button Classes="ps-tool-btn"
+                            Command="{Binding OpenFilterDialogCommand}" CommandParameter="GaussianBlur"
+                            ToolTip.Tip="Blur Tool">
+                        <materialIcons:MaterialIcon Kind="Water" Width="15" Height="15" />
+                    </Button>
+
+                    <!-- 14. Dodge / Burn Tool (O) -->
+                    <Button Classes="ps-tool-btn"
+                            Command="{Binding SetToolCommand}" CommandParameter="select"
+                            ToolTip.Tip="Dodge Tool (O)">
+                        <materialIcons:MaterialIcon Kind="MagnifyPlusOutline" Width="15" Height="15" />
+                    </Button>
+
+                    <!-- 15. Pen Tool (P) -->
+                    <Button Classes="ps-tool-btn"
+                            Command="{Binding SetToolCommand}" CommandParameter="select"
+                            ToolTip.Tip="Pen Tool (P)">
+                        <materialIcons:MaterialIcon Kind="Pen" Width="15" Height="15" />
+                    </Button>
+
+                    <!-- 16. Horizontal Type Tool (T) -->
+                    <Button Classes="ps-tool-btn"
+                            Classes.active="{Binding IsTextToolActive}"
+                            Command="{Binding SetToolCommand}" CommandParameter="text"
+                            ToolTip.Tip="Horizontal Type Tool (T)">
+                        <materialIcons:MaterialIcon Kind="FormatText" Width="15" Height="15" />
+                    </Button>
+
+                    <!-- 17. Path Selection (A) -->
+                    <Button Classes="ps-tool-btn"
+                            Command="{Binding SetToolCommand}" CommandParameter="select"
+                            ToolTip.Tip="Path Selection Tool (A)">
+                        <materialIcons:MaterialIcon Kind="NearMe" Width="15" Height="15" />
+                    </Button>
+
+                    <!-- 18. Shape Tool (U) -->
+                    <Button Classes="ps-tool-btn"
+                            Classes.active="{Binding IsShapeToolActive}"
+                            Command="{Binding SelectShapeToolCommand}" CommandParameter="rect"
+                            ToolTip.Tip="Rectangle Tool (U)">
+                        <materialIcons:MaterialIcon Kind="SquareOutline" Width="15" Height="15" />
+                    </Button>
+
+                    <!-- 19. Hand Tool (H) -->
+                    <Button Classes="ps-tool-btn"
+                            Classes.active="{Binding IsHandToolActive}"
+                            Command="{Binding SetToolCommand}" CommandParameter="hand"
+                            ToolTip.Tip="Hand Tool (H / Space+Drag)">
+                        <materialIcons:MaterialIcon Kind="HandBackRightOutline" Width="15" Height="15" />
+                    </Button>
+
+                    <!-- 20. Zoom Tool (Z) -->
+                    <Button Classes="ps-tool-btn"
+                            Classes.active="{Binding IsZoomToolActive}"
+                            Command="{Binding SetToolCommand}" CommandParameter="zoom"
+                            ToolTip.Tip="Zoom Tool (Z)">
+                        <materialIcons:MaterialIcon Kind="Magnify" Width="15" Height="15" />
+                    </Button>
+
+                    <!-- 21. Edit Toolbar (...) -->
+                    <Button Classes="ps-tool-btn" ToolTip.Tip="Edit Toolbar">
+                        <materialIcons:MaterialIcon Kind="DotsHorizontal" Width="15" Height="15" />
+                    </Button>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Bottom: Foreground / Background Overlapping Color Swatches & D/X & QuickMask Controls -->
+            <Border Grid.Row="2" Padding="3,6" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0">
+                <StackPanel Spacing="4" HorizontalAlignment="Center">
+                    <Grid Width="28" Height="34">
+                        <!-- Default D button (mini B/W squares top-left) -->
+                        <Button Classes="ps-opt-btn" Width="10" Height="10" Padding="0"
+                                HorizontalAlignment="Left" VerticalAlignment="Top"
+                                Command="{Binding ResetColorsCommand}"
+                                ToolTip.Tip="Default Foreground/Background Colors (D)">
+                            <Grid Width="8" Height="8">
+                                <Rectangle Width="5" Height="5" Fill="#000000" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                                <Rectangle Width="5" Height="5" Fill="#FFFFFF" Stroke="#000000" StrokeThickness="0.5" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
+                            </Grid>
+                        </Button>
+
+                        <!-- Swap X button (mini double arrow top-right) -->
+                        <Button Classes="ps-opt-btn" Width="10" Height="10" Padding="0"
+                                HorizontalAlignment="Right" VerticalAlignment="Top"
+                                Command="{Binding SwapColorsCommand}"
+                                ToolTip.Tip="Switch Foreground and Background Colors (X)">
+                            <materialIcons:MaterialIcon Kind="ArrowTopRightBottomLeft" Width="8" Height="8" />
+                        </Button>
+
+                        <!-- Background Color Square (Bottom-Right, 16x16) -->
+                        <Border Width="16" Height="16"
+                                HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                Background="{Binding SecondaryColor, Converter={StaticResource ColorToBrushConverter}}"
+                                BorderBrush="#FFFFFF" BorderThickness="1"
+                                BoxShadow="0 1 3 #60000000" />
+
+                        <!-- Foreground Color Square (Top-Left, 16x16) -->
+                        <Border Width="16" Height="16"
+                                HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,4,0,0"
+                                Background="{Binding PrimaryColor, Converter={StaticResource ColorToBrushConverter}}"
+                                BorderBrush="#FFFFFF" BorderThickness="1"
+                                BoxShadow="0 1 3 #60000000" />
+                    </Grid>
+
+                    <!-- Quick Mask Toggle (Q) -->
+                    <ToggleButton Classes="ps-tool-btn" Width="24" Height="20"
+                                  IsChecked="{Binding IsQuickMaskMode}"
+                                  Command="{Binding ToggleQuickMaskCommand}"
+                                  ToolTip.Tip="Edit in Quick Mask Mode (Q)">
+                        <materialIcons:MaterialIcon Kind="CircleHalfFull" Width="12" Height="12" />
+                    </ToggleButton>
+
+                    <!-- Screen Mode (F) -->
+                    <Button Classes="ps-tool-btn" Width="24" Height="20" Command="{Binding FitToWindowCommand}" ToolTip.Tip="Standard Screen Mode (F)">
+                        <materialIcons:MaterialIcon Kind="Fullscreen" Width="12" Height="12" />
+                    </Button>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

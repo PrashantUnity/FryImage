@@ -102,13 +102,18 @@ public class ArrowElement : CanvasElement, IHasStroke
         return dist <= threshold;
     }
 
-    public override CanvasElement Clone() => new ArrowElement
+    public override CanvasElement Clone()
     {
-        X = X, Y = Y, Width = Width, Height = Height, ZIndex = ZIndex,
-        RotationDegrees = RotationDegrees, FlipX = FlipX, FlipY = FlipY,
-        Opacity = Opacity, IsVisible = IsVisible, IsLocked = false, Name = Name, GroupId = null,
-        AspectLocked = AspectLocked,
-        StrokeColor = StrokeColor, StrokeThickness = StrokeThickness, DashStyle = DashStyle,
-        ArrowHeadSize = ArrowHeadSize,
-    };
+        var copy = new ArrowElement
+        {
+            StrokeColor = StrokeColor,
+            StrokeThickness = StrokeThickness,
+            DashStyle = DashStyle,
+            ArrowHeadSize = ArrowHeadSize,
+        };
+        CopyBasePropertiesTo(copy);
+        copy.IsLocked = false;
+        copy.GroupId = null;
+        return copy;
+    }
 }

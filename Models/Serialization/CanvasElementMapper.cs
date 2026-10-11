@@ -20,6 +20,7 @@ public static class CanvasElementMapper
         ImageElement img => ToImageDto(img),
         PolygonElement p => ToPolygonDto(p),
         StarElement s => ToStarDto(s),
+        DoodleElement d => ToDoodleDto(d),
         _ => throw new NotSupportedException($"No DTO mapping for element type '{element.GetType().Name}'."),
     };
 
@@ -32,6 +33,7 @@ public static class CanvasElementMapper
         ImageElementDto img => FromImageDto(img),
         PolygonElementDto p => FromPolygonDto(p),
         StarElementDto s => FromStarDto(s),
+        DoodleElementDto d => FromDoodleDto(d),
         _ => throw new NotSupportedException($"No element mapping for DTO type '{dto.GetType().Name}'."),
     };
 
@@ -42,6 +44,9 @@ public static class CanvasElementMapper
         dto.RotationDegrees = el.RotationDegrees; dto.FlipX = el.FlipX; dto.FlipY = el.FlipY;
         dto.Opacity = el.Opacity; dto.IsVisible = el.IsVisible; dto.IsLocked = el.IsLocked;
         dto.Name = el.Name; dto.GroupId = el.GroupId; dto.AspectLocked = el.AspectLocked;
+        dto.FillOpacity = el.FillOpacity;
+        dto.BlendMode = el.BlendMode.ToString();
+        dto.Effects = ToEffectsDto(el.Effects);
     }
 
     private static void CopyBaseFromDto(CanvasElementDto dto, CanvasElement el)
@@ -51,6 +56,141 @@ public static class CanvasElementMapper
         el.RotationDegrees = dto.RotationDegrees; el.FlipX = dto.FlipX; el.FlipY = dto.FlipY;
         el.Opacity = dto.Opacity; el.IsVisible = dto.IsVisible; el.IsLocked = dto.IsLocked;
         el.Name = dto.Name; el.GroupId = dto.GroupId; el.AspectLocked = dto.AspectLocked;
+        el.FillOpacity = dto.FillOpacity;
+        el.BlendMode = Enum.TryParse<LayerBlendMode>(dto.BlendMode, true, out var bm) ? bm : LayerBlendMode.Normal;
+        el.Effects = FromEffectsDto(dto.Effects);
+    }
+
+    private static LayerStyleEffectsDto? ToEffectsDto(LayerStyleEffects? effects)
+    {
+        if (effects == null || !effects.HasAnyActiveEffect) return null;
+        return new LayerStyleEffectsDto
+        {
+            DropShadow = effects.DropShadow == null ? null : new DropShadowStyleDto
+            {
+                IsEnabled = effects.DropShadow.IsEnabled,
+                Color = effects.DropShadow.Color.ToString(),
+                Opacity = effects.DropShadow.Opacity,
+                Angle = effects.DropShadow.Angle,
+                Distance = effects.DropShadow.Distance,
+                Size = effects.DropShadow.Size,
+                Spread = effects.DropShadow.Spread,
+                BlendMode = effects.DropShadow.BlendMode.ToString()
+            },
+            OuterGlow = effects.OuterGlow == null ? null : new OuterGlowStyleDto
+            {
+                IsEnabled = effects.OuterGlow.IsEnabled,
+                Color = effects.OuterGlow.Color.ToString(),
+                Opacity = effects.OuterGlow.Opacity,
+                Size = effects.OuterGlow.Size,
+                Spread = effects.OuterGlow.Spread,
+                BlendMode = effects.OuterGlow.BlendMode.ToString()
+            },
+            InnerShadow = effects.InnerShadow == null ? null : new InnerShadowStyleDto
+            {
+                IsEnabled = effects.InnerShadow.IsEnabled,
+                Color = effects.InnerShadow.Color.ToString(),
+                Opacity = effects.InnerShadow.Opacity,
+                Angle = effects.InnerShadow.Angle,
+                Distance = effects.InnerShadow.Distance,
+                Size = effects.InnerShadow.Size,
+                BlendMode = effects.InnerShadow.BlendMode.ToString()
+            },
+            ColorOverlay = effects.ColorOverlay == null ? null : new ColorOverlayStyleDto
+            {
+                IsEnabled = effects.ColorOverlay.IsEnabled,
+                Color = effects.ColorOverlay.Color.ToString(),
+                Opacity = effects.ColorOverlay.Opacity,
+                BlendMode = effects.ColorOverlay.BlendMode.ToString()
+            },
+            Stroke = effects.Stroke == null ? null : new LayerStrokeStyleDto
+            {
+                IsEnabled = effects.Stroke.IsEnabled,
+                Color = effects.Stroke.Color.ToString(),
+                Size = effects.Stroke.Size,
+                Opacity = effects.Stroke.Opacity,
+                Position = effects.Stroke.Position.ToString()
+            }
+        };
+    }
+
+    private static Color SafeParseColor(string? hex, Color fallback)
+    {
+        if (string.IsNullOrWhiteSpace(hex)) return fallback;
+        return Color.TryParse(hex, out var c) ? c : fallback;
+    }
+
+    private static LayerStyleEffects FromEffectsDto(LayerStyleEffectsDto? dto)
+    {
+        var fx = new LayerStyleEffects();
+        if (dto == null) return fx;
+
+        if (dto.DropShadow != null)
+        {
+            fx.DropShadow = new DropShadowStyle
+            {
+                IsEnabled = dto.DropShadow.IsEnabled,
+                Color = SafeParseColor(dto.DropShadow.Color, Colors.Black),
+                Opacity = dto.DropShadow.Opacity,
+                Angle = dto.DropShadow.Angle,
+                Distance = dto.DropShadow.Distance,
+                Size = dto.DropShadow.Size,
+                Spread = dto.DropShadow.Spread,
+                BlendMode = Enum.TryParse<LayerBlendMode>(dto.DropShadow.BlendMode, true, out var bm) ? bm : LayerBlendMode.Multiply
+            };
+        }
+
+        if (dto.OuterGlow != null)
+        {
+            fx.OuterGlow = new OuterGlowStyle
+            {
+                IsEnabled = dto.OuterGlow.IsEnabled,
+                Color = SafeParseColor(dto.OuterGlow.Color, Color.FromRgb(255, 230, 80)),
+                Opacity = dto.OuterGlow.Opacity,
+                Size = dto.OuterGlow.Size,
+                Spread = dto.OuterGlow.Spread,
+                BlendMode = Enum.TryParse<LayerBlendMode>(dto.OuterGlow.BlendMode, true, out var bm) ? bm : LayerBlendMode.Screen
+            };
+        }
+
+        if (dto.InnerShadow != null)
+        {
+            fx.InnerShadow = new InnerShadowStyle
+            {
+                IsEnabled = dto.InnerShadow.IsEnabled,
+                Color = SafeParseColor(dto.InnerShadow.Color, Colors.Black),
+                Opacity = dto.InnerShadow.Opacity,
+                Angle = dto.InnerShadow.Angle,
+                Distance = dto.InnerShadow.Distance,
+                Size = dto.InnerShadow.Size,
+                BlendMode = Enum.TryParse<LayerBlendMode>(dto.InnerShadow.BlendMode, true, out var bm) ? bm : LayerBlendMode.Multiply
+            };
+        }
+
+        if (dto.ColorOverlay != null)
+        {
+            fx.ColorOverlay = new ColorOverlayStyle
+            {
+                IsEnabled = dto.ColorOverlay.IsEnabled,
+                Color = SafeParseColor(dto.ColorOverlay.Color, Color.FromRgb(99, 102, 241)),
+                Opacity = dto.ColorOverlay.Opacity,
+                BlendMode = Enum.TryParse<LayerBlendMode>(dto.ColorOverlay.BlendMode, true, out var bm) ? bm : LayerBlendMode.Normal
+            };
+        }
+
+        if (dto.Stroke != null)
+        {
+            fx.Stroke = new LayerStrokeStyle
+            {
+                IsEnabled = dto.Stroke.IsEnabled,
+                Color = SafeParseColor(dto.Stroke.Color, Colors.Black),
+                Size = dto.Stroke.Size,
+                Opacity = dto.Stroke.Opacity,
+                Position = Enum.TryParse<LayerStrokePosition>(dto.Stroke.Position, true, out var pos) ? pos : LayerStrokePosition.Outside
+            };
+        }
+
+        return fx;
     }
 
     private static GradientFillDto? ToGradientDto(GradientFill? gradient)
@@ -198,6 +338,38 @@ public static class CanvasElementMapper
         };
         CopyBaseFromDto(dto, s);
         return s;
+    }
+
+    private static DoodleElementDto ToDoodleDto(DoodleElement d)
+    {
+        var dto = new DoodleElementDto
+        {
+            StrokeColor = d.StrokeColor.ToString(),
+            StrokeThickness = d.StrokeThickness,
+            DashStyle = d.DashStyle.ToString(),
+            IsHighlighter = d.IsHighlighter,
+            OriginalWidth = d.OriginalWidth,
+            OriginalHeight = d.OriginalHeight,
+            Points = d.Points.Select(p => new PointDto { X = p.X, Y = p.Y }).ToList(),
+        };
+        CopyBaseToDto(d, dto);
+        return dto;
+    }
+
+    private static DoodleElement FromDoodleDto(DoodleElementDto dto)
+    {
+        var d = new DoodleElement
+        {
+            StrokeColor = Color.Parse(dto.StrokeColor),
+            StrokeThickness = dto.StrokeThickness,
+            DashStyle = Enum.Parse<StrokeDashStyle>(dto.DashStyle),
+            IsHighlighter = dto.IsHighlighter,
+            OriginalWidth = dto.OriginalWidth > 0 ? dto.OriginalWidth : dto.Width,
+            OriginalHeight = dto.OriginalHeight > 0 ? dto.OriginalHeight : dto.Height,
+            Points = dto.Points.Select(p => new Avalonia.Point(p.X, p.Y)).ToList(),
+        };
+        CopyBaseFromDto(dto, d);
+        return d;
     }
 
     private static ArrowElementDto ToArrowDto(ArrowElement a)

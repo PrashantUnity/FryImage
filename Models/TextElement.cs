@@ -178,10 +178,9 @@ public class TextElement : CanvasElement
         clone.FontStyle = FontStyle;
         clone.TextCaseTransform = TextCaseTransform;
 
-        clone.X = X; clone.Y = Y; clone.Width = Width; clone.Height = Height; clone.ZIndex = ZIndex;
-        clone.RotationDegrees = RotationDegrees; clone.FlipX = FlipX; clone.FlipY = FlipY;
-        clone.Opacity = Opacity; clone.IsVisible = IsVisible; clone.IsLocked = false;
-        clone.Name = Name; clone.GroupId = null; clone.AspectLocked = AspectLocked;
+        CopyBasePropertiesTo(clone);
+        clone.IsLocked = false;
+        clone.GroupId = null;
         clone.ForegroundColor = ForegroundColor; clone.BackgroundColor = BackgroundColor;
         clone.Alignment = Alignment; clone.IsUnderline = IsUnderline; clone.IsStrikethrough = IsStrikethrough;
         clone.IsWrapEnabled = IsWrapEnabled; clone.LineHeight = LineHeight;

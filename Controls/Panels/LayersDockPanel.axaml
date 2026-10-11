@@ -1,0 +1,360 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:models="using:PdfEditorApp.Plugins.ImageEditor.Models"
+             xmlns:undo="using:PdfEditorApp.Plugins.ImageEditor.Models.Undo"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Panels.LayersDockPanel"
+             x:DataType="local:ImageEditorViewModel"
+             Background="{DynamicResource PsPanelBrush}">
+
+    <UserControl.Resources>
+        <local:ElementTypeToIconConverter x:Key="ElementTypeToIconConverter" />
+        <local:IsVisibleToIconConverter x:Key="IsVisibleToIconConverter" />
+        <local:IsLockedToIconConverter x:Key="IsLockedToIconConverter" />
+        <local:StringEqualsConverter x:Key="StringEqualsConverter" />
+    </UserControl.Resources>
+
+    <Border BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,0">
+        <Grid RowDefinitions="26,*">
+            <!-- Tab Strip -->
+            <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" Padding="4,0">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="0">
+                        <Button Classes="ps-panel-tab" Content="Layers"
+                                Command="{Binding SelectRightDockTabCommand}" CommandParameter="Layers"
+                                Classes.active="{Binding ActiveLayersDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Layers'}" />
+                        <Button Classes="ps-panel-tab" Content="Channels"
+                                Command="{Binding SelectRightDockTabCommand}" CommandParameter="Channels"
+                                Classes.active="{Binding ActiveLayersDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Channels'}" />
+                        <Button Classes="ps-panel-tab" Content="Paths"
+                                Command="{Binding SelectRightDockTabCommand}" CommandParameter="Paths"
+                                Classes.active="{Binding ActiveLayersDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Paths'}" />
+                        <Button Classes="ps-panel-tab" Content="History"
+                                Command="{Binding SelectRightDockTabCommand}" CommandParameter="History"
+                                Classes.active="{Binding ActiveLayersDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='History'}" />
+                    </StackPanel>
+                    <Button Grid.Column="1" Classes="ps-opt-btn" Width="20" Height="20" ToolTip.Tip="Panel Options">
+                        <materialIcons:MaterialIcon Kind="Menu" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- Mode A: Layers View (Default) -->
+            <Grid Grid.Row="1" RowDefinitions="24,Auto,*,26"
+                  IsVisible="{Binding ActiveLayersDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Layers'}">
+                <!-- Sub-Header Row 1: Kind Filter -->
+                <Border Grid.Row="0" Background="{DynamicResource PsPanelBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="6,3">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                            <materialIcons:MaterialIcon Kind="Magnify" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
+                            <TextBlock Text="Kind" Classes="ps-label" />
+                            <materialIcons:MaterialIcon Kind="MenuDown" Width="10" Height="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
+                            <Button Classes="ps-tool-btn" Width="20" Height="18" ToolTip.Tip="Filter for pixel layers">
+                                <materialIcons:MaterialIcon Kind="ImageOutline" Width="11" Height="11" />
+                            </Button>
+                            <Button Classes="ps-tool-btn" Width="20" Height="18" ToolTip.Tip="Filter for adjustment layers">
+                                <materialIcons:MaterialIcon Kind="CircleHalfFull" Width="11" Height="11" />
+                            </Button>
+                            <Button Classes="ps-tool-btn" Width="20" Height="18" ToolTip.Tip="Filter for type layers">
+                                <materialIcons:MaterialIcon Kind="FormatText" Width="11" Height="11" />
+                            </Button>
+                            <Button Classes="ps-tool-btn" Width="20" Height="18" ToolTip.Tip="Filter for shape layers">
+                                <materialIcons:MaterialIcon Kind="ShapeOutline" Width="11" Height="11" />
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Sub-Header Row 2: Blend Mode, Opacity, Lock, Fill -->
+                <Border Grid.Row="1" Background="{DynamicResource PsPanelBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="6,3">
+                    <StackPanel Spacing="3">
+                        <!-- Row A: Blend Mode & Opacity -->
+                        <Grid ColumnDefinitions="*,*">
+                            <ComboBox Grid.Column="0" Classes="ps-combo"
+                                      ItemsSource="{Binding AvailableBlendModes}"
+                                      SelectedItem="{Binding BlendModeField, Mode=TwoWay}"
+                                      Margin="0,0,4,0" />
+                            <Grid Grid.Column="1" ColumnDefinitions="Auto,*" Margin="4,0,0,0">
+                                <TextBlock Grid.Column="0" Text="Opacity:" Classes="ps-label" Margin="0,0,4,0" />
+                                <NumericUpDown Grid.Column="1" Classes="ps-num"
+                                               Minimum="0" Maximum="100" Increment="5"
+                                               Value="{Binding OpacityField, Mode=TwoWay}"
+                                               FormatString="{}{0:0}%" />
+                            </Grid>
+                        </Grid>
+
+                        <!-- Row B: Lock Icons & Fill -->
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                                <TextBlock Text="Lock:" Classes="ps-label" Margin="0,0,2,0" />
+                                <Button Classes="ps-tool-btn" Width="18" Height="18" ToolTip.Tip="Lock transparent pixels">
+                                    <materialIcons:MaterialIcon Kind="Checkerboard" Width="11" Height="11" />
+                                </Button>
+                                <Button Classes="ps-tool-btn" Width="18" Height="18" ToolTip.Tip="Lock image pixels">
+                                    <materialIcons:MaterialIcon Kind="Brush" Width="11" Height="11" />
+                                </Button>
+                                <Button Classes="ps-tool-btn" Width="18" Height="18" ToolTip.Tip="Lock position">
+                                    <materialIcons:MaterialIcon Kind="ArrowAll" Width="11" Height="11" />
+                                </Button>
+                                <Button Classes="ps-tool-btn" Width="18" Height="18" ToolTip.Tip="Lock all">
+                                    <materialIcons:MaterialIcon Kind="LockOutline" Width="11" Height="11" />
+                                </Button>
+                            </StackPanel>
+                            <Grid Grid.Column="2" ColumnDefinitions="Auto,*" Width="95">
+                                <TextBlock Grid.Column="0" Text="Fill:" Classes="ps-label" Margin="0,0,4,0" />
+                                <NumericUpDown Grid.Column="1" Classes="ps-num"
+                                               Minimum="0" Maximum="100" Increment="5"
+                                               Value="{Binding FillOpacityField, Mode=TwoWay}"
+                                               FormatString="{}{0:0}%" />
+                            </Grid>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Scrollable Layers List (Topmost layer first) -->
+                <ListBox Grid.Row="2" Classes="ps-layers"
+                         ItemsSource="{Binding LayersDescendingZ}"
+                         SelectedItem="{Binding SelectedElement, Mode=TwoWay}"
+                         Background="Transparent"
+                         BorderThickness="0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="models:CanvasElement">
+                            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" Height="26" VerticalAlignment="Center">
+                                <!-- Eye Visibility Toggle Button -->
+                                <Button Grid.Column="0" Classes="ps-tool-btn" Width="18" Height="18"
+                                        Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleLayerVisibilityCommand}"
+                                        CommandParameter="{Binding}"
+                                        ToolTip.Tip="Indicates layer visibility">
+                                    <materialIcons:MaterialIcon Kind="{Binding IsVisible, Converter={StaticResource IsVisibleToIconConverter}}"
+                                                                Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
+                                </Button>
+
+                                <!-- Layer Thumbnail Frame (Square Box) -->
+                                <Border Grid.Column="1" Width="22" Height="20"
+                                        Background="#FFFFFF"
+                                        BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1"
+                                        CornerRadius="1" HorizontalAlignment="Center">
+                                    <materialIcons:MaterialIcon Kind="{Binding ElementType, Converter={StaticResource ElementTypeToIconConverter}}"
+                                                                Width="12" Height="12" Foreground="#333333" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+
+                                <!-- Layer Name -->
+                                <TextBlock Grid.Column="2" Text="{Binding DisplayName}"
+                                           FontSize="11" Foreground="{DynamicResource PsTextBrush}"
+                                           VerticalAlignment="Center" Margin="6,0,0,0"
+                                           TextTrimming="CharacterEllipsis" />
+
+                                <!-- fx Layer Style Badge -->
+                                <Button Grid.Column="3" Classes="ps-opt-btn" Height="18" Padding="3,0"
+                                        Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).OpenLayerStyleDialogCommand}"
+                                        ToolTip.Tip="Layer Style Effects (fx)">
+                                    <TextBlock Text="fx" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource PsAccentBrush}" />
+                                </Button>
+
+                                <!-- Lock Icon -->
+                                <Button Grid.Column="4" Classes="ps-tool-btn" Width="18" Height="18"
+                                        Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleLayerLockCommand}"
+                                        CommandParameter="{Binding}"
+                                        ToolTip.Tip="Toggle Layer Lock">
+                                    <materialIcons:MaterialIcon Kind="{Binding IsLocked, Converter={StaticResource IsLockedToIconConverter}}"
+                                                                Width="11" Height="11" Foreground="{DynamicResource PsTextFaintBrush}" />
+                                </Button>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- Bottom Layer Action Footer (Link, fx, Mask, Adjust, Group, New, Trash) -->
+                <Border Grid.Row="3" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="4,0">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="4" VerticalAlignment="Center">
+                        <!-- Link Layers -->
+                        <Button Classes="ps-footer-btn" ToolTip.Tip="Link Layers">
+                            <materialIcons:MaterialIcon Kind="LinkVariant" Width="12" Height="12" />
+                        </Button>
+                        <!-- Add Layer Style (fx) -->
+                        <Button Classes="ps-footer-btn" Command="{Binding OpenLayerStyleDialogCommand}" ToolTip.Tip="Add a layer style">
+                            <TextBlock Text="fx" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource PsAccentBrush}" VerticalAlignment="Center" />
+                        </Button>
+                        <!-- Add Layer Mask -->
+                        <Button Classes="ps-footer-btn" ToolTip.Tip="Add layer mask">
+                            <materialIcons:MaterialIcon Kind="SelectCompare" Width="12" Height="12" />
+                        </Button>
+                        <!-- Create New Adjustment Layer -->
+                        <Button Classes="ps-footer-btn" ToolTip.Tip="Create new fill or adjustment layer">
+                            <materialIcons:MaterialIcon Kind="CircleHalfFull" Width="12" Height="12" />
+                        </Button>
+                        <!-- Create New Group -->
+                        <Button Classes="ps-footer-btn" ToolTip.Tip="Create a new group">
+                            <materialIcons:MaterialIcon Kind="FolderOutline" Width="12" Height="12" />
+                        </Button>
+                        <!-- Create New Layer (+) -->
+                        <Button Classes="ps-footer-btn" Command="{Binding InsertRectangleCommand}" ToolTip.Tip="Create a new layer">
+                            <materialIcons:MaterialIcon Kind="Plus" Width="13" Height="13" />
+                        </Button>
+                        <!-- Delete Layer (Trash) -->
+                        <Button Classes="ps-footer-btn" Command="{Binding DeleteSelectedElementCommand}" ToolTip.Tip="Delete layer">
+                            <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="12" Height="12" />
+                        </Button>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Mode B: History View (Time Travel) -->
+            <Grid Grid.Row="1" RowDefinitions="*,26"
+                  IsVisible="{Binding ActiveLayersDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='History'}">
+                <ListBox Grid.Row="0" Classes="ps-layers"
+                         ItemsSource="{Binding HistoryItems}"
+                         Background="Transparent"
+                         BorderThickness="0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="undo:HistoryItemViewModel">
+                            <Button Classes="ps-opt-btn" HorizontalAlignment="Stretch" Padding="6,4"
+                                    Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).JumpToHistoryDepthCommand}"
+                                    CommandParameter="{Binding UndoDepth}">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <materialIcons:MaterialIcon Grid.Column="0" Kind="{Binding Icon}" Width="13" Height="13" Margin="0,0,6,0"
+                                                                Foreground="{DynamicResource PsAccentBrush}" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="11"
+                                               Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                                    <Border Grid.Column="2" Width="6" Height="6" CornerRadius="3"
+                                            Background="{DynamicResource PsAccentBrush}"
+                                            IsVisible="{Binding IsActive}" VerticalAlignment="Center" />
+                                </Grid>
+                            </Button>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <Border Grid.Row="1" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="8,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Click state to time-travel" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Classes="ps-footer-btn" Command="{Binding UndoCommand}" ToolTip.Tip="Step Backward">
+                            <materialIcons:MaterialIcon Kind="Undo" Width="12" Height="12" />
+                        </Button>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- Mode C: Channels View -->
+            <Grid Grid.Row="1" RowDefinitions="*,26"
+                  IsVisible="{Binding ActiveLayersDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Channels'}">
+                <StackPanel Grid.Row="0" Margin="4,4" Spacing="2">
+                    <!-- RGB Composite -->
+                    <Border Background="{DynamicResource PsActiveTabBrush}" CornerRadius="2" Padding="4,3">
+                        <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                            <Button Grid.Column="0" Classes="ps-tool-btn" Width="18" Height="18" ToolTip.Tip="Channel Visibility">
+                                <materialIcons:MaterialIcon Kind="EyeOutline" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
+                            </Button>
+                            <Border Grid.Column="1" Width="26" Height="20" Background="#333333" BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1" CornerRadius="1" Margin="4,0">
+                                <materialIcons:MaterialIcon Kind="Palette" Width="13" Height="13" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <TextBlock Grid.Column="2" Text="RGB" FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" Margin="4,0,0,0" />
+                            <TextBlock Grid.Column="3" Text="Ctrl+2" FontSize="10" Foreground="{DynamicResource PsTextFaintBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        </Grid>
+                    </Border>
+                    <!-- Red Channel -->
+                    <Border Background="Transparent" CornerRadius="2" Padding="4,3">
+                        <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                            <Button Grid.Column="0" Classes="ps-tool-btn" Width="18" Height="18" ToolTip.Tip="Channel Visibility">
+                                <materialIcons:MaterialIcon Kind="EyeOutline" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
+                            </Button>
+                            <Border Grid.Column="1" Width="26" Height="20" Background="#2A1515" BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1" CornerRadius="1" Margin="4,0">
+                                <TextBlock Text="R" FontSize="10" FontWeight="Bold" Foreground="#EC5B62" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <TextBlock Grid.Column="2" Text="Red" FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" Margin="4,0,0,0" />
+                            <TextBlock Grid.Column="3" Text="Ctrl+3" FontSize="10" Foreground="{DynamicResource PsTextFaintBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        </Grid>
+                    </Border>
+                    <!-- Green Channel -->
+                    <Border Background="Transparent" CornerRadius="2" Padding="4,3">
+                        <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                            <Button Grid.Column="0" Classes="ps-tool-btn" Width="18" Height="18" ToolTip.Tip="Channel Visibility">
+                                <materialIcons:MaterialIcon Kind="EyeOutline" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
+                            </Button>
+                            <Border Grid.Column="1" Width="26" Height="20" Background="#152A15" BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1" CornerRadius="1" Margin="4,0">
+                                <TextBlock Text="G" FontSize="10" FontWeight="Bold" Foreground="#22C55E" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <TextBlock Grid.Column="2" Text="Green" FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" Margin="4,0,0,0" />
+                            <TextBlock Grid.Column="3" Text="Ctrl+4" FontSize="10" Foreground="{DynamicResource PsTextFaintBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        </Grid>
+                    </Border>
+                    <!-- Blue Channel -->
+                    <Border Background="Transparent" CornerRadius="2" Padding="4,3">
+                        <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                            <Button Grid.Column="0" Classes="ps-tool-btn" Width="18" Height="18" ToolTip.Tip="Channel Visibility">
+                                <materialIcons:MaterialIcon Kind="EyeOutline" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
+                            </Button>
+                            <Border Grid.Column="1" Width="26" Height="20" Background="#151A2A" BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1" CornerRadius="1" Margin="4,0">
+                                <TextBlock Text="B" FontSize="10" FontWeight="Bold" Foreground="#3B82F6" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <TextBlock Grid.Column="2" Text="Blue" FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" Margin="4,0,0,0" />
+                            <TextBlock Grid.Column="3" Text="Ctrl+5" FontSize="10" Foreground="{DynamicResource PsTextFaintBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <!-- Channels Action Footer -->
+                <Border Grid.Row="1" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="4,0">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="4" VerticalAlignment="Center">
+                        <Button Classes="ps-footer-btn" ToolTip.Tip="Load channel as selection">
+                            <materialIcons:MaterialIcon Kind="SelectCompare" Width="12" Height="12" />
+                        </Button>
+                        <Button Classes="ps-footer-btn" ToolTip.Tip="Save selection as channel">
+                            <materialIcons:MaterialIcon Kind="SelectionDrag" Width="12" Height="12" />
+                        </Button>
+                        <Button Classes="ps-footer-btn" ToolTip.Tip="Create new channel">
+                            <materialIcons:MaterialIcon Kind="Plus" Width="13" Height="13" />
+                        </Button>
+                        <Button Classes="ps-footer-btn" ToolTip.Tip="Delete channel">
+                            <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="12" Height="12" />
+                        </Button>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Mode D: Paths View -->
+            <Grid Grid.Row="1" RowDefinitions="*,26"
+                  IsVisible="{Binding ActiveLayersDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Paths'}">
+                <StackPanel Grid.Row="0" Margin="4,4" Spacing="2">
+                    <!-- Work Path Item -->
+                    <Border Background="{DynamicResource PsActiveTabBrush}" CornerRadius="2" Padding="4,3">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <Border Grid.Column="0" Width="26" Height="20" Background="#262626" BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1" CornerRadius="1" Margin="4,0">
+                                <materialIcons:MaterialIcon Kind="VectorPolyline" Width="13" Height="13" Foreground="{DynamicResource PsAccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="Work Path" FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" Margin="6,0,0,0" />
+                            <TextBlock Grid.Column="2" Text="Active" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <!-- Paths Action Footer -->
+                <Border Grid.Row="1" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="4,0">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="4" VerticalAlignment="Center">
+                        <Button Classes="ps-footer-btn" ToolTip.Tip="Fill path with foreground color">
+                            <materialIcons:MaterialIcon Kind="FormatColorFill" Width="12" Height="12" />
+                        </Button>
+                        <Button Classes="ps-footer-btn" ToolTip.Tip="Stroke path with brush">
+                            <materialIcons:MaterialIcon Kind="Brush" Width="12" Height="12" />
+                        </Button>
+                        <Button Classes="ps-footer-btn" ToolTip.Tip="Load path as a selection">
+                            <materialIcons:MaterialIcon Kind="SelectCompare" Width="12" Height="12" />
+                        </Button>
+                        <Button Classes="ps-footer-btn" ToolTip.Tip="Make work path from selection">
+                            <materialIcons:MaterialIcon Kind="VectorPolygon" Width="12" Height="12" />
+                        </Button>
+                        <Button Classes="ps-footer-btn" ToolTip.Tip="Create new path">
+                            <materialIcons:MaterialIcon Kind="Plus" Width="13" Height="13" />
+                        </Button>
+                        <Button Classes="ps-footer-btn" ToolTip.Tip="Delete current path">
+                            <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="12" Height="12" />
+                        </Button>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

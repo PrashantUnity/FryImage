@@ -1,0 +1,37 @@
+## Build results
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+publish/
+dist/
+*.app/
+*.metadata.json
+
+## Visual Studio / JetBrains Rider / VS Code cache
+.vs/
+.idea/
+.junie/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+.vscode/
+
+## macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+## Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+## Temporary files, reference samples & caches
+*.tmp
+*.temp
+*.log
+.cache/
+IdeaSample/

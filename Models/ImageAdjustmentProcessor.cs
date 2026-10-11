@@ -208,4 +208,57 @@ public static class ImageAdjustmentProcessor
                 true, innerBlur, userBlur!);
         }
     }
+
+    /// <summary>
+    /// Computes 256-bin continuous histograms for Red, Green, Blue, and Luminance channels,
+    /// along with statistical metrics (Mean, Median, StdDev), matching FryImage's analyzer.
+    /// </summary>
+    public static (int[] R, int[] G, int[] B, int[] Lum, double Mean, double Median, double StdDev, int TotalPixels) ComputeHistogram(SKBitmap bitmap)
+    {
+        var rBins = new int[256];
+        var gBins = new int[256];
+        var bBins = new int[256];
+        var lumBins = new int[256];
+
+        int total = bitmap.Width * bitmap.Height;
+        if (total == 0) return (rBins, gBins, bBins, lumBins, 128, 128, 0, 0);
+
+        double sumLum = 0;
+        var pixels = bitmap.Pixels;
+        for (int i = 0; i < pixels.Length; i++)
+        {
+            var p = pixels[i];
+            rBins[p.Red]++;
+            gBins[p.Green]++;
+            bBins[p.Blue]++;
+            int lum = (int)Math.Clamp(0.299 * p.Red + 0.587 * p.Green + 0.114 * p.Blue, 0, 255);
+            lumBins[lum]++;
+            sumLum += lum;
+        }
+
+        double mean = sumLum / total;
+
+        int half = total / 2;
+        int acc = 0;
+        int median = 128;
+        for (int i = 0; i < 256; i++)
+        {
+            acc += lumBins[i];
+            if (acc >= half)
+            {
+                median = i;
+                break;
+            }
+        }
+
+        double sumSqDiff = 0;
+        for (int i = 0; i < 256; i++)
+        {
+            double diff = i - mean;
+            sumSqDiff += diff * diff * lumBins[i];
+        }
+        double stdDev = Math.Sqrt(sumSqDiff / total);
+
+        return (rBins, gBins, bBins, lumBins, mean, median, stdDev, total);
+    }
 }

@@ -1,0 +1,113 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Dialogs.FilterDialog"
+             x:DataType="local:ImageEditorViewModel">
+
+    <UserControl.Resources>
+        <local:StringEqualsConverter x:Key="StringEqualsConverter" />
+    </UserControl.Resources>
+
+    <!-- Modal Backdrop -->
+    <Border Background="#90000000" IsVisible="{Binding IsFilterDialogOpen}">
+        <Border Width="480" Height="360"
+                Background="{DynamicResource PsPanelBrush}"
+                BorderBrush="{DynamicResource PsBorderBrush}"
+                BorderThickness="1"
+                BoxShadow="0 10 36 #B0000000"
+                CornerRadius="2"
+                ClipToBounds="True">
+            <Grid RowDefinitions="34,*,46">
+
+                <!-- Header -->
+                <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="14,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <materialIcons:MaterialIcon Kind="Blur" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+                            <TextBlock Text="{Binding ActiveFilterTitle}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="ps-opt-btn" Command="{Binding CancelFilterDialogCommand}" ToolTip.Tip="Cancel (Esc)">
+                            <materialIcons:MaterialIcon Kind="Close" Width="12" Height="12" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Body Controls -->
+                <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Margin="16,12">
+                    <StackPanel Spacing="14">
+
+                        <!-- 1. Gaussian Blur -->
+                        <StackPanel Spacing="8" IsVisible="{Binding ActiveFilterMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='GaussianBlur'}">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="Radius" Classes="ps-label" />
+                                <TextBlock Grid.Column="1" Text="{Binding FilterBlurRadius, StringFormat='{}{0:0.0} pixels'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                            </Grid>
+                            <Slider Minimum="0.1" Maximum="100.0" Value="{Binding FilterBlurRadius, Mode=TwoWay}" />
+                        </StackPanel>
+
+                        <!-- 2. Unsharp Mask -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ActiveFilterMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='UnsharpMask'}">
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Amount" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterSharpenAmount, StringFormat='{}{0:0}%'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="1" Maximum="500" Value="{Binding FilterSharpenAmount, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Radius" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterSharpenRadius, StringFormat='{}{0:0.0} pixels'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="0.1" Maximum="50.0" Value="{Binding FilterSharpenRadius, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Threshold" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterSharpenThreshold, StringFormat='{}{0:0} levels'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="0" Maximum="255" Value="{Binding FilterSharpenThreshold, Mode=TwoWay}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- 3. High Pass -->
+                        <StackPanel Spacing="8" IsVisible="{Binding ActiveFilterMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='HighPass'}">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="Radius" Classes="ps-label" />
+                                <TextBlock Grid.Column="1" Text="{Binding FilterHighPassRadius, StringFormat='{}{0:0.0} pixels'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                            </Grid>
+                            <Slider Minimum="0.5" Maximum="100.0" Value="{Binding FilterHighPassRadius, Mode=TwoWay}" />
+                        </StackPanel>
+
+                        <!-- 4. Add Noise -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ActiveFilterMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='AddNoise'}">
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Amount" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterNoiseAmount, StringFormat='{}{0:0}%'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="1" Maximum="100" Value="{Binding FilterNoiseAmount, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <CheckBox Content="Monochromatic" IsChecked="{Binding FilterNoiseMonochromatic, Mode=TwoWay}" Margin="0,4,0,0" />
+                        </StackPanel>
+
+                        <!-- Live Preview Toggle -->
+                        <CheckBox Content="Preview" IsChecked="{Binding FilterPreviewEnabled, Mode=TwoWay}" Margin="0,6,0,0" />
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Footer Action Buttons -->
+                <Border Grid.Row="2" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="14,8">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                        <Button Classes="ps-btn" Content="Cancel" Command="{Binding CancelFilterDialogCommand}" Padding="14,5" />
+                        <Button Classes="ps-btn ps-btn-primary" Content="OK" Command="{Binding ConfirmFilterDialogCommand}" Padding="18,5" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Border>
+</UserControl>

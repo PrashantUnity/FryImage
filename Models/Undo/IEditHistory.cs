@@ -7,6 +7,11 @@ public interface IEditHistory
     bool CanUndo { get; }
     bool CanRedo { get; }
 
+    int UndoCount { get; }
+    int RedoCount { get; }
+    IReadOnlyList<IUndoableCommand> UndoStack { get; }
+    IReadOnlyList<IUndoableCommand> RedoStack { get; }
+
     /// <summary>Raised whenever <see cref="CanUndo"/>/<see cref="CanRedo"/> may have changed.</summary>
     event EventHandler? HistoryChanged;
 
@@ -15,6 +20,7 @@ public interface IEditHistory
 
     void Undo();
     void Redo();
+    void JumpToUndoDepth(int targetUndoCount);
 
     /// <summary>Discards all history without undoing anything (e.g. on ClearCanvas).</summary>
     void Clear();

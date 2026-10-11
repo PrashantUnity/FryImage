@@ -1,0 +1,199 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             xmlns:colorPrimitives="clr-namespace:Avalonia.Controls.Primitives;assembly=Avalonia.Controls.ColorPicker"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Panels.ColorDockPanel"
+             x:DataType="local:ImageEditorViewModel"
+             Background="{DynamicResource PsPanelBrush}">
+
+    <UserControl.Resources>
+        <local:ColorToBrushConverter x:Key="ColorToBrushConverter" />
+        <local:StringEqualsConverter x:Key="StringEqualsConverter" />
+    </UserControl.Resources>
+
+    <Border BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1">
+        <Grid RowDefinitions="26,*">
+            <!-- Tab Strip -->
+            <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" Padding="4,0">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="0">
+                        <Button Classes="ps-panel-tab" Content="Color"
+                                Command="{Binding SelectColorDockTabCommand}" CommandParameter="Color"
+                                Classes.active="{Binding ActiveColorDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Color'}" />
+                        <Button Classes="ps-panel-tab" Content="Swatches"
+                                Command="{Binding SelectColorDockTabCommand}" CommandParameter="Swatches"
+                                Classes.active="{Binding ActiveColorDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Swatches'}" />
+                        <Button Classes="ps-panel-tab" Content="Gradients"
+                                Command="{Binding SelectColorDockTabCommand}" CommandParameter="Gradients"
+                                Classes.active="{Binding ActiveColorDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Gradients'}" />
+                    </StackPanel>
+                    <Button Grid.Column="1" Classes="ps-opt-btn" Width="20" Height="20" ToolTip.Tip="Panel Options">
+                        <materialIcons:MaterialIcon Kind="Menu" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- Mode 1: Color Spectrum & Sliders -->
+            <Grid Grid.Row="1" Margin="8,6" RowDefinitions="Auto,Auto"
+                  IsVisible="{Binding ActiveColorDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Color'}">
+                <!-- Spectrum Area -->
+                <Grid ColumnDefinitions="32,*,18" ColumnSpacing="6" Height="120">
+                    <!-- Foreground / Background Dual Squares & Swappers -->
+                    <StackPanel Grid.Column="0" Spacing="3" VerticalAlignment="Top">
+                        <Grid Width="28" Height="28">
+                            <Border Width="16" Height="16" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                    Background="{Binding SecondaryColor, Converter={StaticResource ColorToBrushConverter}}"
+                                    BorderBrush="#FFFFFF" BorderThickness="1" />
+                            <Border Width="16" Height="16" HorizontalAlignment="Left" VerticalAlignment="Top"
+                                    Background="{Binding PrimaryColor, Converter={StaticResource ColorToBrushConverter}}"
+                                    BorderBrush="#FFFFFF" BorderThickness="1" />
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" Spacing="2" HorizontalAlignment="Center">
+                            <Button Classes="ps-opt-btn" Width="12" Height="12" Padding="0"
+                                    Command="{Binding SwapColorsCommand}" ToolTip.Tip="Switch Foreground and Background Colors (X)">
+                                <materialIcons:MaterialIcon Kind="SwapHorizontal" Width="10" Height="10" />
+                            </Button>
+                            <Button Classes="ps-opt-btn" Width="12" Height="12" Padding="0"
+                                    Command="{Binding ResetColorsCommand}" ToolTip.Tip="Default Foreground and Background Colors (D)">
+                                <materialIcons:MaterialIcon Kind="CheckboxBlankOutline" Width="10" Height="10" />
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- 2D Saturation / Value Spectrum Box -->
+                    <Border Grid.Column="1" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" CornerRadius="1">
+                        <colorPrimitives:ColorSpectrum Color="{Binding PrimaryColor, Mode=TwoWay}"
+                                                       Components="SaturationValue"
+                                                       Shape="Box"
+                                                       MinHeight="110" />
+                    </Border>
+
+                    <!-- Vertical Rainbow Hue Slider -->
+                    <Border Grid.Column="2" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" CornerRadius="1">
+                        <colorPrimitives:ColorSlider Color="{Binding PrimaryColor, Mode=TwoWay}"
+                                                     Orientation="Vertical"
+                                                     Width="16" />
+                    </Border>
+                </Grid>
+
+                <!-- Hex and Values Row -->
+                <Grid Grid.Row="1" Margin="0,6,0,0" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6" VerticalAlignment="Center">
+                    <TextBlock Grid.Column="0" Text="#" VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" />
+                    <TextBox Grid.Column="1" Height="20" Padding="4,1" FontSize="11"
+                             Text="{Binding PrimaryColorHex, Mode=OneWay}"
+                             Classes="ps-input" />
+                    <TextBlock Grid.Column="2" Text="RGB" VerticalAlignment="Center" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                </Grid>
+            </Grid>
+
+            <!-- Mode 2: Swatches Grid -->
+            <Grid Grid.Row="1" Margin="8,6" RowDefinitions="Auto,*"
+                  IsVisible="{Binding ActiveColorDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Swatches'}">
+                <Grid Grid.Row="0" Margin="0,0,0,6" ColumnDefinitions="*,Auto">
+                    <TextBlock Text="Preset Palette" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="30 Swatches" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                </Grid>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" MaxHeight="140">
+                    <ItemsControl ItemsSource="{Binding SwatchesList}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="6" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Width="28" Height="22" Margin="2" Padding="0"
+                                        Background="{Binding Converter={StaticResource ColorToBrushConverter}}"
+                                        BorderBrush="#404040" BorderThickness="1" CornerRadius="1"
+                                        Command="{Binding ((local:ImageEditorViewModel)DataContext).PickSwatchColorCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}"
+                                        ToolTip.Tip="{Binding}">
+                                    <Button.Styles>
+                                        <Style Selector="Button:pointerover">
+                                            <Setter Property="BorderBrush" Value="#FFFFFF" />
+                                            <Setter Property="BorderThickness" Value="1.5" />
+                                        </Style>
+                                    </Button.Styles>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+
+            <!-- Mode 3: Gradients List -->
+            <Grid Grid.Row="1" Margin="8,6" RowDefinitions="Auto,*"
+                  IsVisible="{Binding ActiveColorDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Gradients'}">
+                <TextBlock Grid.Row="0" Margin="0,0,0,6" Text="Presets" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource PsTextDimBrush}" />
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" MaxHeight="140">
+                    <StackPanel Spacing="4">
+                        <!-- Black / White -->
+                        <Button Height="24" HorizontalAlignment="Stretch" Padding="4,2" Classes="ps-opt-btn"
+                                Command="{Binding SetDefaultColorsCommand}">
+                            <Grid ColumnDefinitions="50,*">
+                                <Border Grid.Column="0" Height="14" CornerRadius="2" BorderBrush="#555" BorderThickness="1">
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
+                                            <GradientStop Color="#000000" Offset="0" />
+                                            <GradientStop Color="#FFFFFF" Offset="1" />
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                </Border>
+                                <TextBlock Grid.Column="1" Margin="8,0,0,0" Text="Black, White" FontSize="11" VerticalAlignment="Center" />
+                            </Grid>
+                        </Button>
+
+                        <!-- Sunset Glow -->
+                        <Button Height="24" HorizontalAlignment="Stretch" Padding="4,2" Classes="ps-opt-btn"
+                                Command="{Binding PickSwatchColorCommand}" CommandParameter="#EC5B62">
+                            <Grid ColumnDefinitions="50,*">
+                                <Border Grid.Column="0" Height="14" CornerRadius="2" BorderBrush="#555" BorderThickness="1">
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
+                                            <GradientStop Color="#EC5B62" Offset="0" />
+                                            <GradientStop Color="#F97316" Offset="1" />
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                </Border>
+                                <TextBlock Grid.Column="1" Margin="8,0,0,0" Text="Warm Sunset" FontSize="11" VerticalAlignment="Center" />
+                            </Grid>
+                        </Button>
+
+                        <!-- Ocean Blue -->
+                        <Button Height="24" HorizontalAlignment="Stretch" Padding="4,2" Classes="ps-opt-btn"
+                                Command="{Binding PickSwatchColorCommand}" CommandParameter="#3B82F6">
+                            <Grid ColumnDefinitions="50,*">
+                                <Border Grid.Column="0" Height="14" CornerRadius="2" BorderBrush="#555" BorderThickness="1">
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
+                                            <GradientStop Color="#06B6D4" Offset="0" />
+                                            <GradientStop Color="#3B82F6" Offset="1" />
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                </Border>
+                                <TextBlock Grid.Column="1" Margin="8,0,0,0" Text="Ocean Waves" FontSize="11" VerticalAlignment="Center" />
+                            </Grid>
+                        </Button>
+
+                        <!-- Violet Dream -->
+                        <Button Height="24" HorizontalAlignment="Stretch" Padding="4,2" Classes="ps-opt-btn"
+                                Command="{Binding PickSwatchColorCommand}" CommandParameter="#A855F7">
+                            <Grid ColumnDefinitions="50,*">
+                                <Border Grid.Column="0" Height="14" CornerRadius="2" BorderBrush="#555" BorderThickness="1">
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
+                                            <GradientStop Color="#EC4899" Offset="0" />
+                                            <GradientStop Color="#8B5CF6" Offset="1" />
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                </Border>
+                                <TextBlock Grid.Column="1" Margin="8,0,0,0" Text="Violet Aurora" FontSize="11" VerticalAlignment="Center" />
+                            </Grid>
+                        </Button>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

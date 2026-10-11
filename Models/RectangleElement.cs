@@ -34,13 +34,20 @@ public class RectangleElement : CanvasElement, IHasFill, IHasStroke
         dc.DrawRectangle(fill, pen, rect, CornerRadius, CornerRadius);
     }
 
-    public override CanvasElement Clone() => new RectangleElement
+    public override CanvasElement Clone()
     {
-        X = X, Y = Y, Width = Width, Height = Height, ZIndex = ZIndex,
-        RotationDegrees = RotationDegrees, FlipX = FlipX, FlipY = FlipY,
-        Opacity = Opacity, IsVisible = IsVisible, IsLocked = false, Name = Name, GroupId = null,
-        AspectLocked = AspectLocked,
-        FillColor = FillColor, Gradient = Gradient, StrokeColor = StrokeColor,
-        StrokeThickness = StrokeThickness, DashStyle = DashStyle, CornerRadius = CornerRadius,
-    };
+        var copy = new RectangleElement
+        {
+            FillColor = FillColor,
+            Gradient = Gradient,
+            StrokeColor = StrokeColor,
+            StrokeThickness = StrokeThickness,
+            DashStyle = DashStyle,
+            CornerRadius = CornerRadius,
+        };
+        CopyBasePropertiesTo(copy);
+        copy.IsLocked = false;
+        copy.GroupId = null;
+        return copy;
+    }
 }

@@ -1,0 +1,452 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.ToolOptionsBar"
+             x:DataType="local:ImageEditorViewModel"
+             Height="34"
+             Background="{DynamicResource PsOptionsBrush}">
+
+    <UserControl.Resources>
+        <local:ColorToBrushConverter x:Key="ColorToBrushConverter" />
+    </UserControl.Resources>
+
+    <Border BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="8,0">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+
+            <!-- Left: Dynamic Contextual Tool Options -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <!-- Home Icon -->
+                <Button Classes="ps-opt-btn" Width="26" Height="26" ToolTip.Tip="Home">
+                    <materialIcons:MaterialIcon Kind="HomeOutline" Width="15" Height="15" />
+                </Button>
+
+                <Rectangle Width="1" Height="16" Fill="{DynamicResource PsBorderSubtleBrush}" Margin="2,0" />
+
+                <!-- ==========================================
+                     A. BRUSH & ERASER TOOL OPTIONS
+                     ========================================== -->
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                            IsVisible="{Binding IsBrushToolActive}">
+                    <!-- Brush Icon & Preset Indicator -->
+                    <Border Background="{DynamicResource PsFieldBrush}" BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1"
+                            CornerRadius="2" Padding="4,2">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <materialIcons:MaterialIcon Kind="Brush" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+                            <materialIcons:MaterialIcon Kind="MenuDown" Width="10" Height="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Brush Size Readout & Slider Flyout -->
+                    <Border Background="{DynamicResource PsFieldBrush}" BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1"
+                            CornerRadius="2" Padding="5,2">
+                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <Ellipse Width="10" Height="10" Fill="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding BrushThickness, StringFormat='{}{0:0}'}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <materialIcons:MaterialIcon Kind="MenuDown" Width="10" Height="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Blend Mode -->
+                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                        <TextBlock Text="Mode:" Classes="ps-label" />
+                        <ComboBox Classes="ps-combo" Width="110" Height="22"
+                                  ItemsSource="{Binding AvailableBlendModes}"
+                                  SelectedItem="{Binding BlendModeField, Mode=TwoWay}" />
+                    </StackPanel>
+
+                    <!-- Opacity -->
+                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                        <TextBlock Text="Opacity:" Classes="ps-label" />
+                        <NumericUpDown Classes="ps-num" Width="68" Height="22"
+                                       Minimum="0" Maximum="100" Increment="5"
+                                       Value="{Binding OpacityField, Mode=TwoWay}"
+                                       FormatString="{}{0:0}%" />
+                    </StackPanel>
+
+                    <!-- Flow -->
+                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                        <TextBlock Text="Flow:" Classes="ps-label" />
+                        <NumericUpDown Classes="ps-num" Width="68" Height="22"
+                                       Minimum="0" Maximum="100" Increment="5"
+                                       Value="{Binding BrushFlow, Mode=TwoWay}"
+                                       FormatString="{}{0:0}%" />
+                    </StackPanel>
+
+                    <!-- Smoothing -->
+                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                        <TextBlock Text="Smoothing:" Classes="ps-label" />
+                        <NumericUpDown Classes="ps-num" Width="68" Height="22"
+                                       Minimum="0" Maximum="100" Increment="5"
+                                       Value="{Binding BrushSmoothing, Mode=TwoWay}"
+                                       FormatString="{}{0:0}%" />
+                    </StackPanel>
+
+                    <ToggleButton Classes="ps-tool-btn" Width="24" Height="24" ToolTip.Tip="Pressure for Size">
+                        <materialIcons:MaterialIcon Kind="CrosshairsGps" Width="14" Height="14" />
+                    </ToggleButton>
+                </StackPanel>
+
+                <!-- ==========================================
+                     B. SHAPE TOOL OPTIONS (U)
+                     ========================================== -->
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                            IsVisible="{Binding IsShapeToolActive}">
+                    <!-- Shape Selector Chips -->
+                    <StackPanel Orientation="Horizontal" Spacing="2">
+                        <Button Classes="ps-opt-btn" Width="24" Height="22" Command="{Binding SelectShapeToolCommand}" CommandParameter="rect" ToolTip.Tip="Rectangle">
+                            <materialIcons:MaterialIcon Kind="SquareOutline" Width="13" Height="13" />
+                        </Button>
+                        <Button Classes="ps-opt-btn" Width="24" Height="22" Command="{Binding SelectShapeToolCommand}" CommandParameter="ellipse" ToolTip.Tip="Ellipse">
+                            <materialIcons:MaterialIcon Kind="CircleOutline" Width="13" Height="13" />
+                        </Button>
+                        <Button Classes="ps-opt-btn" Width="24" Height="22" Command="{Binding SelectShapeToolCommand}" CommandParameter="triangle" ToolTip.Tip="Triangle">
+                            <materialIcons:MaterialIcon Kind="TriangleOutline" Width="13" Height="13" />
+                        </Button>
+                        <Button Classes="ps-opt-btn" Width="24" Height="22" Command="{Binding SelectShapeToolCommand}" CommandParameter="star" ToolTip.Tip="Star">
+                            <materialIcons:MaterialIcon Kind="StarOutline" Width="13" Height="13" />
+                        </Button>
+                        <Button Classes="ps-opt-btn" Width="24" Height="22" Command="{Binding SelectShapeToolCommand}" CommandParameter="polygon" ToolTip.Tip="Polygon">
+                            <materialIcons:MaterialIcon Kind="HexagonOutline" Width="13" Height="13" />
+                        </Button>
+                        <Button Classes="ps-opt-btn" Width="24" Height="22" Command="{Binding SelectShapeToolCommand}" CommandParameter="line" ToolTip.Tip="Line">
+                            <materialIcons:MaterialIcon Kind="VectorLine" Width="13" Height="13" />
+                        </Button>
+                    </StackPanel>
+
+                    <Rectangle Width="1" Height="16" Fill="{DynamicResource PsBorderSubtleBrush}" Margin="2,0" />
+
+                    <!-- Fill Color -->
+                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                        <TextBlock Text="Fill:" Classes="ps-label" />
+                        <Border Width="20" Height="20" CornerRadius="2"
+                                Background="{Binding ShapeFillColor, Converter={StaticResource ColorToBrushConverter}}"
+                                BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1" />
+                    </StackPanel>
+
+                    <!-- Stroke Color -->
+                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                        <TextBlock Text="Stroke:" Classes="ps-label" />
+                        <Border Width="20" Height="20" CornerRadius="2"
+                                Background="{Binding ShapeStrokeColor, Converter={StaticResource ColorToBrushConverter}}"
+                                BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1" />
+                    </StackPanel>
+
+                    <!-- Stroke Width -->
+                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                        <TextBlock Text="W:" Classes="ps-label" />
+                        <NumericUpDown Classes="ps-num" Width="68" Height="22"
+                                       Minimum="0" Maximum="100" Increment="1"
+                                       Value="{Binding StrokeWidthField, Mode=TwoWay}"
+                                       FormatString="{}{0:0} px" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- ==========================================
+                     C. TEXT TOOL OPTIONS (T)
+                     ========================================== -->
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                            IsVisible="{Binding IsTextToolActive}">
+                    <!-- Font Size -->
+                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                        <TextBlock Text="Size:" Classes="ps-label" />
+                        <NumericUpDown Classes="ps-num" Width="72" Height="22"
+                                       Minimum="6" Maximum="500" Increment="2"
+                                       Value="{Binding FontSizeField, Mode=TwoWay}"
+                                       FormatString="{}{0:0} pt" />
+                    </StackPanel>
+
+                    <Rectangle Width="1" Height="16" Fill="{DynamicResource PsBorderSubtleBrush}" Margin="2,0" />
+
+                    <!-- Bold, Italic, Underline Toggles -->
+                    <ToggleButton Classes="ps-tool-btn" Width="24" Height="24" IsChecked="{Binding IsBoldField, Mode=TwoWay}" ToolTip.Tip="Bold (Ctrl+B)">
+                        <TextBlock Text="B" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                    </ToggleButton>
+                    <ToggleButton Classes="ps-tool-btn" Width="24" Height="24" IsChecked="{Binding IsItalicField, Mode=TwoWay}" ToolTip.Tip="Italic (Ctrl+I)">
+                        <TextBlock Text="I" FontStyle="Italic" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                    </ToggleButton>
+                    <ToggleButton Classes="ps-tool-btn" Width="24" Height="24" IsChecked="{Binding IsUnderlineField, Mode=TwoWay}" ToolTip.Tip="Underline (Ctrl+U)">
+                        <TextBlock Text="U" TextDecorations="Underline" FontSize="12" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                    </ToggleButton>
+
+                    <Rectangle Width="1" Height="16" Fill="{DynamicResource PsBorderSubtleBrush}" Margin="2,0" />
+
+                    <!-- Alignment Buttons -->
+                    <Button Classes="ps-opt-btn" Width="24" Height="24" Command="{Binding SetTextAlignLeftCommand}" ToolTip.Tip="Align Left">
+                        <materialIcons:MaterialIcon Kind="FormatAlignLeft" Width="14" Height="14" />
+                    </Button>
+                    <Button Classes="ps-opt-btn" Width="24" Height="24" Command="{Binding SetTextAlignCenterCommand}" ToolTip.Tip="Align Center">
+                        <materialIcons:MaterialIcon Kind="FormatAlignCenter" Width="14" Height="14" />
+                    </Button>
+                    <Button Classes="ps-opt-btn" Width="24" Height="24" Command="{Binding SetTextAlignRightCommand}" ToolTip.Tip="Align Right">
+                        <materialIcons:MaterialIcon Kind="FormatAlignRight" Width="14" Height="14" />
+                    </Button>
+
+                    <!-- Text Color -->
+                    <Border Width="20" Height="20" CornerRadius="2"
+                            Background="{Binding PrimaryColor, Converter={StaticResource ColorToBrushConverter}}"
+                            BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1"
+                            ToolTip.Tip="Text Color" />
+                </StackPanel>
+
+                <!-- ==========================================
+                     D. MOVE / SELECT TOOL OPTIONS (V)
+                     ========================================== -->
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                            IsVisible="{Binding IsSelectToolActive}">
+                    <CheckBox Content="Auto-Select" IsChecked="{Binding AutoSelectLayers, Mode=TwoWay}" Margin="0,0,4,0" />
+                    <CheckBox Content="Show Transform" IsChecked="{Binding ShowTransformControls, Mode=TwoWay}" Margin="0,0,6,0" />
+
+                    <Rectangle Width="1" Height="16" Fill="{DynamicResource PsBorderSubtleBrush}" Margin="2,0" />
+
+                    <!-- Alignment Cluster -->
+                    <Button Classes="ps-opt-btn" Width="24" Height="24" Command="{Binding AlignLeftCommand}" ToolTip.Tip="Align Left">
+                        <materialIcons:MaterialIcon Kind="AlignHorizontalLeft" Width="14" Height="14" />
+                    </Button>
+                    <Button Classes="ps-opt-btn" Width="24" Height="24" Command="{Binding AlignCenterHorizontalCommand}" ToolTip.Tip="Align Horizontal Centers">
+                        <materialIcons:MaterialIcon Kind="AlignHorizontalCenter" Width="14" Height="14" />
+                    </Button>
+                    <Button Classes="ps-opt-btn" Width="24" Height="24" Command="{Binding AlignRightCommand}" ToolTip.Tip="Align Right">
+                        <materialIcons:MaterialIcon Kind="AlignHorizontalRight" Width="14" Height="14" />
+                    </Button>
+                    <Button Classes="ps-opt-btn" Width="24" Height="24" Command="{Binding AlignTopCommand}" ToolTip.Tip="Align Top">
+                        <materialIcons:MaterialIcon Kind="AlignVerticalTop" Width="14" Height="14" />
+                    </Button>
+                    <Button Classes="ps-opt-btn" Width="24" Height="24" Command="{Binding AlignCenterVerticalCommand}" ToolTip.Tip="Align Vertical Centers">
+                        <materialIcons:MaterialIcon Kind="AlignVerticalCenter" Width="14" Height="14" />
+                    </Button>
+                    <Button Classes="ps-opt-btn" Width="24" Height="24" Command="{Binding AlignBottomCommand}" ToolTip.Tip="Align Bottom">
+                        <materialIcons:MaterialIcon Kind="AlignVerticalBottom" Width="14" Height="14" />
+                    </Button>
+                    <Button Classes="ps-opt-btn" Width="24" Height="24" Command="{Binding DistributeHorizontalCommand}" ToolTip.Tip="Distribute Horizontally">
+                        <materialIcons:MaterialIcon Kind="DistributeHorizontalCenter" Width="14" Height="14" />
+                    </Button>
+                    <Button Classes="ps-opt-btn" Width="24" Height="24" Command="{Binding DistributeVerticalCommand}" ToolTip.Tip="Distribute Vertically">
+                        <materialIcons:MaterialIcon Kind="DistributeVerticalCenter" Width="14" Height="14" />
+                    </Button>
+                </StackPanel>
+
+                <!-- ==========================================
+                     E. CROP TOOL OPTIONS (C)
+                     ========================================== -->
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                            IsVisible="{Binding IsCropToolActive}">
+                    <TextBlock Text="Ratio:" Classes="ps-label" />
+                    <ComboBox Classes="ps-combo" Width="95" SelectedIndex="0">
+                        <ComboBoxItem Content="Original" />
+                        <ComboBoxItem Content="1:1 (Square)" />
+                        <ComboBoxItem Content="16:9" />
+                        <ComboBoxItem Content="4:3" />
+                        <ComboBoxItem Content="Free" />
+                    </ComboBox>
+
+                    <Button Classes="ps-btn ps-btn-primary" Content="✓ Commit" Padding="10,3" Command="{Binding ConfirmCropCommand}" ToolTip.Tip="Commit Crop (Enter)" />
+                    <Button Classes="ps-btn" Content="✕ Cancel" Padding="8,3" Command="{Binding CancelCropCommand}" ToolTip.Tip="Cancel Crop (Esc)" />
+                </StackPanel>
+
+                <!-- ==========================================
+                     F. MARQUEE SELECTION OPTIONS (M)
+                     ========================================== -->
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                            IsVisible="{Binding IsMarqueeToolActive}">
+                    <TextBlock Text="Feather:" Classes="ps-label" />
+                    <NumericUpDown Classes="ps-num" Width="68" Height="22"
+                                   Minimum="0" Maximum="250" Increment="1"
+                                   Value="{Binding MarqueeFeather, Mode=TwoWay}"
+                                   FormatString="{}{0:0} px" />
+                    <CheckBox Content="Anti-alias" IsChecked="{Binding MarqueeAntiAlias, Mode=TwoWay}" Margin="6,0,0,0" />
+                </StackPanel>
+
+                <!-- ==========================================
+                     G. ZOOM TOOL OPTIONS (Z)
+                     ========================================== -->
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                            IsVisible="{Binding IsZoomToolActive}">
+                    <Button Classes="ps-opt-btn" Command="{Binding ZoomInCommand}" ToolTip.Tip="Zoom In (Ctrl++)">
+                        <materialIcons:MaterialIcon Kind="MagnifyPlusOutline" Width="15" Height="15" />
+                    </Button>
+                    <Button Classes="ps-opt-btn" Command="{Binding ZoomOutCommand}" ToolTip.Tip="Zoom Out (Ctrl+-)">
+                        <materialIcons:MaterialIcon Kind="MagnifyMinusOutline" Width="15" Height="15" />
+                    </Button>
+                    <Button Classes="ps-opt-btn" Content="100%" Padding="8,2" Command="{Binding ResetZoomCommand}" ToolTip.Tip="100% Actual Pixels (Ctrl+1)" />
+                    <Button Classes="ps-opt-btn" Content="Fit Screen" Padding="8,2" Command="{Binding FitToWindowCommand}" ToolTip.Tip="Fit on Screen (Ctrl+0)" />
+                </StackPanel>
+
+                <!-- ==========================================
+                     H. ERASER TOOL OPTIONS (E)
+                     ========================================== -->
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                            IsVisible="{Binding IsEraserToolActive}">
+                    <Border Background="{DynamicResource PsFieldBrush}" BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1"
+                            CornerRadius="2" Padding="4,2">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <materialIcons:MaterialIcon Kind="Eraser" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+                            <materialIcons:MaterialIcon Kind="MenuDown" Width="10" Height="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                        </StackPanel>
+                    </Border>
+                    <TextBlock Text="Mode:" Classes="ps-label" />
+                    <ComboBox Classes="ps-combo" Width="90" Height="22" SelectedIndex="0">
+                        <ComboBoxItem Content="Brush" />
+                        <ComboBoxItem Content="Pencil" />
+                        <ComboBoxItem Content="Block" />
+                    </ComboBox>
+                    <TextBlock Text="Opacity:" Classes="ps-label" />
+                    <NumericUpDown Classes="ps-num" Width="68" Height="22"
+                                   Minimum="0" Maximum="100" Increment="5"
+                                   Value="{Binding OpacityField, Mode=TwoWay}"
+                                   FormatString="{}{0:0}%" />
+                    <TextBlock Text="Flow:" Classes="ps-label" />
+                    <NumericUpDown Classes="ps-num" Width="68" Height="22"
+                                   Minimum="0" Maximum="100" Increment="5"
+                                   Value="{Binding BrushFlow, Mode=TwoWay}"
+                                   FormatString="{}{0:0}%" />
+                    <CheckBox Content="Erase to History" Margin="6,0,0,0" />
+                </StackPanel>
+
+                <!-- ==========================================
+                     I. GRADIENT TOOL OPTIONS (G)
+                     ========================================== -->
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                            IsVisible="{Binding IsGradientToolActive}">
+                    <Border Background="{DynamicResource PsFieldBrush}" BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1"
+                            CornerRadius="2" Padding="4,2">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <materialIcons:MaterialIcon Kind="FormatColorFill" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+                            <materialIcons:MaterialIcon Kind="MenuDown" Width="10" Height="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Gradient Ribbon Strip -->
+                    <Border Width="80" Height="18" BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1" CornerRadius="1">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
+                                <GradientStop Color="{Binding PrimaryColor}" Offset="0.0" />
+                                <GradientStop Color="{Binding SecondaryColor}" Offset="1.0" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
+
+                    <!-- Gradient Types -->
+                    <StackPanel Orientation="Horizontal" Spacing="2">
+                        <Button Classes="ps-opt-btn" Width="24" Height="22" ToolTip.Tip="Linear Gradient">
+                            <materialIcons:MaterialIcon Kind="GradientHorizontal" Width="13" Height="13" />
+                        </Button>
+                        <Button Classes="ps-opt-btn" Width="24" Height="22" ToolTip.Tip="Radial Gradient">
+                            <materialIcons:MaterialIcon Kind="CircleOutline" Width="13" Height="13" />
+                        </Button>
+                        <Button Classes="ps-opt-btn" Width="24" Height="22" ToolTip.Tip="Angle Gradient">
+                            <materialIcons:MaterialIcon Kind="AngleAcute" Width="13" Height="13" />
+                        </Button>
+                        <Button Classes="ps-opt-btn" Width="24" Height="22" ToolTip.Tip="Reflected Gradient">
+                            <materialIcons:MaterialIcon Kind="RayStartArrow" Width="13" Height="13" />
+                        </Button>
+                    </StackPanel>
+
+                    <TextBlock Text="Mode:" Classes="ps-label" Margin="4,0,0,0" />
+                    <ComboBox Classes="ps-combo" Width="100" Height="22"
+                              ItemsSource="{Binding AvailableBlendModes}"
+                              SelectedItem="{Binding BlendModeField, Mode=TwoWay}" />
+                    <TextBlock Text="Opacity:" Classes="ps-label" />
+                    <NumericUpDown Classes="ps-num" Width="68" Height="22"
+                                   Minimum="0" Maximum="100" Increment="5"
+                                   Value="{Binding OpacityField, Mode=TwoWay}"
+                                   FormatString="{}{0:0}%" />
+                    <CheckBox Content="Reverse" Margin="4,0,0,0" />
+                    <CheckBox Content="Dither" IsChecked="True" />
+                </StackPanel>
+
+                <!-- ==========================================
+                     J. EYEDROPPER TOOL OPTIONS (I)
+                     ========================================== -->
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                            IsVisible="{Binding IsEyedropperToolActive}">
+                    <materialIcons:MaterialIcon Kind="Eyedropper" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+                    <TextBlock Text="Sample Size:" Classes="ps-label" />
+                    <ComboBox Classes="ps-combo" Width="110" Height="22" SelectedIndex="0">
+                        <ComboBoxItem Content="Point Sample" />
+                        <ComboBoxItem Content="3 by 3 Average" />
+                        <ComboBoxItem Content="5 by 5 Average" />
+                    </ComboBox>
+
+                    <TextBlock Text="Sample:" Classes="ps-label" Margin="4,0,0,0" />
+                    <ComboBox Classes="ps-combo" Width="100" Height="22" SelectedIndex="0">
+                        <ComboBoxItem Content="All Layers" />
+                        <ComboBoxItem Content="Current Layer" />
+                    </ComboBox>
+
+                    <!-- Live Sampled Swatch Preview -->
+                    <Border Width="18" Height="18" Margin="6,0,0,0"
+                            Background="{Binding PrimaryColor, Converter={StaticResource ColorToBrushConverter}}"
+                            BorderBrush="#FFFFFF" BorderThickness="1" CornerRadius="1"
+                            ToolTip.Tip="Foreground Color" />
+                    <TextBlock Text="{Binding PrimaryColorHex}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- ==========================================
+                     K. LASSO TOOL OPTIONS (L)
+                     ========================================== -->
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                            IsVisible="{Binding IsLassoToolActive}">
+                    <materialIcons:MaterialIcon Kind="Lasso" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+                    <TextBlock Text="Feather:" Classes="ps-label" />
+                    <NumericUpDown Classes="ps-num" Width="68" Height="22"
+                                   Minimum="0" Maximum="250" Increment="1"
+                                   Value="{Binding MarqueeFeather, Mode=TwoWay}"
+                                   FormatString="{}{0:0} px" />
+                    <CheckBox Content="Anti-alias" IsChecked="True" Margin="6,0,0,0" />
+                </StackPanel>
+
+                <!-- ==========================================
+                     L. MAGIC WAND TOOL OPTIONS (W)
+                     ========================================== -->
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                            IsVisible="{Binding IsWandToolActive}">
+                    <materialIcons:MaterialIcon Kind="MagicStaff" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+                    <TextBlock Text="Tolerance:" Classes="ps-label" />
+                    <NumericUpDown Classes="ps-num" Width="62" Height="22"
+                                   Minimum="0" Maximum="255" Increment="1"
+                                   Value="32" FormatString="{}{0:0}" />
+                    <CheckBox Content="Anti-alias" IsChecked="True" Margin="6,0,0,0" />
+                    <CheckBox Content="Contiguous" IsChecked="True" />
+                    <CheckBox Content="Sample All Layers" />
+                </StackPanel>
+
+                <!-- ==========================================
+                     M. HAND TOOL OPTIONS (H)
+                     ========================================== -->
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                            IsVisible="{Binding IsHandToolActive}">
+                    <materialIcons:MaterialIcon Kind="HandBackRightOutline" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+                    <Button Classes="ps-opt-btn" Content="Fit Screen" Padding="8,2" Command="{Binding FitToWindowCommand}" ToolTip.Tip="Fit on Screen (Ctrl+0)" />
+                    <Button Classes="ps-opt-btn" Content="100%" Padding="8,2" Command="{Binding ResetZoomCommand}" ToolTip.Tip="100% Actual Pixels (Ctrl+1)" />
+                    <CheckBox Content="Scroll All Windows" Margin="6,0,0,0" />
+                </StackPanel>
+
+            </StackPanel>
+
+            <!-- Right: Global Actions & Export As -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <Button Classes="ps-opt-btn" Command="{Binding UndoCommand}" ToolTip.Tip="Undo (Ctrl+Z)">
+                    <materialIcons:MaterialIcon Kind="Undo" Width="14" Height="14" />
+                </Button>
+                <Button Classes="ps-opt-btn" Command="{Binding RedoCommand}" ToolTip.Tip="Redo (Ctrl+Y)">
+                    <materialIcons:MaterialIcon Kind="Redo" Width="14" Height="14" />
+                </Button>
+                <Rectangle Width="1" Height="16" Fill="{DynamicResource PsBorderSubtleBrush}" Margin="2,0" />
+                <Button Classes="ps-opt-btn" Command="{Binding OpenPsdOrImageCommand}" ToolTip.Tip="Open Image or PSD (Ctrl+O)">
+                    <materialIcons:MaterialIcon Kind="FolderOpenOutline" Width="14" Height="14" />
+                </Button>
+                <Button Classes="ps-opt-btn" Command="{Binding SavePsdFileCommand}" ToolTip.Tip="Save PSD Document (Ctrl+S)">
+                    <materialIcons:MaterialIcon Kind="ContentSaveOutline" Width="14" Height="14" />
+                </Button>
+                <Rectangle Width="1" Height="16" Fill="{DynamicResource PsBorderSubtleBrush}" Margin="2,0" />
+                <Button Classes="ps-opt-btn" Command="{Binding OpenExportDialogCommand}" Padding="8,3" ToolTip.Tip="Export As (Ctrl+Shift+W)">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <materialIcons:MaterialIcon Kind="ExportVariant" Width="13" Height="13" Foreground="{DynamicResource PsAccentBrush}" />
+                        <TextBlock Text="Export As..." FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

@@ -1,0 +1,36 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.DocumentTabStrip"
+             x:DataType="local:ImageEditorViewModel"
+             Height="26"
+             Background="{DynamicResource PsChromeBrush}">
+
+    <Border BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="6,0,0,0">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom">
+            <!-- Active Document Tab (FryImage Parity: ✕ Untitled-1 @ 102.4% (RGB/8)*) -->
+            <Border Background="{DynamicResource PsOptionsBrush}"
+                    BorderBrush="{DynamicResource PsBorderBrush}"
+                    BorderThickness="1,1,1,0"
+                    CornerRadius="3,3,0,0"
+                    Padding="8,3"
+                    Margin="0,0,2,0">
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center">
+                        <TextBlock.Text>
+                            <MultiBinding StringFormat="{}{0} @ {1:0.#}% (RGB/8)*">
+                                <Binding Path="DocumentTitle" />
+                                <Binding Path="ZoomPercent" />
+                            </MultiBinding>
+                        </TextBlock.Text>
+                    </TextBlock>
+                    <Button Classes="ps-opt-btn" Width="14" Height="14" Padding="0"
+                            Command="{Binding CloseOverlayCommand}" ToolTip.Tip="Close Document">
+                        <materialIcons:MaterialIcon Kind="Close" Width="10" Height="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                    </Button>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </Border>
+</UserControl>

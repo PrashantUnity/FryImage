@@ -1,0 +1,238 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.PhotoshopMenuBar"
+             x:DataType="local:ImageEditorViewModel"
+             Height="28"
+             Background="{DynamicResource PsChromeBrush}">
+
+    <Border BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="8,0">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+
+            <!-- Left: Brand + Complete Photoshop Menu Hierarchy -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                <TextBlock Text="FryImage"
+                           FontWeight="Black"
+                           FontSize="12"
+                           Foreground="{DynamicResource PsAccentBrush}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,10,0" />
+
+                <!-- File Menu -->
+                <Button Classes="ps-menu-btn" Content="File">
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                            <MenuItem Header="New..." InputGesture="Ctrl+N" Command="{Binding OpenNewDocumentDialogCommand}" />
+                            <MenuItem Header="Open..." InputGesture="Ctrl+O" Command="{Binding OpenPsdOrImageCommand}" />
+                            <MenuItem Header="Open Project JSON..." Command="{Binding OpenProjectJsonCommand}" />
+                            <Separator />
+                            <MenuItem Header="Save PSD..." InputGesture="Ctrl+S" Command="{Binding SavePsdFileCommand}" />
+                            <MenuItem Header="Save Project JSON" Command="{Binding SaveProjectJsonCommand}" />
+                            <Separator />
+                            <MenuItem Header="Export As..." InputGesture="Ctrl+Shift+W" Command="{Binding OpenExportDialogCommand}" />
+                            <Separator />
+                            <MenuItem Header="Close" InputGesture="Ctrl+W" Command="{Binding CloseOverlayCommand}" />
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+
+                <!-- Edit Menu -->
+                <Button Classes="ps-menu-btn" Content="Edit">
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                            <MenuItem Header="Undo" InputGesture="Ctrl+Z" Command="{Binding UndoCommand}" />
+                            <MenuItem Header="Redo" InputGesture="Ctrl+Y" Command="{Binding RedoCommand}" />
+                            <Separator />
+                            <MenuItem Header="Cut" InputGesture="Ctrl+X" Command="{Binding DeleteSelectedElementCommand}" />
+                            <MenuItem Header="Copy" InputGesture="Ctrl+C" Command="{Binding CopyElementsCommand}" />
+                            <MenuItem Header="Paste" InputGesture="Ctrl+V" Command="{Binding PasteElementsCommand}" />
+                            <Separator />
+                            <MenuItem Header="Free Transform" InputGesture="Ctrl+T" Command="{Binding SetToolCommand}" CommandParameter="select" />
+                            <MenuItem Header="Rotate 90° CW" Command="{Binding RotateArtboardClockwiseCommand}" />
+                            <MenuItem Header="Rotate 90° CCW" Command="{Binding RotateArtboardCounterClockwiseCommand}" />
+                            <Separator />
+                            <MenuItem Header="Clear All" Command="{Binding RequestClearCanvasCommand}" />
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+
+                <!-- Image Menu -->
+                <Button Classes="ps-menu-btn" Content="Image">
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                            <MenuItem Header="Adjustments">
+                                <MenuItem Header="Brightness / Contrast..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="BrightnessContrast" />
+                                <MenuItem Header="Levels..." InputGesture="Ctrl+L" Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Levels" />
+                                <MenuItem Header="Hue / Saturation..." InputGesture="Ctrl+U" Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="HueSaturation" />
+                                <MenuItem Header="Vibrance..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Vibrance" />
+                                <MenuItem Header="Color Balance..." InputGesture="Ctrl+B" Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="ColorBalance" />
+                                <Separator />
+                                <MenuItem Header="Threshold..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Threshold" />
+                                <MenuItem Header="Posterize..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Posterize" />
+                                <Separator />
+                                <MenuItem Header="Invert" InputGesture="Ctrl+I" Command="{Binding ApplyInvertCommand}" />
+                            </MenuItem>
+                            <Separator />
+                            <MenuItem Header="Auto Tone" Command="{Binding ApplyAutoToneCommand}" />
+                            <Separator />
+                            <MenuItem Header="Canvas Size..." Command="{Binding OpenCanvasSetupCommand}" />
+                            <MenuItem Header="Rotate Canvas 90° CW" Command="{Binding RotateArtboardClockwiseCommand}" />
+                            <MenuItem Header="Rotate Canvas 90° CCW" Command="{Binding RotateArtboardCounterClockwiseCommand}" />
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+
+                <!-- Layer Menu -->
+                <Button Classes="ps-menu-btn" Content="Layer">
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                            <MenuItem Header="New Layer" InputGesture="Ctrl+Shift+N" Command="{Binding InsertRectangleCommand}" />
+                            <MenuItem Header="Duplicate Layer" InputGesture="Ctrl+J" Command="{Binding DuplicateCommand}" />
+                            <MenuItem Header="Delete Layer" Command="{Binding DeleteSelectedElementCommand}" />
+                            <Separator />
+                            <MenuItem Header="New Adjustment Layer">
+                                <MenuItem Header="Brightness / Contrast..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="BrightnessContrast" />
+                                <MenuItem Header="Levels..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Levels" />
+                                <MenuItem Header="Hue / Saturation..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="HueSaturation" />
+                                <MenuItem Header="Vibrance..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Vibrance" />
+                            </MenuItem>
+                            <Separator />
+                            <MenuItem Header="Layer Style..." Command="{Binding OpenLayerStyleDialogCommand}" />
+                            <Separator />
+                            <MenuItem Header="Bring Forward" Command="{Binding BringForwardCommand}" />
+                            <MenuItem Header="Send Backward" Command="{Binding SendBackwardCommand}" />
+                            <MenuItem Header="Bring to Front" Command="{Binding BringToFrontCommand}" />
+                            <MenuItem Header="Send to Back" Command="{Binding SendToBackCommand}" />
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+
+                <!-- Type Menu -->
+                <Button Classes="ps-menu-btn" Content="Type">
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                            <MenuItem Header="Horizontal Type Tool" InputGesture="T" Command="{Binding SetToolCommand}" CommandParameter="text" />
+                            <Separator />
+                            <MenuItem Header="Bold" InputGesture="Ctrl+B" Command="{Binding ToggleBoldCommand}" />
+                            <MenuItem Header="Italic" InputGesture="Ctrl+I" Command="{Binding ToggleItalicCommand}" />
+                            <MenuItem Header="Underline" InputGesture="Ctrl+U" Command="{Binding ToggleUnderlineCommand}" />
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+
+                <!-- Select Menu -->
+                <Button Classes="ps-menu-btn" Content="Select">
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                            <MenuItem Header="Select All" InputGesture="Ctrl+A" Command="{Binding SelectAllElementsCommand}" />
+                            <MenuItem Header="Deselect" InputGesture="Ctrl+D" Command="{Binding SetToolCommand}" CommandParameter="select" />
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+
+                <!-- Filter Menu -->
+                <Button Classes="ps-menu-btn" Content="Filter">
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                            <MenuItem Header="Blur">
+                                <MenuItem Header="Gaussian Blur..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="GaussianBlur" />
+                            </MenuItem>
+                            <MenuItem Header="Sharpen">
+                                <MenuItem Header="Unsharp Mask..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="UnsharpMask" />
+                            </MenuItem>
+                            <MenuItem Header="High Pass..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="HighPass" />
+                            <MenuItem Header="Noise">
+                                <MenuItem Header="Add Noise..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="AddNoise" />
+                            </MenuItem>
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+
+                <!-- View Menu -->
+                <Button Classes="ps-menu-btn" Content="View">
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                            <MenuItem Header="Fit on Screen" Command="{Binding FitToWindowCommand}" />
+                            <MenuItem Header="100%" Command="{Binding ResetZoomCommand}" />
+                            <MenuItem Header="Zoom In" Command="{Binding ZoomInCommand}" />
+                            <MenuItem Header="Zoom Out" Command="{Binding ZoomOutCommand}" />
+                            <Separator />
+                            <MenuItem Header="Rulers" InputGesture="Ctrl+R" Command="{Binding ToggleRulersCommand}">
+                                <MenuItem.Icon>
+                                    <materialIcons:MaterialIcon Kind="Check" Width="12" Height="12" IsVisible="{Binding ShowRulers}" Foreground="{DynamicResource PsAccentBrush}" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Grid" Command="{Binding ToggleGridCommand}">
+                                <MenuItem.Icon>
+                                    <materialIcons:MaterialIcon Kind="Check" Width="12" Height="12" IsVisible="{Binding ShowGrid}" Foreground="{DynamicResource PsAccentBrush}" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+
+                <!-- Window Menu -->
+                <Button Classes="ps-menu-btn" Content="Window">
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                            <MenuItem Header="Properties" Command="{Binding SelectRightDockTabCommand}" CommandParameter="Properties" />
+                            <MenuItem Header="Adjustments &amp; Histogram" Command="{Binding SelectRightDockTabCommand}" CommandParameter="Histogram" />
+                            <Separator />
+                            <MenuItem Header="Layers" InputGesture="F7" Command="{Binding SelectRightDockTabCommand}" CommandParameter="Layers" />
+                            <MenuItem Header="Channels" Command="{Binding SelectRightDockTabCommand}" CommandParameter="Channels" />
+                            <MenuItem Header="Paths" Command="{Binding SelectRightDockTabCommand}" CommandParameter="Paths" />
+                            <MenuItem Header="History" Command="{Binding SelectRightDockTabCommand}" CommandParameter="History" />
+                            <Separator />
+                            <MenuItem Header="Color" InputGesture="F6" Command="{Binding SelectColorDockTabCommand}" CommandParameter="Color" />
+                            <MenuItem Header="Swatches" Command="{Binding SelectColorDockTabCommand}" CommandParameter="Swatches" />
+                            <MenuItem Header="Gradients" Command="{Binding SelectColorDockTabCommand}" CommandParameter="Gradients" />
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+
+                <!-- Help Menu -->
+                <Button Classes="ps-menu-btn" Content="Help">
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                            <MenuItem Header="About FryImage..." />
+                            <MenuItem Header="Keyboard Shortcuts..." />
+                            <Separator />
+                            <MenuItem Header="FryPDF Plugin Hub..." />
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+            </StackPanel>
+
+            <!-- Center: Active Document Title & Dirty State -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4" VerticalAlignment="Center">
+                <TextBlock Text="{Binding DocumentTitle}"
+                           FontSize="11"
+                           FontWeight="Normal"
+                           Foreground="{DynamicResource PsTextDimBrush}"
+                           VerticalAlignment="Center" />
+                <TextBlock Text="•" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- Right: Workspace & Utilities -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <Button Classes="ps-opt-btn" ToolTip.Tip="Discord Community">
+                    <materialIcons:MaterialIcon Kind="Forum" Width="14" Height="14" Foreground="{DynamicResource PsTextDimBrush}" />
+                </Button>
+                <Button Classes="ps-opt-btn" ToolTip.Tip="Theme Toggle">
+                    <materialIcons:MaterialIcon Kind="WeatherNight" Width="14" Height="14" Foreground="{DynamicResource PsTextDimBrush}" />
+                </Button>
+                <Button Classes="ps-opt-btn" ToolTip.Tip="Search (Ctrl+F)">
+                    <materialIcons:MaterialIcon Kind="Magnify" Width="14" Height="14" Foreground="{DynamicResource PsTextDimBrush}" />
+                </Button>
+                <Rectangle Width="1" Height="14" Fill="{DynamicResource PsBorderSubtleBrush}" Margin="2,0" />
+                <Button Classes="ps-opt-btn" Padding="6,2">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="Essentials" FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                        <materialIcons:MaterialIcon Kind="MenuDown" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

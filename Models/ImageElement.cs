@@ -127,10 +127,6 @@ public class ImageElement : CanvasElement
     {
         var clone = new ImageElement
         {
-            X = X, Y = Y, Width = Width, Height = Height, ZIndex = ZIndex,
-            RotationDegrees = RotationDegrees, FlipX = FlipX, FlipY = FlipY,
-            Opacity = Opacity, IsVisible = IsVisible, IsLocked = false, Name = Name, GroupId = null,
-            AspectLocked = AspectLocked,
             FilePath = FilePath,
             NaturalPixelWidth = NaturalPixelWidth, NaturalPixelHeight = NaturalPixelHeight,
             SourceCropRect = SourceCropRect,
@@ -140,6 +136,9 @@ public class ImageElement : CanvasElement
             BlurRadius = BlurRadius, SharpenAmount = SharpenAmount,
             OriginalImageBytes = OriginalImageBytes, // shared by reference — never mutated in place
         };
+        CopyBasePropertiesTo(clone);
+        clone.IsLocked = false;
+        clone.GroupId = null;
 
         if (OriginalImageBytes is { Length: > 0 } bytes)
         {

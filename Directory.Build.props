@@ -1,0 +1,19 @@
+<Project>
+  <PropertyGroup>
+    <!-- Suppress transitive package vulnerability warnings on sub-dependencies -->
+    <NoWarn>$(NoWarn);NU1901;NU1902;NU1903;NU1904</NoWarn>
+
+    <!-- Shared Metadata for FryImage -->
+    <Authors>PrashantUnity; FryPDF Tools Team</Authors>
+    <Company>FryPDF Tools Team</Company>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/PrashantUnity/FryImage</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/PrashantUnity/FryImage</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile Condition="Exists('README.md')">README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup Condition="Exists('README.md')">
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+</Project>

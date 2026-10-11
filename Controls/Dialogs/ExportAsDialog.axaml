@@ -1,0 +1,72 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Dialogs.ExportAsDialog"
+             x:DataType="local:ImageEditorViewModel">
+
+    <!-- Modal Backdrop -->
+    <Border Background="#99000000"
+            IsVisible="{Binding IsExportDialogOpen}"
+            ZIndex="500">
+        <Border Background="{DynamicResource PsPanelBrush}"
+                BorderBrush="{DynamicResource PsBorderLightBrush}"
+                BorderThickness="1"
+                CornerRadius="3"
+                Width="440" Height="360"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                BoxShadow="0 10 30 #80000000">
+            <Grid RowDefinitions="32,*,42">
+                <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="10,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Export As" FontWeight="SemiBold" FontSize="12" Foreground="#FFFFFF" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Classes="ps-opt-btn" Command="{Binding CancelExportCommand}">
+                            <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <StackPanel Grid.Row="1" Margin="16" Spacing="12">
+                    <TextBlock Text="File Settings" Classes="ps-section-header" />
+                    <Grid ColumnDefinitions="Auto,*">
+                        <TextBlock Grid.Column="0" Text="Format:" Classes="ps-label" Width="70" />
+                        <ComboBox Grid.Column="1" Classes="ps-combo" Width="140"
+                                  SelectedItem="{Binding ExportFormat, Mode=TwoWay}">
+                            <ComboBoxItem Content="PNG" />
+                            <ComboBoxItem Content="JPEG" />
+                            <ComboBoxItem Content="WebP" />
+                        </ComboBox>
+                    </Grid>
+
+                    <Grid ColumnDefinitions="Auto,*">
+                        <TextBlock Grid.Column="0" Text="Scale:" Classes="ps-label" Width="70" />
+                        <ComboBox Grid.Column="1" Classes="ps-combo" Width="140">
+                            <ComboBoxItem Content="1x (Native)" />
+                            <ComboBoxItem Content="0.5x" />
+                            <ComboBoxItem Content="2x (@2x)" />
+                            <ComboBoxItem Content="3x (@3x)" />
+                        </ComboBox>
+                    </Grid>
+
+                    <Border Background="{DynamicResource PsFieldBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" Padding="10" Margin="0,8,0,0">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0" Spacing="2">
+                                <TextBlock Text="Image Size" Classes="ps-label" />
+                                <TextBlock Text="{Binding ExportDimensionsLabel}" FontSize="12" FontWeight="SemiBold" Foreground="#FFFFFF" />
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="{Binding ExportEstimatedSizeLabel}" FontSize="11" Foreground="{DynamicResource PsAccentBrush}" VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <Border Grid.Row="2" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="10,0">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" VerticalAlignment="Center">
+                        <Button Classes="ps-btn" Content="Cancel" Padding="14,5" Command="{Binding CancelExportCommand}" />
+                        <Button Classes="ps-btn ps-btn-primary" Content="Export" Padding="18,5" Command="{Binding ConfirmExportCommand}" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Border>
+</UserControl>

@@ -1,6 +1,6 @@
-# 🎨 Image Editor Plugin
+# 🖼️ FryImage — Layered Graphics & Image Studio
 
-A Canva-style layered design editor overlay for **FryPDF** — compose graphics directly inside your PDF workspace without leaving the application.
+A professional Photoshop & Canva inspired layered design and photo editing studio for **FryPDF** and standalone desktop use — compose graphics, adjust colors, apply filters, manage layers, and export high-resolution assets directly inside your workspace.
 
 ## Features
 

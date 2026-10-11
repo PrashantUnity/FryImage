@@ -46,13 +46,19 @@ public class EllipseElement : CanvasElement, IHasFill, IHasStroke
         return (dx * dx + dy * dy) <= 1.0;
     }
 
-    public override CanvasElement Clone() => new EllipseElement
+    public override CanvasElement Clone()
     {
-        X = X, Y = Y, Width = Width, Height = Height, ZIndex = ZIndex,
-        RotationDegrees = RotationDegrees, FlipX = FlipX, FlipY = FlipY,
-        Opacity = Opacity, IsVisible = IsVisible, IsLocked = false, Name = Name, GroupId = null,
-        AspectLocked = AspectLocked,
-        FillColor = FillColor, Gradient = Gradient, StrokeColor = StrokeColor,
-        StrokeThickness = StrokeThickness, DashStyle = DashStyle,
-    };
+        var copy = new EllipseElement
+        {
+            FillColor = FillColor,
+            Gradient = Gradient,
+            StrokeColor = StrokeColor,
+            StrokeThickness = StrokeThickness,
+            DashStyle = DashStyle,
+        };
+        CopyBasePropertiesTo(copy);
+        copy.IsLocked = false;
+        copy.GroupId = null;
+        return copy;
+    }
 }

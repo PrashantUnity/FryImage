@@ -1,0 +1,169 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Dialogs.LayerStyleDialog"
+             x:DataType="local:ImageEditorViewModel">
+
+    <UserControl.Resources>
+        <local:StringEqualsConverter x:Key="StringEqualsConverter" />
+        <local:ColorToBrushConverter x:Key="ColorToBrushConverter" />
+    </UserControl.Resources>
+
+    <!-- Modal Backdrop -->
+    <Border Background="#80000000" IsVisible="{Binding IsLayerStyleDialogOpen}">
+        <Border Width="640" Height="460"
+                Background="{DynamicResource PsPanelBrush}"
+                BorderBrush="{DynamicResource PsBorderBrush}"
+                BorderThickness="1"
+                BoxShadow="0 8 32 #90000000"
+                CornerRadius="2"
+                ClipToBounds="True">
+            <Grid RowDefinitions="32,*,42">
+                <!-- Dialog Title Bar -->
+                <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="12,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Layer Style" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Classes="ps-opt-btn" Command="{Binding CloseLayerStyleDialogCommand}" ToolTip.Tip="Close">
+                            <materialIcons:MaterialIcon Kind="Close" Width="12" Height="12" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Dialog Body (Left: Effects List, Right: Effect Settings) -->
+                <Grid Grid.Row="1" ColumnDefinitions="160,*">
+                    <!-- Left: Effects Checklist -->
+                    <Border Grid.Column="0" Background="{DynamicResource PsFieldBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,1,0" Padding="8">
+                        <StackPanel Spacing="4">
+                            <!-- Drop Shadow -->
+                            <Button Classes="ps-opt-btn" HorizontalAlignment="Stretch" Padding="6,4"
+                                    Command="{Binding SelectLayerStyleSectionCommand}" CommandParameter="DropShadow"
+                                    Classes.active="{Binding ActiveLayerStyleSection, Converter={StaticResource StringEqualsConverter}, ConverterParameter='DropShadow'}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <CheckBox IsChecked="{Binding FxDropShadowEnabled, Mode=TwoWay}" Margin="0" />
+                                    <TextBlock Text="Drop Shadow" FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Outer Glow -->
+                            <Button Classes="ps-opt-btn" HorizontalAlignment="Stretch" Padding="6,4"
+                                    Command="{Binding SelectLayerStyleSectionCommand}" CommandParameter="OuterGlow"
+                                    Classes.active="{Binding ActiveLayerStyleSection, Converter={StaticResource StringEqualsConverter}, ConverterParameter='OuterGlow'}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <CheckBox IsChecked="{Binding FxOuterGlowEnabled, Mode=TwoWay}" Margin="0" />
+                                    <TextBlock Text="Outer Glow" FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Inner Shadow -->
+                            <Button Classes="ps-opt-btn" HorizontalAlignment="Stretch" Padding="6,4"
+                                    Command="{Binding SelectLayerStyleSectionCommand}" CommandParameter="InnerShadow"
+                                    Classes.active="{Binding ActiveLayerStyleSection, Converter={StaticResource StringEqualsConverter}, ConverterParameter='InnerShadow'}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <CheckBox IsChecked="{Binding FxInnerShadowEnabled, Mode=TwoWay}" Margin="0" />
+                                    <TextBlock Text="Inner Shadow" FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Color Overlay -->
+                            <Button Classes="ps-opt-btn" HorizontalAlignment="Stretch" Padding="6,4"
+                                    Command="{Binding SelectLayerStyleSectionCommand}" CommandParameter="ColorOverlay"
+                                    Classes.active="{Binding ActiveLayerStyleSection, Converter={StaticResource StringEqualsConverter}, ConverterParameter='ColorOverlay'}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <CheckBox IsChecked="{Binding FxColorOverlayEnabled, Mode=TwoWay}" Margin="0" />
+                                    <TextBlock Text="Color Overlay" FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Stroke -->
+                            <Button Classes="ps-opt-btn" HorizontalAlignment="Stretch" Padding="6,4"
+                                    Command="{Binding SelectLayerStyleSectionCommand}" CommandParameter="Stroke"
+                                    Classes.active="{Binding ActiveLayerStyleSection, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Stroke'}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <CheckBox IsChecked="{Binding FxStrokeEnabled, Mode=TwoWay}" Margin="0" />
+                                    <TextBlock Text="Stroke" FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Right: Effect Controls -->
+                    <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Margin="14,10">
+                        <!-- Drop Shadow Settings -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ActiveLayerStyleSection, Converter={StaticResource StringEqualsConverter}, ConverterParameter='DropShadow'}">
+                            <TextBlock Text="Drop Shadow" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource PsTextBrush}" />
+
+                            <!-- Blend Mode & Color -->
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Spacing="2">
+                                    <TextBlock Text="Blend Mode" Classes="ps-label" />
+                                    <ComboBox Classes="ps-combo" Width="140"
+                                              ItemsSource="{Binding AvailableBlendModes}"
+                                              SelectedItem="{Binding FxDropShadowBlendMode, Mode=TwoWay}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Spacing="2">
+                                    <TextBlock Text="Color" Classes="ps-label" />
+                                    <Border Width="28" Height="20" Background="{Binding FxDropShadowColor, Converter={StaticResource ColorToBrushConverter}}"
+                                            BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1" CornerRadius="1" />
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Opacity Slider -->
+                            <StackPanel Spacing="2">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Opacity" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FxDropShadowOpacity, StringFormat='{}{0:P0}'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                                </Grid>
+                                <Slider Minimum="0" Maximum="1" Value="{Binding FxDropShadowOpacity, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <!-- Angle Slider -->
+                            <StackPanel Spacing="2">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Angle" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FxDropShadowAngle, StringFormat='{}{0:0}°'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                                </Grid>
+                                <Slider Minimum="0" Maximum="360" Value="{Binding FxDropShadowAngle, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <!-- Distance & Size -->
+                            <Grid ColumnDefinitions="*,*">
+                                <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,6,0">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="Distance" Classes="ps-label" />
+                                        <TextBlock Grid.Column="1" Text="{Binding FxDropShadowDistance, StringFormat='{}{0:0} px'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                                    </Grid>
+                                    <Slider Minimum="0" Maximum="100" Value="{Binding FxDropShadowDistance, Mode=TwoWay}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Spacing="2" Margin="6,0,0,0">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="Size (Blur)" Classes="ps-label" />
+                                        <TextBlock Grid.Column="1" Text="{Binding FxDropShadowSize, StringFormat='{}{0:0} px'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                                    </Grid>
+                                    <Slider Minimum="0" Maximum="100" Value="{Binding FxDropShadowSize, Mode=TwoWay}" />
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Spread -->
+                            <StackPanel Spacing="2">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Spread" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FxDropShadowSpread, StringFormat='{}{0:0}%'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                                </Grid>
+                                <Slider Minimum="0" Maximum="100" Value="{Binding FxDropShadowSpread, Mode=TwoWay}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+
+                <!-- Footer Buttons (Cancel, OK) -->
+                <Border Grid.Row="2" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="12,0">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" VerticalAlignment="Center">
+                        <Button Classes="ps-btn" Content="Cancel" Padding="14,5" Command="{Binding CloseLayerStyleDialogCommand}" />
+                        <Button Classes="ps-btn ps-btn-primary" Content="OK" Padding="18,5" Command="{Binding ApplyLayerStyleDialogCommand}" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Border>
+</UserControl>

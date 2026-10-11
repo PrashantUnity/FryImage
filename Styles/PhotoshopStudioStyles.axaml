@@ -1,0 +1,300 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ============================================================
+         PHOTOSHOP / PHOTOCRAFT DESIGN SYSTEM TOKENS
+         Sampled directly from FryImage (ThemeKind::Pro / ProMedium)
+         ============================================================ -->
+    <Styles.Resources>
+        <Color x:Key="PsChromeColor">#1F1F1F</Color>
+        <Color x:Key="PsOptionsColor">#282828</Color>
+        <Color x:Key="PsTabColor">#222222</Color>
+        <Color x:Key="PsTabActiveColor">#2D2D2D</Color>
+        <Color x:Key="PsToolbarColor">#2D2D2D</Color>
+        <Color x:Key="PsPanelColor">#2A2A2B</Color>
+        <Color x:Key="PsPanelHeaderColor">#242425</Color>
+        <Color x:Key="PsCanvasColor">#1E1E1E</Color>
+        <Color x:Key="PsFieldColor">#1E1E1E</Color>
+        <Color x:Key="PsBorderColor">#181818</Color>
+        <Color x:Key="PsBorderSubtleColor">#333333</Color>
+        <Color x:Key="PsBorderLightColor">#3E3E3E</Color>
+        <Color x:Key="PsTextColor">#DEDEDE</Color>
+        <Color x:Key="PsTextDimColor">#B2B2B2</Color>
+        <Color x:Key="PsTextFaintColor">#808080</Color>
+        <Color x:Key="PsAccentColor">#378EF0</Color>
+        <Color x:Key="PsAccentHoverColor">#4FA3F7</Color>
+        <Color x:Key="PsSelectionColor">#1E4870</Color>
+        <Color x:Key="PsRowSelectedColor">#525252</Color>
+        <Color x:Key="PsHoverColor">#383838</Color>
+
+        <!-- Brushes -->
+        <SolidColorBrush x:Key="PsChromeBrush" Color="{StaticResource PsChromeColor}" />
+        <SolidColorBrush x:Key="PsOptionsBrush" Color="{StaticResource PsOptionsColor}" />
+        <SolidColorBrush x:Key="PsTabBrush" Color="{StaticResource PsTabColor}" />
+        <SolidColorBrush x:Key="PsTabActiveBrush" Color="{StaticResource PsTabActiveColor}" />
+        <SolidColorBrush x:Key="PsActiveTabBrush" Color="{StaticResource PsTabActiveColor}" />
+        <SolidColorBrush x:Key="PsToolbarBrush" Color="{StaticResource PsToolbarColor}" />
+        <SolidColorBrush x:Key="PsPanelBrush" Color="{StaticResource PsPanelColor}" />
+        <SolidColorBrush x:Key="PsPanelHeaderBrush" Color="{StaticResource PsPanelHeaderColor}" />
+        <SolidColorBrush x:Key="PsCanvasBrush" Color="{StaticResource PsCanvasColor}" />
+        <SolidColorBrush x:Key="PsFieldBrush" Color="{StaticResource PsFieldColor}" />
+        <SolidColorBrush x:Key="PsBorderBrush" Color="{StaticResource PsBorderColor}" />
+        <SolidColorBrush x:Key="PsBorderSubtleBrush" Color="{StaticResource PsBorderSubtleColor}" />
+        <SolidColorBrush x:Key="PsBorderLightBrush" Color="{StaticResource PsBorderLightColor}" />
+        <SolidColorBrush x:Key="PsTextBrush" Color="{StaticResource PsTextColor}" />
+        <SolidColorBrush x:Key="PsTextDimBrush" Color="{StaticResource PsTextDimColor}" />
+        <SolidColorBrush x:Key="PsTextFaintBrush" Color="{StaticResource PsTextFaintColor}" />
+        <SolidColorBrush x:Key="PsAccentBrush" Color="{StaticResource PsAccentColor}" />
+        <SolidColorBrush x:Key="PsAccentHoverBrush" Color="{StaticResource PsAccentHoverColor}" />
+        <SolidColorBrush x:Key="PsSelectionBrush" Color="{StaticResource PsSelectionColor}" />
+        <SolidColorBrush x:Key="PsRowSelectedBrush" Color="{StaticResource PsRowSelectedColor}" />
+        <SolidColorBrush x:Key="PsHoverBrush" Color="{StaticResource PsHoverColor}" />
+    </Styles.Resources>
+
+    <!-- Top Menu Item Buttons -->
+    <Style Selector="Button.ps-menu-btn">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource PsTextBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="7,3" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="CornerRadius" Value="2" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.ps-menu-btn:pointerover">
+        <Setter Property="Background" Value="{StaticResource PsHoverBrush}" />
+        <Setter Property="Foreground" Value="#FFFFFF" />
+    </Style>
+
+    <!-- Options Bar Button -->
+    <Style Selector="Button.ps-opt-btn">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource PsTextBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="5,3" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="CornerRadius" Value="2" />
+        <Setter Property="Height" Value="24" />
+    </Style>
+    <Style Selector="Button.ps-opt-btn:pointerover">
+        <Setter Property="Background" Value="{StaticResource PsHoverBrush}" />
+    </Style>
+
+    <!-- Tool Palette Buttons (Left Toolbar) -->
+    <Style Selector="Button.ps-tool-btn">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource PsTextDimBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Width" Value="32" />
+        <Setter Property="Height" Value="28" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="CornerRadius" Value="2" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.ps-tool-btn:pointerover">
+        <Setter Property="Background" Value="{StaticResource PsHoverBrush}" />
+        <Setter Property="Foreground" Value="#FFFFFF" />
+    </Style>
+    <Style Selector="Button.ps-tool-btn.active">
+        <Setter Property="Background" Value="{StaticResource PsAccentBrush}" />
+        <Setter Property="Foreground" Value="#FFFFFF" />
+    </Style>
+
+    <!-- Document Tab Buttons -->
+    <Style Selector="Button.ps-doc-tab">
+        <Setter Property="Background" Value="{StaticResource PsTabBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource PsTextDimBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource PsBorderBrush}" />
+        <Setter Property="BorderThickness" Value="0,0,1,0" />
+        <Setter Property="Padding" Value="10,4" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Height" Value="26" />
+        <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    <Style Selector="Button.ps-doc-tab.active">
+        <Setter Property="Background" Value="{StaticResource PsTabActiveBrush}" />
+        <Setter Property="Foreground" Value="#FFFFFF" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <!-- Panel Strip Tab Buttons (Right Dock) -->
+    <Style Selector="Button.ps-panel-tab">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource PsTextDimBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="8,4" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="Height" Value="26" />
+    </Style>
+    <Style Selector="Button.ps-panel-tab:pointerover">
+        <Setter Property="Foreground" Value="#FFFFFF" />
+    </Style>
+    <Style Selector="Button.ps-panel-tab.active">
+        <Setter Property="Foreground" Value="#FFFFFF" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="BorderBrush" Value="{StaticResource PsAccentBrush}" />
+        <Setter Property="BorderThickness" Value="0,0,0,2" />
+    </Style>
+
+    <!-- Photoshop Field Inputs (Numeric / Text) -->
+    <Style Selector="TextBox.ps-field, TextBox.ps-input">
+        <Setter Property="Background" Value="{StaticResource PsFieldBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource PsTextBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource PsBorderLightBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="2" />
+        <Setter Property="Height" Value="22" />
+        <Setter Property="Padding" Value="4,1" />
+        <Setter Property="FontSize" Value="11" />
+    </Style>
+    <Style Selector="TextBox.ps-field:focus, TextBox.ps-input:focus">
+        <Setter Property="BorderBrush" Value="{StaticResource PsAccentBrush}" />
+    </Style>
+
+    <!-- Photoshop NumericUpDown -->
+    <Style Selector="NumericUpDown.ps-num">
+        <Setter Property="Background" Value="{StaticResource PsFieldBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource PsTextBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource PsBorderLightBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="2" />
+        <Setter Property="Height" Value="22" />
+        <Setter Property="Padding" Value="3,1" />
+        <Setter Property="FontSize" Value="11" />
+    </Style>
+
+    <!-- Photoshop ComboBox -->
+    <Style Selector="ComboBox.ps-combo">
+        <Setter Property="Background" Value="{StaticResource PsFieldBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource PsTextBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource PsBorderLightBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="2" />
+        <Setter Property="Height" Value="22" />
+        <Setter Property="Padding" Value="4,1" />
+        <Setter Property="FontSize" Value="11" />
+    </Style>
+
+    <!-- Layer & History ListBox Row Styling -->
+    <Style Selector="ListBox.ps-layers > ListBoxItem, ListBoxItem.ps-layer-row">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="BorderBrush" Value="{StaticResource PsBorderBrush}" />
+        <Setter Property="Padding" Value="4,2" />
+        <Setter Property="MinHeight" Value="28" />
+        <Setter Property="CornerRadius" Value="2" />
+    </Style>
+    <Style Selector="ListBox.ps-layers > ListBoxItem:pointerover /template/ ContentPresenter, ListBoxItem.ps-layer-row:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource PsHoverBrush}" />
+    </Style>
+    <Style Selector="ListBox.ps-layers > ListBoxItem:selected /template/ ContentPresenter, ListBoxItem.ps-layer-row:selected /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource PsRowSelectedBrush}" />
+        <Setter Property="Foreground" Value="#FFFFFF" />
+    </Style>
+    <Style Selector="ListBox.ps-layers > ListBoxItem:selected:pointerover /template/ ContentPresenter, ListBoxItem.ps-layer-row:selected:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource PsRowSelectedBrush}" />
+        <Setter Property="Foreground" Value="#FFFFFF" />
+    </Style>
+
+    <!-- Footer Action Buttons (Bottom of Layers panel) -->
+    <Style Selector="Button.ps-footer-btn">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource PsTextDimBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Width" Value="24" />
+        <Setter Property="Height" Value="24" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="CornerRadius" Value="2" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.ps-footer-btn:pointerover">
+        <Setter Property="Background" Value="{StaticResource PsHoverBrush}" />
+        <Setter Property="Foreground" Value="#FFFFFF" />
+    </Style>
+
+    <!-- Labels -->
+    <Style Selector="TextBlock.ps-label">
+        <Setter Property="Foreground" Value="{StaticResource PsTextDimBrush}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.ps-section-header">
+        <Setter Property="Foreground" Value="#FFFFFF" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <!-- Action Buttons (Cancel, Secondary) -->
+    <Style Selector="Button.ps-btn">
+        <Setter Property="Background" Value="#333333" />
+        <Setter Property="Foreground" Value="{StaticResource PsTextBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource PsBorderLightBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="2" />
+        <Setter Property="Padding" Value="12,4" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.ps-btn:pointerover">
+        <Setter Property="Background" Value="#3E3E3E" />
+        <Setter Property="BorderBrush" Value="#666666" />
+        <Setter Property="Foreground" Value="#FFFFFF" />
+    </Style>
+    <Style Selector="Button.ps-btn:pressed">
+        <Setter Property="Background" Value="#252525" />
+    </Style>
+
+    <!-- Primary Action Button (OK, Create, Commit - Blue Accent) -->
+    <Style Selector="Button.ps-btn-primary">
+        <Setter Property="Background" Value="{StaticResource PsAccentBrush}" />
+        <Setter Property="Foreground" Value="#FFFFFF" />
+        <Setter Property="BorderBrush" Value="{StaticResource PsAccentHoverBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="2" />
+        <Setter Property="Padding" Value="14,4" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.ps-btn-primary:pointerover">
+        <Setter Property="Background" Value="{StaticResource PsAccentHoverBrush}" />
+        <Setter Property="BorderBrush" Value="#3399FF" />
+    </Style>
+    <Style Selector="Button.ps-btn-primary:pressed">
+        <Setter Property="Background" Value="{StaticResource PsSelectionBrush}" />
+    </Style>
+
+    <!-- Sliders -->
+    <Style Selector="Slider">
+        <Setter Property="Height" Value="20" />
+        <Setter Property="Margin" Value="0,2" />
+    </Style>
+    <Style Selector="Slider.ps-slider">
+        <Setter Property="Height" Value="16" />
+        <Setter Property="Margin" Value="0,1" />
+    </Style>
+
+    <!-- ScrollViewer / ScrollBar Dark Mode Theme -->
+    <Style Selector="ScrollBar">
+        <Setter Property="AllowAutoHide" Value="True" />
+    </Style>
+
+    <!-- Splitters -->
+    <Style Selector="GridSplitter.ps-splitter">
+        <Setter Property="Background" Value="{StaticResource PsBorderBrush}" />
+        <Setter Property="Opacity" Value="0.8" />
+    </Style>
+    <Style Selector="GridSplitter.ps-splitter:pointerover">
+        <Setter Property="Background" Value="{StaticResource PsAccentBrush}" />
+        <Setter Property="Opacity" Value="1.0" />
+    </Style>
+
+</Styles>

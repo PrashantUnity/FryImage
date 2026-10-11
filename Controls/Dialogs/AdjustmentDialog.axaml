@@ -1,0 +1,216 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:views="using:PdfEditorApp.Plugins.ImageEditor.Controls"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Dialogs.AdjustmentDialog"
+             x:DataType="local:ImageEditorViewModel">
+
+    <UserControl.Resources>
+        <local:StringEqualsConverter x:Key="StringEqualsConverter" />
+    </UserControl.Resources>
+
+    <!-- Modal Backdrop -->
+    <Border Background="#90000000" IsVisible="{Binding IsAdjustmentDialogOpen}">
+        <Border Width="520" Height="440"
+                Background="{DynamicResource PsPanelBrush}"
+                BorderBrush="{DynamicResource PsBorderBrush}"
+                BorderThickness="1"
+                BoxShadow="0 10 36 #B0000000"
+                CornerRadius="2"
+                ClipToBounds="True">
+            <Grid RowDefinitions="34,*,46">
+
+                <!-- Header -->
+                <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="14,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <materialIcons:MaterialIcon Kind="CircleHalfFull" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+                            <TextBlock Text="{Binding ActiveAdjustmentTitle}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="ps-opt-btn" Command="{Binding CancelAdjustmentDialogCommand}" ToolTip.Tip="Cancel (Esc)">
+                            <materialIcons:MaterialIcon Kind="Close" Width="12" Height="12" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Body Controls -->
+                <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Margin="16,12">
+                    <StackPanel Spacing="14">
+
+                        <!-- 1. Brightness / Contrast View -->
+                        <StackPanel Spacing="12" IsVisible="{Binding ActiveAdjustmentMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='BrightnessContrast'}">
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Brightness" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding AdjBrightness, StringFormat='{}{0:+0;-0;0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="-100" Maximum="100" Value="{Binding AdjBrightness, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Contrast" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding AdjContrast, StringFormat='{}{0:+0;-0;0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="-100" Maximum="100" Value="{Binding AdjContrast, Mode=TwoWay}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- 2. Levels View (with live histogram) -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ActiveAdjustmentMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Levels'}">
+                            <TextBlock Text="Input Levels" Classes="ps-label" FontWeight="SemiBold" />
+                            <!-- Histogram Box -->
+                            <Border Background="#14181E" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" CornerRadius="2" Padding="2" Height="80">
+                                <views:RgbHistogramControl RedBins="{Binding HistogramRed}"
+                                                           GreenBins="{Binding HistogramGreen}"
+                                                           BlueBins="{Binding HistogramBlue}"
+                                                           LumBins="{Binding HistogramLuminance}"
+                                                           ChannelMode="{Binding HistogramChannel}" />
+                            </Border>
+
+                            <!-- Shadow, Midtone (Gamma), Highlight Inputs -->
+                            <Grid ColumnDefinitions="*,12,*,12,*">
+                                <StackPanel Grid.Column="0" Spacing="2">
+                                    <TextBlock Text="Black" Classes="ps-label" FontSize="10" />
+                                    <NumericUpDown Classes="ps-num" Value="{Binding AdjLevelsInBlack, Mode=TwoWay}" Minimum="0" Maximum="254" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Spacing="2">
+                                    <TextBlock Text="Gamma" Classes="ps-label" FontSize="10" />
+                                    <NumericUpDown Classes="ps-num" Value="{Binding AdjLevelsGamma, Mode=TwoWay}" Minimum="0.1" Maximum="9.9" Increment="0.05" FormatString="{}{0:0.00}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="4" Spacing="2">
+                                    <TextBlock Text="White" Classes="ps-label" FontSize="10" />
+                                    <NumericUpDown Classes="ps-num" Value="{Binding AdjLevelsInWhite, Mode=TwoWay}" Minimum="1" Maximum="255" />
+                                </StackPanel>
+                            </Grid>
+
+                            <TextBlock Text="Output Levels" Classes="ps-label" FontWeight="SemiBold" Margin="0,6,0,0" />
+                            <Grid ColumnDefinitions="*,12,*">
+                                <StackPanel Grid.Column="0" Spacing="2">
+                                    <TextBlock Text="Black" Classes="ps-label" FontSize="10" />
+                                    <NumericUpDown Classes="ps-num" Value="{Binding AdjLevelsOutBlack, Mode=TwoWay}" Minimum="0" Maximum="255" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Spacing="2">
+                                    <TextBlock Text="White" Classes="ps-label" FontSize="10" />
+                                    <NumericUpDown Classes="ps-num" Value="{Binding AdjLevelsOutWhite, Mode=TwoWay}" Minimum="0" Maximum="255" />
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- 3. Hue / Saturation View -->
+                        <StackPanel Spacing="12" IsVisible="{Binding ActiveAdjustmentMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='HueSaturation'}">
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Hue" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding AdjHue, StringFormat='{}{0:+0;-0;0}°'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="-180" Maximum="180" Value="{Binding AdjHue, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Saturation" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding AdjSaturation, StringFormat='{}{0:+0;-0;0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="-100" Maximum="100" Value="{Binding AdjSaturation, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Lightness" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding AdjLightness, StringFormat='{}{0:+0;-0;0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="-100" Maximum="100" Value="{Binding AdjLightness, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <CheckBox Content="Colorize" IsChecked="{Binding AdjColorize, Mode=TwoWay}" Margin="0,4,0,0" />
+                        </StackPanel>
+
+                        <!-- 4. Vibrance View -->
+                        <StackPanel Spacing="12" IsVisible="{Binding ActiveAdjustmentMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Vibrance'}">
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Vibrance" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding AdjVibrance, StringFormat='{}{0:+0;-0;0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="-100" Maximum="100" Value="{Binding AdjVibrance, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Saturation" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding AdjSaturation, StringFormat='{}{0:+0;-0;0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="-100" Maximum="100" Value="{Binding AdjSaturation, Mode=TwoWay}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- 5. Color Balance View -->
+                        <StackPanel Spacing="12" IsVisible="{Binding ActiveAdjustmentMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='ColorBalance'}">
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Cyan" Classes="ps-label" Foreground="#4EC9B0" />
+                                    <TextBlock Grid.Column="1" Text="{Binding AdjCyanRed, StringFormat='{}{0:+0;-0;0}'}" TextAlignment="Center" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                    <TextBlock Grid.Column="2" Text="Red" Classes="ps-label" Foreground="#EC5B62" />
+                                </Grid>
+                                <Slider Minimum="-100" Maximum="100" Value="{Binding AdjCyanRed, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Magenta" Classes="ps-label" Foreground="#D16D9E" />
+                                    <TextBlock Grid.Column="1" Text="{Binding AdjMagentaGreen, StringFormat='{}{0:+0;-0;0}'}" TextAlignment="Center" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                    <TextBlock Grid.Column="2" Text="Green" Classes="ps-label" Foreground="#6A9955" />
+                                </Grid>
+                                <Slider Minimum="-100" Maximum="100" Value="{Binding AdjMagentaGreen, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Yellow" Classes="ps-label" Foreground="#DCDCAA" />
+                                    <TextBlock Grid.Column="1" Text="{Binding AdjYellowBlue, StringFormat='{}{0:+0;-0;0}'}" TextAlignment="Center" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                    <TextBlock Grid.Column="2" Text="Blue" Classes="ps-label" Foreground="#569CD6" />
+                                </Grid>
+                                <Slider Minimum="-100" Maximum="100" Value="{Binding AdjYellowBlue, Mode=TwoWay}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- 6. Threshold View -->
+                        <StackPanel Spacing="12" IsVisible="{Binding ActiveAdjustmentMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Threshold'}">
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Threshold Level" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding AdjThreshold, StringFormat='{}{0:0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="1" Maximum="255" Value="{Binding AdjThreshold, Mode=TwoWay}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- 7. Posterize View -->
+                        <StackPanel Spacing="12" IsVisible="{Binding ActiveAdjustmentMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Posterize'}">
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Tonal Levels" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding AdjPosterizeLevels, StringFormat='{}{0:0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="2" Maximum="64" Value="{Binding AdjPosterizeLevels, Mode=TwoWay}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Live Preview Toggle -->
+                        <CheckBox Content="Preview" IsChecked="{Binding AdjPreviewEnabled, Mode=TwoWay}" Margin="0,6,0,0" />
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Footer Action Buttons -->
+                <Border Grid.Row="2" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="14,8">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                        <Button Classes="ps-btn" Content="Cancel" Command="{Binding CancelAdjustmentDialogCommand}" Padding="14,5" />
+                        <Button Classes="ps-btn ps-btn-primary" Content="OK" Command="{Binding ConfirmAdjustmentDialogCommand}" Padding="18,5" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Border>
+</UserControl>

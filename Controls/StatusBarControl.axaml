@@ -1,0 +1,30 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.StatusBarControl"
+             x:DataType="local:ImageEditorViewModel"
+             Height="24"
+             Background="{DynamicResource PsChromeBrush}">
+
+    <Border BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="8,0">
+        <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+            <!-- Zoom Percent Readout (FryImage Parity: 102% ›) -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <TextBlock Text="{Binding ZoomPercent, StringFormat='{}{0:0}%'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                <TextBlock Text="›" FontSize="10" Foreground="{DynamicResource PsTextFaintBrush}" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- Document Dimensions & DPI Readout (FryImage Parity: 2100 px x 1500 px (300 ppi) ›) -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="12,0,0,0" VerticalAlignment="Center">
+                <TextBlock Text="{Binding CanvasWidth, StringFormat='{}{0:0}'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                <TextBlock Text="px x" FontSize="10" Foreground="{DynamicResource PsTextFaintBrush}" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding CanvasHeight, StringFormat='{}{0:0}'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                <TextBlock Text="px (300 ppi)" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                <TextBlock Text="›" FontSize="10" Foreground="{DynamicResource PsTextFaintBrush}" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- Right: Status Readout -->
+            <TextBlock Grid.Column="3" Text="{Binding StatusMessage}" FontSize="10" Foreground="{DynamicResource PsTextFaintBrush}" VerticalAlignment="Center" />
+        </Grid>
+    </Border>
+</UserControl>

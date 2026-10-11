@@ -35,6 +35,15 @@ public abstract class CanvasElement
     /// <summary>0 (fully transparent) .. 1 (fully opaque, default). Applied via dc.PushOpacity().</summary>
     public double Opacity { get; set; } = 1.0;
 
+    /// <summary>Fill opacity (0..1) affecting the layer contents without diminishing exterior effects like drop shadow.</summary>
+    public double FillOpacity { get; set; } = 1.0;
+
+    /// <summary>Photoshop standard layer blend mode.</summary>
+    public LayerBlendMode BlendMode { get; set; } = LayerBlendMode.Normal;
+
+    /// <summary>Layer styles (Drop Shadow, Outer Glow, Inner Shadow, Color Overlay, Stroke).</summary>
+    public LayerStyleEffects Effects { get; set; } = new();
+
     /// <summary>When false, the element is skipped by rendering, hit-testing, and marquee-select
     /// (but remains selectable/togglable from the Layers panel).</summary>
     public bool IsVisible { get; set; } = true;
@@ -55,6 +64,28 @@ public abstract class CanvasElement
     /// <summary>When true, resizing preserves <see cref="GetAspectRatio"/> unless the Shift
     /// modifier is held during the drag. Defaults false for shapes; ImageElement defaults true.</summary>
     public bool AspectLocked { get; set; }
+
+    /// <summary>Copies common base properties to a newly cloned element.</summary>
+    protected void CopyBasePropertiesTo(CanvasElement target)
+    {
+        target.X = X;
+        target.Y = Y;
+        target.Width = Width;
+        target.Height = Height;
+        target.ZIndex = ZIndex;
+        target.RotationDegrees = RotationDegrees;
+        target.FlipX = FlipX;
+        target.FlipY = FlipY;
+        target.Opacity = Opacity;
+        target.FillOpacity = FillOpacity;
+        target.BlendMode = BlendMode;
+        target.Effects = Effects.Clone();
+        target.IsVisible = IsVisible;
+        target.IsLocked = IsLocked;
+        target.Name = Name;
+        target.GroupId = GroupId;
+        target.AspectLocked = AspectLocked;
+    }
 
     /// <summary>Display name shown in the layer panel.</summary>
     public abstract string ElementType { get; }

@@ -7,11 +7,17 @@
     <LangVersion>13</LangVersion>
     <AssemblyName>ImageEditorPlugin.Runner</AssemblyName>
     <RootNamespace>PdfEditorApp.Plugins.ImageEditor.Runner</RootNamespace>
+    <Product>FryImage</Product>
+    <Title>FryImage</Title>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\ImageEditorPlugin.csproj" />
-    <ProjectReference Include="..\..\..\shared\FryPdf.Runner.Shared\FryPdf.Runner.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Material3ExpressiveTokens.axaml" />
+    <AvaloniaResource Include="Material3ExpressiveStyles.axaml" />
   </ItemGroup>
 
   <ItemGroup>

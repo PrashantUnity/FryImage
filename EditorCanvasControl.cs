@@ -51,6 +51,13 @@ public class EditorCanvasControl : Control
     private bool _isPlacingShape;
     private Point _shapeDragStart, _shapeDragEnd;
 
+    // Freehand drawing (Brush / Highlighter)
+    private bool _isDrawingDoodle;
+    private readonly List<Point> _currentDoodlePoints = new();
+    public double BrushThickness { get; set; } = 4.0;
+    public Color BrushColor { get; set; } = Colors.Black;
+    public bool IsHighlighterMode { get; set; }
+
     // Crop mode
     private bool _isCropModeActive;
     private Rect _cropPreviewRect;
@@ -146,8 +153,44 @@ public class EditorCanvasControl : Control
     /// <summary>Fired when the user double-clicks a TextElement while the Select tool is active.</summary>
     public event Action<TextElement>? TextEditRequested;
 
+    /// <summary>Fired when a freehand brush or highlighter stroke completes.</summary>
+    public event Action<IReadOnlyList<Point>>? DoodlePlaced;
+
+    /// <summary>Fired when the eraser tool clicks or drags over an element.</summary>
+    public event Action<CanvasElement>? ElementEraseRequested;
+
     // ── Tool mode ──────────────────────────────────────────────────────────
-    public string ActiveToolMode { get; set; } = "select";
+    private string _activeToolMode = "select";
+    public string ActiveToolMode
+    {
+        get => _activeToolMode;
+        set
+        {
+            _activeToolMode = value;
+            UpdateCursorForTool();
+        }
+    }
+
+    private void UpdateCursorForTool()
+    {
+        if (_spaceHeld || _isPanning || ActiveToolMode == "hand")
+        {
+            Cursor = new Cursor(StandardCursorType.Hand);
+            return;
+        }
+        Cursor = ActiveToolMode switch
+        {
+            "brush" => new Cursor(StandardCursorType.Cross),
+            "eraser" => new Cursor(StandardCursorType.Cross),
+            "text" => new Cursor(StandardCursorType.Ibeam),
+            "eyedropper" => new Cursor(StandardCursorType.Cross),
+            "marquee" => new Cursor(StandardCursorType.Cross),
+            "zoom" => new Cursor(StandardCursorType.Cross),
+            "hand" => new Cursor(StandardCursorType.Hand),
+            "rect" or "ellipse" or "arrow" or "triangle" or "star" or "polygon" or "line" => new Cursor(StandardCursorType.Cross),
+            _ => new Cursor(StandardCursorType.Arrow)
+        };
+    }
 
     // ── Multi-select ───────────────────────────────────────────────────────
     public IReadOnlyList<CanvasElement> Selection => _selection;
@@ -308,6 +351,24 @@ public class EditorCanvasControl : Control
 
     public void ZoomBy(double factor) => SetZoom(_zoom * factor);
 
+    public void ZoomAtPoint(double newZoom, Point screenPos)
+    {
+        var canvasPtBefore = ScreenToCanvas(screenPos);
+        _zoom = Math.Clamp(Math.Round(newZoom, 3), MinZoom, MaxZoom);
+        _isFitModeActive = false;
+
+        double centerOffsetX = (Bounds.Width - _logicalWidth * _zoom) / 2;
+        double centerOffsetY = (Bounds.Height - _logicalHeight * _zoom) / 2;
+        _panOffset = new Point(
+            screenPos.X - canvasPtBefore.X * _zoom - centerOffsetX,
+            screenPos.Y - canvasPtBefore.Y * _zoom - centerOffsetY);
+
+        ClampPanOffset();
+        ZoomChanged?.Invoke(_zoom);
+        CanvasChanged?.Invoke();
+        InvalidateVisual();
+    }
+
     public void ResetZoomToActual()
     {
         _panOffset = default;
@@ -369,7 +430,7 @@ public class EditorCanvasControl : Control
         var bounds = new Rect(0, 0, Bounds.Width, Bounds.Height);
 
         // Pasteboard behind the logical canvas (visible when zoomed/panned out of frame).
-        dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x0E, 0x12, 0x1A)), null, bounds);
+        dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x20, 0x20, 0x20)), null, bounds);
 
         using (dc.PushTransform(GetViewportMatrix()))
         {
@@ -438,6 +499,22 @@ public class EditorCanvasControl : Control
                 DrawShapePlacementPreview(dc, ActiveToolMode, _shapeDragStart, _shapeDragEnd, _zoom);
             }
 
+            if (_isDrawingDoodle && _currentDoodlePoints.Count > 0)
+            {
+                var geometry = DoodleElement.BuildSmoothGeometry(_currentDoodlePoints);
+                var strokeColor = BrushColor;
+                if (IsHighlighterMode && strokeColor.A > 140)
+                {
+                    strokeColor = Color.FromArgb(120, strokeColor.R, strokeColor.G, strokeColor.B);
+                }
+                var pen = new Pen(
+                    new SolidColorBrush(strokeColor),
+                    BrushThickness,
+                    lineCap: PenLineCap.Round,
+                    lineJoin: PenLineJoin.Round);
+                dc.DrawGeometry(null, pen, geometry);
+            }
+
             if (_activeGuides.Count > 0)
             {
                 DrawAlignmentGuides(dc, _activeGuides, _zoom);
@@ -465,7 +542,7 @@ public class EditorCanvasControl : Control
         }
     }
 
-    private static void DrawElement(DrawingContext dc, CanvasElement el)
+    public static void DrawElement(DrawingContext dc, CanvasElement el)
     {
         if (!el.IsVisible) return;
 
@@ -475,7 +552,7 @@ public class EditorCanvasControl : Control
         {
             if (el.RotationDegrees == 0 && !el.FlipX && !el.FlipY)
             {
-                el.Draw(dc);
+                DrawElementWithEffects(dc, el);
                 return;
             }
 
@@ -492,12 +569,102 @@ public class EditorCanvasControl : Control
 
             using (dc.PushTransform(m))
             {
-                el.Draw(dc);
+                DrawElementWithEffects(dc, el);
             }
         }
         finally
         {
             opacityScope?.Dispose();
+        }
+    }
+
+    private static void DrawElementWithEffects(DrawingContext dc, CanvasElement el)
+    {
+        // 1. Drop Shadow Effect (Rendered under the element)
+        if (el.Effects.DropShadow is { IsEnabled: true } shadow)
+        {
+            double rad = shadow.Angle * Math.PI / 180.0;
+            double dx = shadow.Distance * Math.Cos(rad);
+            double dy = shadow.Distance * Math.Sin(rad);
+            byte sa = (byte)Math.Clamp((int)(shadow.Opacity * shadow.Color.A), 0, 255);
+
+            // Multi-pass soft tent blur for the drop shadow
+            int passes = Math.Max(1, (int)(shadow.Size / 3));
+            double spreadRadius = shadow.Spread;
+            for (int p = 1; p <= passes; p++)
+            {
+                double blurStep = (shadow.Size * p) / passes;
+                byte passAlpha = (byte)Math.Max(1, sa / (passes * 1.5));
+                var passColor = Color.FromArgb(passAlpha, shadow.Color.R, shadow.Color.G, shadow.Color.B);
+                var shadowRect = new Rect(
+                    el.X + dx - blurStep / 2 - spreadRadius,
+                    el.Y + dy - blurStep / 2 - spreadRadius,
+                    el.Width + blurStep + spreadRadius * 2,
+                    el.Height + blurStep + spreadRadius * 2);
+
+                double radius = (el is RectangleElement r) ? r.CornerRadius : (el is EllipseElement ? Math.Min(shadowRect.Width, shadowRect.Height) / 2 : 4);
+                dc.DrawRectangle(new SolidColorBrush(passColor), null, shadowRect, radius, radius);
+            }
+        }
+
+        // 2. Outer Glow Effect (Rendered around the element perimeter)
+        if (el.Effects.OuterGlow is { IsEnabled: true } glow)
+        {
+            byte ga = (byte)Math.Clamp((int)(glow.Opacity * glow.Color.A), 0, 255);
+            int glowPasses = Math.Max(2, (int)(glow.Size / 3));
+            for (int p = 1; p <= glowPasses; p++)
+            {
+                double blurStep = (glow.Size * p) / glowPasses;
+                byte passAlpha = (byte)Math.Max(1, ga / (glowPasses * 1.8));
+                var glowColor = Color.FromArgb(passAlpha, glow.Color.R, glow.Color.G, glow.Color.B);
+                var glowRect = new Rect(
+                    el.X - blurStep / 2,
+                    el.Y - blurStep / 2,
+                    el.Width + blurStep,
+                    el.Height + blurStep);
+
+                double radius = (el is RectangleElement r) ? r.CornerRadius + blurStep / 2 : (el is EllipseElement ? Math.Min(glowRect.Width, glowRect.Height) / 2 : 4);
+                dc.DrawRectangle(new SolidColorBrush(glowColor), null, glowRect, radius, radius);
+            }
+        }
+
+        // 3. Element Body (at FillOpacity if specified)
+        if (el.FillOpacity < 1.0)
+        {
+            using (dc.PushOpacity(Math.Clamp(el.FillOpacity, 0, 1)))
+            {
+                el.Draw(dc);
+            }
+        }
+        else
+        {
+            el.Draw(dc);
+        }
+
+        // 4. Color Overlay Effect
+        if (el.Effects.ColorOverlay is { IsEnabled: true } overlay)
+        {
+            byte oa = (byte)Math.Clamp((int)(overlay.Opacity * overlay.Color.A), 0, 255);
+            var overlayColor = Color.FromArgb(oa, overlay.Color.R, overlay.Color.G, overlay.Color.B);
+            var bodyRect = new Rect(el.X, el.Y, el.Width, el.Height);
+            double radius = (el is RectangleElement r) ? r.CornerRadius : (el is EllipseElement ? Math.Min(el.Width, el.Height) / 2 : 0);
+            dc.DrawRectangle(new SolidColorBrush(overlayColor), null, bodyRect, radius, radius);
+        }
+
+        // 5. Layer Stroke Effect
+        if (el.Effects.Stroke is { IsEnabled: true, Size: > 0 } stroke)
+        {
+            byte sta = (byte)Math.Clamp((int)(stroke.Opacity * stroke.Color.A), 0, 255);
+            var strokeColor = Color.FromArgb(sta, stroke.Color.R, stroke.Color.G, stroke.Color.B);
+            var pen = new Pen(new SolidColorBrush(strokeColor), stroke.Size);
+            var strokeRect = stroke.Position switch
+            {
+                LayerStrokePosition.Inside => new Rect(el.X + stroke.Size / 2, el.Y + stroke.Size / 2, Math.Max(0, el.Width - stroke.Size), Math.Max(0, el.Height - stroke.Size)),
+                LayerStrokePosition.Outside => new Rect(el.X - stroke.Size / 2, el.Y - stroke.Size / 2, el.Width + stroke.Size, el.Height + stroke.Size),
+                _ => new Rect(el.X, el.Y, el.Width, el.Height)
+            };
+            double radius = (el is RectangleElement r) ? r.CornerRadius : (el is EllipseElement ? Math.Min(strokeRect.Width, strokeRect.Height) / 2 : 0);
+            dc.DrawRectangle(null, pen, strokeRect, radius, radius);
         }
     }
 
@@ -601,7 +768,7 @@ public class EditorCanvasControl : Control
 
         // Dashed selection border
         var borderPen = new Pen(
-            new SolidColorBrush(Color.FromArgb(220, 99, 102, 241)),
+            new SolidColorBrush(Color.FromArgb(220, 0, 120, 212)),
             1.5 / zoom,
             new DashStyle(new double[] { 5, 3 }, 0));
         dc.DrawRectangle(null, borderPen, bounds.Inflate(2 / zoom));
@@ -617,7 +784,7 @@ public class EditorCanvasControl : Control
         double halfHandle = handleSize / 2;
 
         var handleFill = new SolidColorBrush(Colors.White);
-        var handlePen = new Pen(new SolidColorBrush(Color.FromArgb(255, 99, 102, 241)), 1.5 / zoom);
+        var handlePen = new Pen(new SolidColorBrush(Color.FromArgb(255, 0, 120, 212)), 1.5 / zoom);
 
         foreach (var pt in GetHandlePoints(bounds))
         {
@@ -629,14 +796,14 @@ public class EditorCanvasControl : Control
 
     private static void DrawMultiSelectionOutline(DrawingContext dc, IReadOnlyList<CanvasElement> selection, double zoom)
     {
-        var memberPen = new Pen(new SolidColorBrush(Color.FromArgb(160, 99, 102, 241)), 1 / zoom,
+        var memberPen = new Pen(new SolidColorBrush(Color.FromArgb(160, 0, 120, 212)), 1 / zoom,
             new DashStyle(new double[] { 4, 3 }, 0));
         foreach (var el in selection)
         {
             dc.DrawRectangle(null, memberPen, el.GetRotatedBounds().Inflate(1 / zoom));
         }
 
-        var groupPen = new Pen(new SolidColorBrush(Color.FromArgb(230, 99, 102, 241)), 1.5 / zoom,
+        var groupPen = new Pen(new SolidColorBrush(Color.FromArgb(230, 0, 120, 212)), 1.5 / zoom,
             new DashStyle(new double[] { 6, 3 }, 0));
         dc.DrawRectangle(null, groupPen, ComputeGroupBounds(selection).Inflate(4 / zoom));
     }
@@ -648,7 +815,7 @@ public class EditorCanvasControl : Control
     {
         var stemStart = GetRotationHandleStemStart(axisBounds, rotationDegrees);
         var handlePt = GetRotationHandlePoint(axisBounds, rotationDegrees, zoom);
-        var stemPen = new Pen(new SolidColorBrush(Color.FromArgb(200, 99, 102, 241)), 1.5 / zoom);
+        var stemPen = new Pen(new SolidColorBrush(Color.FromArgb(200, 0, 120, 212)), 1.5 / zoom);
         dc.DrawLine(stemPen, stemStart, handlePt);
         double r = 5.5 / zoom;
         dc.DrawEllipse(new SolidColorBrush(Colors.White), stemPen, handlePt, r, r);
@@ -695,17 +862,23 @@ public class EditorCanvasControl : Control
     {
         var rect = new Rect(Math.Min(start.X, end.X), Math.Min(start.Y, end.Y),
                              Math.Abs(end.X - start.X), Math.Abs(end.Y - start.Y));
-        dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(40, 99, 102, 241)),
-            new Pen(new SolidColorBrush(Color.FromArgb(200, 99, 102, 241)), 1 / zoom), rect);
+        if (rect.Width < 1 && rect.Height < 1) return;
+
+        dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(30, 0, 120, 215)), null, rect);
+
+        var blackPen = new Pen(new SolidColorBrush(Colors.Black), 1.0 / zoom, new DashStyle(new double[] { 4, 4 }, 0));
+        var whitePen = new Pen(new SolidColorBrush(Colors.White), 1.0 / zoom, new DashStyle(new double[] { 4, 4 }, 4));
+        dc.DrawRectangle(null, blackPen, rect);
+        dc.DrawRectangle(null, whitePen, rect);
     }
 
     private static void DrawShapePlacementPreview(DrawingContext dc, string toolType, Point start, Point end, double zoom)
     {
         var rect = new Rect(Math.Min(start.X, end.X), Math.Min(start.Y, end.Y),
-                             Math.Abs(end.X - start.X), Math.Abs(end.Y - start.Y));
-        var pen = new Pen(new SolidColorBrush(Color.FromArgb(220, 99, 102, 241)), 1.5 / zoom,
+                             Math.Max(Math.Abs(end.X - start.X), 2), Math.Max(Math.Abs(end.Y - start.Y), 2));
+        var pen = new Pen(new SolidColorBrush(Color.FromArgb(220, 0, 120, 212)), 1.5 / zoom,
             new DashStyle(new double[] { 4, 3 }, 0));
-        var fill = new SolidColorBrush(Color.FromArgb(40, 99, 102, 241));
+        var fill = new SolidColorBrush(Color.FromArgb(40, 0, 120, 212));
 
         switch (toolType)
         {
@@ -715,10 +888,63 @@ public class EditorCanvasControl : Control
             case "arrow":
                 dc.DrawLine(pen, start, end);
                 break;
+            case "line":
+                dc.DrawLine(pen, start, end);
+                break;
+            case "triangle":
+                var triPoints = new Point[]
+                {
+                    new(rect.Center.X, rect.Y),
+                    new(rect.Right, rect.Bottom),
+                    new(rect.Left, rect.Bottom)
+                };
+                dc.DrawGeometry(fill, pen, PolygonGeometry.BuildClosedFigure(triPoints));
+                break;
+            case "star":
+                var starPoints = ComputePreviewStarVertices(rect, 5, 0.5);
+                dc.DrawGeometry(fill, pen, PolygonGeometry.BuildClosedFigure(starPoints));
+                break;
+            case "polygon":
+                var polyPoints = ComputePreviewPolygonVertices(rect, 6);
+                dc.DrawGeometry(fill, pen, PolygonGeometry.BuildClosedFigure(polyPoints));
+                break;
             default:
                 dc.DrawRectangle(fill, pen, rect);
                 break;
         }
+    }
+
+    private static Point[] ComputePreviewPolygonVertices(Rect bounds, int n)
+    {
+        var points = new Point[n];
+        double cx = bounds.Center.X, cy = bounds.Center.Y;
+        double rx = bounds.Width / 2, ry = bounds.Height / 2;
+        const double startAngle = -Math.PI / 2;
+        for (int i = 0; i < n; i++)
+        {
+            double angle = startAngle + i * (2 * Math.PI / n);
+            points[i] = new Point(cx + rx * Math.Cos(angle), cy + ry * Math.Sin(angle));
+        }
+        return points;
+    }
+
+    private static Point[] ComputePreviewStarVertices(Rect bounds, int n, double innerRatio)
+    {
+        var points = new Point[n * 2];
+        double cx = bounds.Center.X, cy = bounds.Center.Y;
+        double outerRx = bounds.Width / 2, outerRy = bounds.Height / 2;
+        double innerRx = outerRx * innerRatio, innerRy = outerRy * innerRatio;
+        double step = Math.PI / n;
+        const double startAngle = -Math.PI / 2;
+        for (int i = 0; i < n * 2; i++)
+        {
+            double angle = startAngle + i * step;
+            bool isOuter = i % 2 == 0;
+            double rx = isOuter ? outerRx : innerRx;
+            double ry = isOuter ? outerRy : innerRy;
+            points[i] = new Point(cx + rx * Math.Cos(angle), cy + ry * Math.Sin(angle));
+        }
+        return points;
     }
 
     private void DrawCropOverlay(DrawingContext dc, ImageElement img, double zoom)
@@ -733,9 +959,21 @@ public class EditorCanvasControl : Control
             DrawElement(dc, img);
         }
 
+        // Rule of thirds grid lines inside crop preview (Photoshop standard)
+        if (_cropPreviewRect.Width > 12 && _cropPreviewRect.Height > 12)
+        {
+            var gridPen = new Pen(new SolidColorBrush(Color.FromArgb(90, 255, 255, 255)), 1.0 / zoom);
+            double w3 = _cropPreviewRect.Width / 3.0;
+            double h3 = _cropPreviewRect.Height / 3.0;
+            dc.DrawLine(gridPen, new Point(_cropPreviewRect.X + w3, _cropPreviewRect.Y), new Point(_cropPreviewRect.X + w3, _cropPreviewRect.Bottom));
+            dc.DrawLine(gridPen, new Point(_cropPreviewRect.X + 2 * w3, _cropPreviewRect.Y), new Point(_cropPreviewRect.X + 2 * w3, _cropPreviewRect.Bottom));
+            dc.DrawLine(gridPen, new Point(_cropPreviewRect.X, _cropPreviewRect.Y + h3), new Point(_cropPreviewRect.Right, _cropPreviewRect.Y + h3));
+            dc.DrawLine(gridPen, new Point(_cropPreviewRect.X, _cropPreviewRect.Y + 2 * h3), new Point(_cropPreviewRect.Right, _cropPreviewRect.Y + 2 * h3));
+        }
+
         double handleSize = HandleSize / zoom;
         double halfHandle = handleSize / 2;
-        var accentPen = new Pen(new SolidColorBrush(Color.FromArgb(255, 16, 185, 129)), 1.5 / zoom);
+        var accentPen = new Pen(new SolidColorBrush(Color.FromArgb(255, 0, 120, 212)), 1.5 / zoom);
         dc.DrawRectangle(null, accentPen, _cropPreviewRect);
 
         var handleFill = new SolidColorBrush(Colors.White);
@@ -773,15 +1011,16 @@ public class EditorCanvasControl : Control
         var props = e.GetCurrentPoint(this).Properties;
 
         // 1. Panning pre-empts every other interaction.
-        if (props.IsMiddleButtonPressed || _spaceHeld)
+        if (props.IsMiddleButtonPressed || _spaceHeld || ActiveToolMode == "hand")
         {
             _isPanning = true;
             _panLastScreenPos = e.GetPosition(this);
+            e.Pointer.Capture(this);
             e.Handled = true;
             return;
         }
 
-        if (!props.IsLeftButtonPressed) return;
+        if (!props.IsLeftButtonPressed && ActiveToolMode != "zoom") return;
 
         var canvasPt = ScreenToCanvas(e.GetPosition(this));
         _dragStart = canvasPt;
@@ -794,14 +1033,58 @@ public class EditorCanvasControl : Control
             return;
         }
 
+        // Zoom tool
+        if (ActiveToolMode == "zoom")
+        {
+            var screenPos = e.GetPosition(this);
+            bool zoomOut = e.KeyModifiers.HasFlag(KeyModifiers.Alt) || props.IsRightButtonPressed;
+            double factor = zoomOut ? (1.0 / 1.35) : 1.35;
+            ZoomAtPoint(_zoom * factor, screenPos);
+            e.Handled = true;
+            return;
+        }
+
+        // Marquee tool
+        if (ActiveToolMode == "marquee")
+        {
+            _isMarqueeSelecting = true;
+            _marqueeStart = canvasPt;
+            _marqueeEnd = canvasPt;
+            e.Pointer.Capture(this);
+            e.Handled = true;
+            InvalidateVisual();
+            return;
+        }
+
         // 3. Tool-placement mode.
         if (ActiveToolMode != "select")
         {
+            if (ActiveToolMode == "brush")
+            {
+                _isDrawingDoodle = true;
+                _currentDoodlePoints.Clear();
+                _currentDoodlePoints.Add(canvasPt);
+                e.Pointer.Capture(this);
+                e.Handled = true;
+                InvalidateVisual();
+                return;
+            }
+            if (ActiveToolMode == "eraser")
+            {
+                var erasedElement = _elements.OrderByDescending(el => el.ZIndex)
+                    .FirstOrDefault(el => !el.IsLocked && el.IsVisible && el.HitTestRotationAware(canvasPt));
+                if (erasedElement != null)
+                {
+                    ElementEraseRequested?.Invoke(erasedElement);
+                }
+                e.Handled = true;
+                return;
+            }
             if (ActiveToolMode == "text")
             {
                 PlaceTextRequested?.Invoke(canvasPt);
             }
-            else if (ActiveToolMode is "rect" or "ellipse" or "arrow")
+            else if (ActiveToolMode is "rect" or "ellipse" or "arrow" or "triangle" or "star" or "polygon" or "line")
             {
                 _isPlacingShape = true;
                 _shapeDragStart = canvasPt;
@@ -1003,6 +1286,27 @@ public class EditorCanvasControl : Control
             return;
         }
 
+        if (_isDrawingDoodle)
+        {
+            if (_currentDoodlePoints.Count == 0 || Point.Distance(_currentDoodlePoints[^1], pos) >= 1.5 / _zoom)
+            {
+                _currentDoodlePoints.Add(pos);
+                InvalidateVisual();
+            }
+            return;
+        }
+
+        if (ActiveToolMode == "eraser" && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            var erasedElement = _elements.OrderByDescending(el => el.ZIndex)
+                .FirstOrDefault(el => !el.IsLocked && el.IsVisible && el.HitTestRotationAware(pos));
+            if (erasedElement != null)
+            {
+                ElementEraseRequested?.Invoke(erasedElement);
+            }
+            return;
+        }
+
         if (_isPlacingShape)
         {
             _shapeDragEnd = pos;
@@ -1182,6 +1486,17 @@ public class EditorCanvasControl : Control
         {
             _isCropDragging = false;
             _cropResizeHandle = -1;
+        }
+        else if (_isDrawingDoodle)
+        {
+            _isDrawingDoodle = false;
+            e.Pointer.Capture(null);
+            if (_currentDoodlePoints.Count > 0)
+            {
+                DoodlePlaced?.Invoke(new List<Point>(_currentDoodlePoints));
+            }
+            _currentDoodlePoints.Clear();
+            InvalidateVisual();
         }
         else if (_isPlacingShape)
         {
@@ -1401,8 +1716,14 @@ public class EditorCanvasControl : Control
         if (e.Key == Key.Space && !_spaceHeld)
         {
             _spaceHeld = true;
+            UpdateCursorForTool();
             e.Handled = true;
             return;
+        }
+
+        if (e.Key is Key.Enter or Key.Return)
+        {
+            if (_isCropModeActive) { ConfirmCrop(); e.Handled = true; return; }
         }
 
         if (e.Key == Key.Escape)
@@ -1454,6 +1775,7 @@ public class EditorCanvasControl : Control
         if (e.Key == Key.Space)
         {
             _spaceHeld = false;
+            UpdateCursorForTool();
             e.Handled = true;
         }
     }

@@ -84,6 +84,41 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     private void SelectSidebarTab(string tab) => ActiveSidebarTab = tab;
 
     [ObservableProperty]
+    private string _activeRightDockTab = "Properties"; // Properties, Layers, History, Histogram
+
+    [ObservableProperty]
+    private string _activePropertiesDockTab = "Properties"; // Properties | Histogram
+
+    [ObservableProperty]
+    private string _activeLayersDockTab = "Layers"; // Layers | Channels | Paths | History
+
+    [RelayCommand]
+    private void SelectRightDockTab(string tab)
+    {
+        ActiveRightDockTab = tab;
+        if (tab is "Properties" or "Histogram")
+        {
+            ActivePropertiesDockTab = tab;
+            if (tab == "Histogram")
+            {
+                _ = UpdateHistogramAsync();
+            }
+        }
+        else if (tab is "Layers" or "Channels" or "Paths" or "History")
+        {
+            ActiveLayersDockTab = tab;
+            if (tab == "History")
+            {
+                RebuildHistoryItems();
+            }
+        }
+        else if (tab is "Color" or "Swatches" or "Gradients")
+        {
+            ActiveColorDockTab = tab;
+        }
+    }
+
+    [ObservableProperty]
     private bool _isSidebarCollapsed;
 
     [RelayCommand]
@@ -192,8 +227,13 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     private void SetInspectorTab(string tab) => ActiveInspectorTab = tab;
 
     public bool IsTextSelected => SelectedTextElement != null;
-    public bool IsShapeSelected => SelectedFillable != null && SelectedImageElement == null && SelectedTextElement == null;
+    public bool IsShapeSelected => (SelectedFillable != null || SelectedArrowElement != null) && SelectedImageElement == null && SelectedTextElement == null;
     public bool IsImageSelected => SelectedImageElement != null;
+    public bool IsDoodleSelected => SelectedElement is DoodleElement;
+    public bool IsPolygonSelected => SelectedElement is PolygonElement;
+    public bool IsStarSelected => SelectedElement is StarElement;
+    public bool IsRectangleSelected => SelectedElement is RectangleElement;
+    public bool IsArrowSelected => SelectedElement is ArrowElement;
     public bool HasSelection => SelectedElement != null || HasMultiSelection;
 
     [RelayCommand]
@@ -321,6 +361,10 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     public IHasStroke? SelectedStrokeable => SelectedElement as IHasStroke;
     public TextElement? SelectedTextElement => SelectedElement as TextElement;
     public RectangleElement? SelectedRectangleElement => SelectedElement as RectangleElement;
+    public PolygonElement? SelectedPolygonElement => SelectedElement as PolygonElement;
+    public StarElement? SelectedStarElement => SelectedElement as StarElement;
+    public ArrowElement? SelectedArrowElement => SelectedElement as ArrowElement;
+    public DoodleElement? SelectedDoodleElement => SelectedElement as DoodleElement;
 
     public bool CanUngroupSelection => SelectedElements.Any(e => e.GroupId != null);
 
@@ -376,9 +420,18 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(SelectedStrokeable));
         OnPropertyChanged(nameof(SelectedTextElement));
         OnPropertyChanged(nameof(SelectedRectangleElement));
+        OnPropertyChanged(nameof(SelectedPolygonElement));
+        OnPropertyChanged(nameof(SelectedStarElement));
+        OnPropertyChanged(nameof(SelectedArrowElement));
+        OnPropertyChanged(nameof(SelectedDoodleElement));
         OnPropertyChanged(nameof(IsTextSelected));
         OnPropertyChanged(nameof(IsShapeSelected));
         OnPropertyChanged(nameof(IsImageSelected));
+        OnPropertyChanged(nameof(IsDoodleSelected));
+        OnPropertyChanged(nameof(IsPolygonSelected));
+        OnPropertyChanged(nameof(IsStarSelected));
+        OnPropertyChanged(nameof(IsRectangleSelected));
+        OnPropertyChanged(nameof(IsArrowSelected));
         OnPropertyChanged(nameof(HasSelection));
         OnPropertyChanged(nameof(ShowQuickActionsCluster));
         OnPropertyChanged(nameof(SelectionStatusText));
@@ -477,19 +530,8 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void RotateArtboardCounterClockwise() => SwapOrientation();
 
-    // ── Tool state ─────────────────────────────────────────────────────────
-    [ObservableProperty]
-    private string _activeToolMode = "select"; // select | text | rect | ellipse | arrow | image
-
-    // ── Color state ────────────────────────────────────────────────────────
-    [ObservableProperty]
-    private Color _primaryColor = Color.FromArgb(255, 99, 102, 241);  // indigo
-
-    [ObservableProperty]
-    private Color _backgroundColor = Colors.White;
-
-    [ObservableProperty]
-    private string _backgroundColorName = "White";
+    // Tool state moved to ViewModels/ImageEditorViewModel.Tools.cs
+    // Color state moved to ViewModels/ImageEditorViewModel.Color.cs
 
     // ── Text tool state ────────────────────────────────────────────────────
     [ObservableProperty]
@@ -660,6 +702,96 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
             SyncAdjustmentSlidersToSelection();
         }
         finally { _isApplyingHistory = false; }
+    }
+
+    // ── Time-Travel History Stack (/ Photoshop History Panel) ───
+    [ObservableProperty]
+    private ObservableCollection<HistoryItemViewModel> _historyItems = new();
+
+    public void RebuildHistoryItems()
+    {
+        var list = new List<HistoryItemViewModel>();
+        int currentDepth = History.UndoCount;
+
+        list.Add(new HistoryItemViewModel
+        {
+            UndoDepth = 0,
+            Name = "Initial State",
+            Icon = "ImageOutline",
+            IsActive = currentDepth == 0,
+            IsFuture = false
+        });
+
+        var undoList = History.UndoStack;
+        for (int i = 0; i < undoList.Count; i++)
+        {
+            int depth = i + 1;
+            string desc = undoList[i].Description;
+            list.Add(new HistoryItemViewModel
+            {
+                UndoDepth = depth,
+                Name = desc,
+                Icon = GetIconForCommand(desc),
+                IsActive = depth == currentDepth,
+                IsFuture = false
+            });
+        }
+
+        var redoList = History.RedoStack;
+        for (int i = 0; i < redoList.Count; i++)
+        {
+            int depth = currentDepth + 1 + i;
+            string desc = redoList[i].Description;
+            list.Add(new HistoryItemViewModel
+            {
+                UndoDepth = depth,
+                Name = desc,
+                Icon = GetIconForCommand(desc),
+                IsActive = false,
+                IsFuture = true
+            });
+        }
+
+        HistoryItems = new ObservableCollection<HistoryItemViewModel>(list);
+    }
+
+    private static string GetIconForCommand(string desc)
+    {
+        if (desc.Contains("Move", StringComparison.OrdinalIgnoreCase)) return "CursorMove";
+        if (desc.Contains("Resize", StringComparison.OrdinalIgnoreCase)) return "ArrowExpandAll";
+        if (desc.Contains("Rotate", StringComparison.OrdinalIgnoreCase)) return "RotateRight";
+        if (desc.Contains("Add", StringComparison.OrdinalIgnoreCase)) return "PlusCircleOutline";
+        if (desc.Contains("Delete", StringComparison.OrdinalIgnoreCase) || desc.Contains("Remove", StringComparison.OrdinalIgnoreCase)) return "TrashCanOutline";
+        if (desc.Contains("Duplicate", StringComparison.OrdinalIgnoreCase)) return "ContentCopy";
+        if (desc.Contains("Color", StringComparison.OrdinalIgnoreCase) || desc.Contains("Fill", StringComparison.OrdinalIgnoreCase)) return "PaletteOutline";
+        if (desc.Contains("Stroke", StringComparison.OrdinalIgnoreCase)) return "BorderColor";
+        if (desc.Contains("Style", StringComparison.OrdinalIgnoreCase) || desc.Contains("Effect", StringComparison.OrdinalIgnoreCase)) return "AutoFix";
+        if (desc.Contains("Text", StringComparison.OrdinalIgnoreCase)) return "FormatText";
+        if (desc.Contains("Order", StringComparison.OrdinalIgnoreCase) || desc.Contains("Z-Index", StringComparison.OrdinalIgnoreCase)) return "LayersOutline";
+        if (desc.Contains("Blend", StringComparison.OrdinalIgnoreCase)) return "VectorCombine";
+        return "History";
+    }
+
+    [RelayCommand]
+    private void JumpToHistoryDepth(int depth)
+    {
+        CancelPendingAdjustmentDebounce();
+        CancelPendingStyleDebounce();
+        _isApplyingHistory = true;
+        try
+        {
+            History.JumpToUndoDepth(depth);
+            RefreshCanvas();
+            OnPropertyChanged(nameof(LayersDescendingZ));
+            OnPropertyChanged(nameof(CanUngroupSelection));
+            SyncStyleFieldsToSelection();
+            SyncAdjustmentSlidersToSelection();
+        }
+        finally
+        {
+            _isApplyingHistory = false;
+        }
+        RebuildHistoryItems();
     }
 
     /// <summary>Called by EditorCanvasControl once per completed drag (on pointer-release,
@@ -1167,9 +1299,17 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     [ObservableProperty] private double _strokeThicknessField;
     [ObservableProperty] private StrokeDashStyle _dashStyleField = StrokeDashStyle.Solid;
     [ObservableProperty] private double _cornerRadiusField;
+    [ObservableProperty] private int _polygonSideCountField = 3;
+    [ObservableProperty] private int _starPointCountField = 5;
+    [ObservableProperty] private double _starInnerRadiusRatioField = 0.5;
+    [ObservableProperty] private double _arrowHeadSizeField = 12;
+    [ObservableProperty] private bool _isHighlighterField;
     [ObservableProperty] private Color _textForegroundColorField = Colors.Black;
     [ObservableProperty] private string _fontFamilyNameField = "Inter";
     [ObservableProperty] private double _opacityField = 100;
+    [ObservableProperty] private LayerBlendMode _blendModeField = LayerBlendMode.Normal;
+    [ObservableProperty] private double _fillOpacityField = 100;
+    public IReadOnlyList<LayerBlendMode> AvailableBlendModes { get; } = Enum.GetValues<LayerBlendMode>();
     [ObservableProperty] private double _elementXField;
     [ObservableProperty] private double _elementYField;
     [ObservableProperty] private double _elementWidthField;
@@ -1219,6 +1359,14 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
                     DashStyleField = strokeable.DashStyle;
                 }
                 if (el is RectangleElement rect) CornerRadiusField = rect.CornerRadius;
+                if (el is PolygonElement poly) PolygonSideCountField = poly.SideCount;
+                if (el is StarElement star)
+                {
+                    StarPointCountField = star.PointCount;
+                    StarInnerRadiusRatioField = star.InnerRadiusRatio;
+                }
+                if (el is ArrowElement arrow) ArrowHeadSizeField = arrow.ArrowHeadSize;
+                if (el is DoodleElement doodle) IsHighlighterField = doodle.IsHighlighter;
                 if (el is TextElement text)
                 {
                     TextForegroundColorField = text.ForegroundColor;
@@ -1235,6 +1383,8 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
                     HighlightColorField = text.BackgroundColor ?? Colors.Yellow;
                 }
                 OpacityField = el.Opacity * 100;
+                BlendModeField = el.BlendMode;
+                FillOpacityField = el.FillOpacity * 100;
                 ElementXField = el.X;
                 ElementYField = el.Y;
                 ElementWidthField = el.Width;
@@ -1355,6 +1505,36 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         ApplyStyleField(target, target.CornerRadius, Math.Max(0, value), (t, v) => t.CornerRadius = v, "Change corner radius");
     }
 
+    partial void OnPolygonSideCountFieldChanged(int value)
+    {
+        if (_isSyncingStyleFields || SelectedPolygonElement is not { } target) return;
+        ApplyStyleField(target, target.SideCount, Math.Clamp(value, 3, 16), (t, v) => t.SideCount = v, "Change polygon sides");
+    }
+
+    partial void OnStarPointCountFieldChanged(int value)
+    {
+        if (_isSyncingStyleFields || SelectedStarElement is not { } target) return;
+        ApplyStyleField(target, target.PointCount, Math.Clamp(value, 3, 24), (t, v) => t.PointCount = v, "Change star points");
+    }
+
+    partial void OnStarInnerRadiusRatioFieldChanged(double value)
+    {
+        if (_isSyncingStyleFields || SelectedStarElement is not { } target) return;
+        ApplyStyleField(target, target.InnerRadiusRatio, Math.Clamp(value, 0.1, 0.9), (t, v) => t.InnerRadiusRatio = v, "Change star inner radius");
+    }
+
+    partial void OnArrowHeadSizeFieldChanged(double value)
+    {
+        if (_isSyncingStyleFields || SelectedArrowElement is not { } target) return;
+        ApplyStyleField(target, target.ArrowHeadSize, Math.Max(0, value), (t, v) => t.ArrowHeadSize = v, "Change arrowhead size");
+    }
+
+    partial void OnIsHighlighterFieldChanged(bool value)
+    {
+        if (_isSyncingStyleFields || SelectedDoodleElement is not { } target) return;
+        ApplyStyleField(target, target.IsHighlighter, value, (t, v) => t.IsHighlighter = v, "Toggle highlighter mode");
+    }
+
     partial void OnTextForegroundColorFieldChanged(Color value)
     {
         if (_isSyncingStyleFields || SelectedTextElement is not { } target) return;
@@ -1365,6 +1545,18 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     {
         if (_isSyncingStyleFields || SelectedElement is not { } target) return;
         ApplyStyleField(target, target.Opacity, Math.Clamp(value, 0, 100) / 100.0, (t, v) => t.Opacity = v, "Change opacity");
+    }
+
+    partial void OnBlendModeFieldChanged(LayerBlendMode value)
+    {
+        if (_isSyncingStyleFields || SelectedElement is not { } target) return;
+        ApplyStyleField(target, target.BlendMode, value, (t, v) => t.BlendMode = v, "Change blend mode");
+    }
+
+    partial void OnFillOpacityFieldChanged(double value)
+    {
+        if (_isSyncingStyleFields || SelectedElement is not { } target) return;
+        ApplyStyleField(target, target.FillOpacity, Math.Clamp(value, 0, 100) / 100.0, (t, v) => t.FillOpacity = v, "Change fill opacity");
     }
 
     partial void OnElementXFieldChanged(double value)
@@ -1565,8 +1757,20 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     private double _zoomLevel = 1.0;
 
     public string ZoomPercentageLabel => $"{(int)Math.Round(ZoomLevel * 100)}%";
+    public int ZoomPercent => (int)Math.Round(ZoomLevel * 100);
 
-    partial void OnZoomLevelChanged(double value) => OnPropertyChanged(nameof(ZoomPercentageLabel));
+    partial void OnZoomLevelChanged(double value)
+    {
+        OnPropertyChanged(nameof(ZoomPercentageLabel));
+        OnPropertyChanged(nameof(ZoomPercent));
+    }
+
+    [RelayCommand]
+    private void OpenCanvasSetup()
+    {
+        // Focus or cycle canvas dimensions
+        CanvasSizeLabel = $"{(int)_canvasWidth} × {(int)_canvasHeight}";
+    }
 
     [RelayCommand]
     private void ZoomIn() => CanvasControl?.ZoomBy(1.2);
@@ -1596,8 +1800,14 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         {
             UndoCommand.NotifyCanExecuteChanged();
             RedoCommand.NotifyCanExecuteChanged();
+            RebuildHistoryItems();
+            _ = UpdateHistogramAsync();
         };
-        Elements.CollectionChanged += (_, _) => OnPropertyChanged(nameof(LayersDescendingZ));
+        Elements.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(LayersDescendingZ));
+            _ = UpdateHistogramAsync();
+        };
         LoadSettings();
         AddSampleElements();
         BuildFontGroups();
@@ -1605,6 +1815,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         BuildShapeGroups();
         BuildStickerGroups();
         LoadTemplateCards();
+        RebuildHistoryItems();
     }
 
     private void LoadSettings()
@@ -1702,9 +1913,6 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         Elements.Add(arrow);
     }
 
-    // ── Tool Selection ─────────────────────────────────────────────────────
-    [RelayCommand]
-    private void SetTool(string tool) => ActiveToolMode = tool;
 
     // ── Element placement (click-to-place, driven by EditorCanvasControl's tool-placement
     //    events — see PlaceTextRequested/ShapePlaced wired in ImageEditorView.axaml.cs) ────
@@ -1733,49 +1941,72 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         CommitNewElement(el);
     }
 
-    /// <summary>toolType is "rect" | "ellipse" | "arrow". start==end means the user clicked
+    public void PlaceDoodleElement(IReadOnlyList<Point> points)
+    {
+        if (points == null || points.Count == 0) return;
+        var doodle = DoodleElement.FromCanvasPoints(
+            points,
+            PrimaryColor,
+            BrushThickness,
+            IsHighlighterMode);
+        doodle.ZIndex = Elements.Count + 1;
+        CommitNewElement(doodle);
+    }
+
+    public void EraseElement(CanvasElement el)
+    {
+        if (el.IsLocked) return;
+        if (!Elements.Contains(el)) return;
+        if (!_isApplyingHistory) History.Push(new RemoveElementsCommand(Elements, [el]));
+        Elements.Remove(el);
+        if (SelectedElement == el) SelectedElement = null;
+        RefreshCanvas();
+    }
+
+    /// <summary>toolType is "rect" | "ellipse" | "arrow" | "triangle" | "star" | "polygon" | "line". start==end means the user clicked
     /// rather than dragged — falls back to a sensible default size centered on the click.</summary>
     public void PlaceShapeElement(string toolType, Point start, Point end)
     {
         bool isClick = start == end;
+        double w = Math.Max(Math.Abs(end.X - start.X), 20);
+        double h = Math.Max(Math.Abs(end.Y - start.Y), 20);
+        double minX = Math.Min(start.X, end.X);
+        double minY = Math.Min(start.Y, end.Y);
+
         CanvasElement el = toolType switch
         {
             "ellipse" => isClick
                 ? new EllipseElement { X = start.X - 50, Y = start.Y - 50, Width = 100, Height = 100 }
-                : new EllipseElement
-                {
-                    X = Math.Min(start.X, end.X), Y = Math.Min(start.Y, end.Y),
-                    Width = Math.Max(Math.Abs(end.X - start.X), 20),
-                    Height = Math.Max(Math.Abs(end.Y - start.Y), 20)
-                },
+                : new EllipseElement { X = minX, Y = minY, Width = w, Height = h },
+            "triangle" => isClick
+                ? new PolygonElement { X = start.X - 50, Y = start.Y - 50, Width = 100, Height = 100, SideCount = 3 }
+                : new PolygonElement { X = minX, Y = minY, Width = w, Height = h, SideCount = 3 },
+            "polygon" => isClick
+                ? new PolygonElement { X = start.X - 50, Y = start.Y - 50, Width = 100, Height = 100, SideCount = 6 }
+                : new PolygonElement { X = minX, Y = minY, Width = w, Height = h, SideCount = 6 },
+            "star" => isClick
+                ? new StarElement { X = start.X - 50, Y = start.Y - 50, Width = 100, Height = 100, PointCount = 5, InnerRadiusRatio = 0.5 }
+                : new StarElement { X = minX, Y = minY, Width = w, Height = h, PointCount = 5, InnerRadiusRatio = 0.5 },
+            "line" => isClick
+                ? new ArrowElement { X = start.X - 60, Y = start.Y, Width = 120, Height = 0, ArrowHeadSize = 0 }
+                : new ArrowElement { X = start.X, Y = start.Y, Width = end.X - start.X, Height = end.Y - start.Y, ArrowHeadSize = 0 },
             "arrow" => isClick
                 ? new ArrowElement { X = start.X - 60, Y = start.Y, Width = 120, Height = 0 }
                 : new ArrowElement { X = start.X, Y = start.Y, Width = end.X - start.X, Height = end.Y - start.Y },
             _ => isClick
                 ? new RectangleElement { X = start.X - 60, Y = start.Y - 40, Width = 120, Height = 80 }
-                : new RectangleElement
-                {
-                    X = Math.Min(start.X, end.X), Y = Math.Min(start.Y, end.Y),
-                    Width = Math.Max(Math.Abs(end.X - start.X), 20),
-                    Height = Math.Max(Math.Abs(end.Y - start.Y), 20)
-                }
+                : new RectangleElement { X = minX, Y = minY, Width = w, Height = h }
         };
 
         el.ZIndex = Elements.Count + 1;
-        switch (el)
+        if (el is IHasFill fillable)
         {
-            case RectangleElement r:
-                r.FillColor = Color.FromArgb(180, PrimaryColor.R, PrimaryColor.G, PrimaryColor.B);
-                r.StrokeColor = PrimaryColor;
-                break;
-            case EllipseElement e:
-                e.FillColor = Color.FromArgb(180, PrimaryColor.R, PrimaryColor.G, PrimaryColor.B);
-                e.StrokeColor = PrimaryColor;
-                break;
-            case ArrowElement a:
-                a.StrokeColor = PrimaryColor;
-                a.StrokeThickness = 2.5;
-                break;
+            fillable.FillColor = Color.FromArgb(180, PrimaryColor.R, PrimaryColor.G, PrimaryColor.B);
+        }
+        if (el is IHasStroke strokeable)
+        {
+            strokeable.StrokeColor = PrimaryColor;
+            if (el is not ArrowElement) strokeable.StrokeThickness = 2.0;
         }
 
         CommitNewElement(el);
@@ -1820,6 +2051,41 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     /// element on the canvas at its own modest natural size (never the reference's mistake of
     /// dropping an oversized default that buries existing content), then commits it through the
     /// normal single-element insert-and-undo path.</summary>
+    [RelayCommand]
+    private void InsertRectangle()
+    {
+        var el = new RectangleElement
+        {
+            Name = $"Rectangle {Elements.Count + 1}",
+            X = Math.Max(20, (_canvasWidth - 200) / 2),
+            Y = Math.Max(20, (_canvasHeight - 140) / 2),
+            Width = 200,
+            Height = 140,
+            ZIndex = Elements.Count + 1,
+            FillColor = Color.FromArgb(200, PrimaryColor.R, PrimaryColor.G, PrimaryColor.B),
+            StrokeColor = PrimaryColor,
+            StrokeThickness = 2.0
+        };
+        CommitNewElement(el);
+    }
+
+    [RelayCommand]
+    private void SelectAllElements()
+    {
+        SelectedElements.Clear();
+        foreach (var el in Elements.Where(e => e.IsVisible && !e.IsLocked))
+        {
+            SelectedElements.Add(el);
+        }
+        SelectedElement = SelectedElements.LastOrDefault();
+    }
+
+    [RelayCommand]
+    private void CancelExport() => CloseExportDialog();
+
+    [RelayCommand]
+    private void CancelLayerStyleDialog() => CloseLayerStyleDialog();
+
     private void InsertLibraryElement(CanvasElement el)
     {
         el.X = (_canvasWidth - el.Width) / 2;
@@ -2528,21 +2794,27 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         // back down to a single element on every unrelated mutation.
     }
 
-    private RenderTargetBitmap? RenderCanvasToBitmap()
+    private RenderTargetBitmap? RenderCanvasToBitmap(double scale = 1.0)
     {
         if (CanvasControl == null) return null;
-        var pixelSize = new PixelSize((int)_canvasWidth, (int)_canvasHeight);
+        int w = Math.Max(1, (int)(_canvasWidth * scale));
+        int h = Math.Max(1, (int)(_canvasHeight * scale));
+        var pixelSize = new PixelSize(w, h);
         var rtb = new RenderTargetBitmap(pixelSize);
         using var dc = rtb.CreateDrawingContext();
 
-        // Background
-        dc.DrawRectangle(new SolidColorBrush(BackgroundColor), null,
-            new Rect(0, 0, _canvasWidth, _canvasHeight));
-
-        // Elements
-        foreach (var el in Elements.OrderBy(e => e.ZIndex))
+        using (dc.PushTransform(Matrix.CreateScale(scale, scale)))
         {
-            el.Draw(dc);
+            if (BackgroundColor.A > 0)
+            {
+                dc.DrawRectangle(new SolidColorBrush(BackgroundColor), null,
+                    new Rect(0, 0, _canvasWidth, _canvasHeight));
+            }
+
+            foreach (var el in Elements.OrderBy(e => e.ZIndex))
+            {
+                EditorCanvasControl.DrawElement(dc, el);
+            }
         }
 
         return rtb;
@@ -2573,9 +2845,18 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(SelectedStrokeable));
         OnPropertyChanged(nameof(SelectedTextElement));
         OnPropertyChanged(nameof(SelectedRectangleElement));
+        OnPropertyChanged(nameof(SelectedPolygonElement));
+        OnPropertyChanged(nameof(SelectedStarElement));
+        OnPropertyChanged(nameof(SelectedArrowElement));
+        OnPropertyChanged(nameof(SelectedDoodleElement));
         OnPropertyChanged(nameof(IsTextSelected));
         OnPropertyChanged(nameof(IsShapeSelected));
         OnPropertyChanged(nameof(IsImageSelected));
+        OnPropertyChanged(nameof(IsDoodleSelected));
+        OnPropertyChanged(nameof(IsPolygonSelected));
+        OnPropertyChanged(nameof(IsStarSelected));
+        OnPropertyChanged(nameof(IsRectangleSelected));
+        OnPropertyChanged(nameof(IsArrowSelected));
         OnPropertyChanged(nameof(HasSelection));
         OnPropertyChanged(nameof(ShowQuickActionsCluster));
         if (value is not ImageElement && ActiveInspectorTab == "adjust")
@@ -2718,6 +2999,10 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
 
     public bool IsConfirmDiscardOpen { get => IsConfirmingDiscard; set => IsConfirmingDiscard = value; }
     public string DiscardPromptMessage => DiscardConfirmMessage;
+
+    // Continuous RGB Ribbon Histogram moved to ViewModels/ImageEditorViewModel.Histogram.cs
+    // Layer Style Modal Dialog (fx) moved to ViewModels/ImageEditorViewModel.Modals.cs
+    // Export As Studio Modal moved to ViewModels/ImageEditorViewModel.Export.cs
 
     // ── IDisposable ────────────────────────────────────────────────────────
     public void Dispose()

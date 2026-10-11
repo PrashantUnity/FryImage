@@ -17,6 +17,7 @@ namespace PdfEditorApp.Plugins.ImageEditor.Models.Serialization;
 [JsonDerivedType(typeof(ImageElementDto), "image")]
 [JsonDerivedType(typeof(PolygonElementDto), "polygon")]
 [JsonDerivedType(typeof(StarElementDto), "star")]
+[JsonDerivedType(typeof(DoodleElementDto), "doodle")]
 public abstract class CanvasElementDto
 {
     public double X { get; set; }
@@ -28,11 +29,73 @@ public abstract class CanvasElementDto
     public bool FlipX { get; set; }
     public bool FlipY { get; set; }
     public double Opacity { get; set; } = 1.0;
+    public double FillOpacity { get; set; } = 1.0;
+    public string? BlendMode { get; set; }
+    public LayerStyleEffectsDto? Effects { get; set; }
     public bool IsVisible { get; set; } = true;
     public bool IsLocked { get; set; }
     public string? Name { get; set; }
     public Guid? GroupId { get; set; }
     public bool AspectLocked { get; set; }
+}
+
+public sealed class LayerStyleEffectsDto
+{
+    public DropShadowStyleDto? DropShadow { get; set; }
+    public OuterGlowStyleDto? OuterGlow { get; set; }
+    public InnerShadowStyleDto? InnerShadow { get; set; }
+    public ColorOverlayStyleDto? ColorOverlay { get; set; }
+    public LayerStrokeStyleDto? Stroke { get; set; }
+}
+
+public sealed class DropShadowStyleDto
+{
+    public bool IsEnabled { get; set; } = true;
+    public string Color { get; set; } = "#FF000000";
+    public double Opacity { get; set; } = 0.75;
+    public double Angle { get; set; } = 120.0;
+    public double Distance { get; set; } = 6.0;
+    public double Size { get; set; } = 8.0;
+    public double Spread { get; set; }
+    public string BlendMode { get; set; } = "Multiply";
+}
+
+public sealed class OuterGlowStyleDto
+{
+    public bool IsEnabled { get; set; } = true;
+    public string Color { get; set; } = "#FFFFE650";
+    public double Opacity { get; set; } = 0.75;
+    public double Size { get; set; } = 12.0;
+    public double Spread { get; set; }
+    public string BlendMode { get; set; } = "Screen";
+}
+
+public sealed class InnerShadowStyleDto
+{
+    public bool IsEnabled { get; set; } = true;
+    public string Color { get; set; } = "#FF000000";
+    public double Opacity { get; set; } = 0.60;
+    public double Angle { get; set; } = 120.0;
+    public double Distance { get; set; } = 4.0;
+    public double Size { get; set; } = 6.0;
+    public string BlendMode { get; set; } = "Multiply";
+}
+
+public sealed class ColorOverlayStyleDto
+{
+    public bool IsEnabled { get; set; } = true;
+    public string Color { get; set; } = "#FF6366F1";
+    public double Opacity { get; set; } = 0.5;
+    public string BlendMode { get; set; } = "Normal";
+}
+
+public sealed class LayerStrokeStyleDto
+{
+    public bool IsEnabled { get; set; } = true;
+    public string Color { get; set; } = "#FF000000";
+    public double Size { get; set; } = 3.0;
+    public double Opacity { get; set; } = 1.0;
+    public string Position { get; set; } = "Outside";
 }
 
 public sealed class GradientStopDto
@@ -94,6 +157,23 @@ public sealed class ArrowElementDto : CanvasElementDto
     public double StrokeThickness { get; set; }
     public string DashStyle { get; set; } = "Solid";
     public double ArrowHeadSize { get; set; } = 12;
+}
+
+public sealed class PointDto
+{
+    public double X { get; set; }
+    public double Y { get; set; }
+}
+
+public sealed class DoodleElementDto : CanvasElementDto
+{
+    public string StrokeColor { get; set; } = "#FF6366F1";
+    public double StrokeThickness { get; set; } = 4.0;
+    public string DashStyle { get; set; } = "Solid";
+    public bool IsHighlighter { get; set; }
+    public double OriginalWidth { get; set; } = 100;
+    public double OriginalHeight { get; set; } = 100;
+    public System.Collections.Generic.List<PointDto> Points { get; set; } = new();
 }
 
 public sealed class TextElementDto : CanvasElementDto

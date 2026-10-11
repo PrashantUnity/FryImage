@@ -1,0 +1,229 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Dialogs.NewDocumentDialog"
+             x:DataType="local:ImageEditorViewModel">
+
+    <!-- Modal Backdrop -->
+    <Border Background="#90000000" IsVisible="{Binding IsNewDocumentDialogOpen}">
+        <Border Width="780" Height="520"
+                Background="{DynamicResource PsPanelBrush}"
+                BorderBrush="{DynamicResource PsBorderBrush}"
+                BorderThickness="1"
+                BoxShadow="0 10 36 #B0000000"
+                CornerRadius="2"
+                ClipToBounds="True">
+            <Grid RowDefinitions="34,*,46">
+
+                <!-- Header -->
+                <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="14,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <materialIcons:MaterialIcon Kind="FilePlusOutline" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+                            <TextBlock Text="New Document" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="ps-opt-btn" Command="{Binding CloseNewDocumentDialogCommand}" ToolTip.Tip="Close (Esc)">
+                            <materialIcons:MaterialIcon Kind="Close" Width="12" Height="12" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Body (Left: Category Nav & Preset Cards, Right: Preset Details) -->
+                <Grid Grid.Row="1" ColumnDefinitions="*,260">
+
+                    <!-- Left: Presets Area -->
+                    <Grid Grid.Column="0" RowDefinitions="32,*">
+                        <!-- Category Tabs Strip -->
+                        <Border Grid.Row="0" Background="{DynamicResource PsOptionsBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,1,1" Padding="6,0">
+                            <StackPanel Orientation="Horizontal" Spacing="2">
+                                <Button Classes="ps-panel-tab active" Content="Recent" />
+                                <Button Classes="ps-panel-tab" Content="Photo" />
+                                <Button Classes="ps-panel-tab" Content="Print" />
+                                <Button Classes="ps-panel-tab" Content="Art &amp; Illustration" />
+                                <Button Classes="ps-panel-tab" Content="Web" />
+                                <Button Classes="ps-panel-tab" Content="Mobile" />
+                                <Button Classes="ps-panel-tab" Content="Film &amp; Video" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Preset Cards Grid -->
+                        <Border Grid.Row="1" Background="{DynamicResource PsFieldBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,1,0" Padding="14">
+                            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                                <WrapPanel Orientation="Horizontal">
+                                    <!-- Preset 1: Default FryImage Size -->
+                                    <Button Classes="ps-opt-btn" Width="145" Height="100" Margin="4" Padding="8"
+                                            Command="{Binding ApplyDocumentPresetCommand}" CommandParameter="2100,1500,300,Default FryImage Size">
+                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="3">
+                                            <materialIcons:MaterialIcon Kind="ImageOutline" Width="26" Height="26" Foreground="{DynamicResource PsAccentBrush}" />
+                                            <TextBlock Text="Default Size" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource PsTextBrush}" TextAlignment="Center" />
+                                            <TextBlock Text="2100 × 1500 px" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" TextAlignment="Center" />
+                                            <TextBlock Text="300 ppi" FontSize="9" Foreground="{DynamicResource PsTextFaintBrush}" TextAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+
+                                    <!-- Preset 2: HDTV 1080p -->
+                                    <Button Classes="ps-opt-btn" Width="145" Height="100" Margin="4" Padding="8"
+                                            Command="{Binding ApplyDocumentPresetCommand}" CommandParameter="1920,1080,72,HDTV 1080p">
+                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="3">
+                                            <materialIcons:MaterialIcon Kind="Television" Width="26" Height="26" Foreground="{DynamicResource PsAccentBrush}" />
+                                            <TextBlock Text="HDTV 1080p" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource PsTextBrush}" TextAlignment="Center" />
+                                            <TextBlock Text="1920 × 1080 px" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" TextAlignment="Center" />
+                                            <TextBlock Text="72 ppi" FontSize="9" Foreground="{DynamicResource PsTextFaintBrush}" TextAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+
+                                    <!-- Preset 3: UHD 4K -->
+                                    <Button Classes="ps-opt-btn" Width="145" Height="100" Margin="4" Padding="8"
+                                            Command="{Binding ApplyDocumentPresetCommand}" CommandParameter="3840,2160,72,UHD 4K">
+                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="3">
+                                            <materialIcons:MaterialIcon Kind="VideoOutline" Width="26" Height="26" Foreground="{DynamicResource PsAccentBrush}" />
+                                            <TextBlock Text="UHD 4K" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource PsTextBrush}" TextAlignment="Center" />
+                                            <TextBlock Text="3840 × 2160 px" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" TextAlignment="Center" />
+                                            <TextBlock Text="72 ppi" FontSize="9" Foreground="{DynamicResource PsTextFaintBrush}" TextAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+
+                                    <!-- Preset 4: Letter (8.5 x 11 in) -->
+                                    <Button Classes="ps-opt-btn" Width="145" Height="100" Margin="4" Padding="8"
+                                            Command="{Binding ApplyDocumentPresetCommand}" CommandParameter="2550,3300,300,Letter">
+                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="3">
+                                            <materialIcons:MaterialIcon Kind="FileDocumentOutline" Width="26" Height="26" Foreground="{DynamicResource PsAccentBrush}" />
+                                            <TextBlock Text="Letter" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource PsTextBrush}" TextAlignment="Center" />
+                                            <TextBlock Text="2550 × 3300 px" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" TextAlignment="Center" />
+                                            <TextBlock Text="8.5 × 11 in (300 ppi)" FontSize="9" Foreground="{DynamicResource PsTextFaintBrush}" TextAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+
+                                    <!-- Preset 5: A4 -->
+                                    <Button Classes="ps-opt-btn" Width="145" Height="100" Margin="4" Padding="8"
+                                            Command="{Binding ApplyDocumentPresetCommand}" CommandParameter="2480,3508,300,A4">
+                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="3">
+                                            <materialIcons:MaterialIcon Kind="PrinterOutline" Width="26" Height="26" Foreground="{DynamicResource PsAccentBrush}" />
+                                            <TextBlock Text="A4 Print" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource PsTextBrush}" TextAlignment="Center" />
+                                            <TextBlock Text="2480 × 3508 px" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" TextAlignment="Center" />
+                                            <TextBlock Text="210 × 297 mm (300 ppi)" FontSize="9" Foreground="{DynamicResource PsTextFaintBrush}" TextAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+
+                                    <!-- Preset 6: Square Post -->
+                                    <Button Classes="ps-opt-btn" Width="145" Height="100" Margin="4" Padding="8"
+                                            Command="{Binding ApplyDocumentPresetCommand}" CommandParameter="1080,1080,72,Square Post">
+                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="3">
+                                            <materialIcons:MaterialIcon Kind="SquareOutline" Width="26" Height="26" Foreground="{DynamicResource PsAccentBrush}" />
+                                            <TextBlock Text="Square Post" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource PsTextBrush}" TextAlignment="Center" />
+                                            <TextBlock Text="1080 × 1080 px" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" TextAlignment="Center" />
+                                            <TextBlock Text="1:1 (72 ppi)" FontSize="9" Foreground="{DynamicResource PsTextFaintBrush}" TextAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                </WrapPanel>
+                            </ScrollViewer>
+                        </Border>
+                    </Grid>
+
+                    <!-- Right: Preset Details Sidebar -->
+                    <Border Grid.Column="1" Background="{DynamicResource PsPanelBrush}" Padding="14,10">
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="PRESET DETAILS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource PsTextBrush}" />
+
+                                <!-- Document Name -->
+                                <StackPanel Spacing="3">
+                                    <TextBlock Text="Name" Classes="ps-label" />
+                                    <TextBox Classes="ps-input" Text="{Binding NewDocTitle, Mode=TwoWay}" />
+                                </StackPanel>
+
+                                <!-- Width & Height Row with Units -->
+                                <Grid ColumnDefinitions="*,8,*" Margin="0,2">
+                                    <StackPanel Grid.Column="0" Spacing="3">
+                                        <TextBlock Text="Width" Classes="ps-label" />
+                                        <NumericUpDown Classes="ps-num" Value="{Binding NewDocWidth, Mode=TwoWay}" Minimum="1" Maximum="30000" Increment="10" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Spacing="3">
+                                        <TextBlock Text="Height" Classes="ps-label" />
+                                        <NumericUpDown Classes="ps-num" Value="{Binding NewDocHeight, Mode=TwoWay}" Minimum="1" Maximum="30000" Increment="10" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Units & Orientation Row -->
+                                <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                                    <StackPanel Grid.Column="0" Spacing="3" Margin="0,0,8,0">
+                                        <TextBlock Text="Units" Classes="ps-label" />
+                                        <ComboBox Classes="ps-combo" SelectedIndex="0">
+                                            <ComboBoxItem Content="Pixels" />
+                                            <ComboBoxItem Content="Inches" />
+                                            <ComboBoxItem Content="Centimeters" />
+                                            <ComboBoxItem Content="Millimeters" />
+                                            <ComboBoxItem Content="Points" />
+                                        </ComboBox>
+                                    </StackPanel>
+
+                                    <!-- Orientation Buttons -->
+                                    <StackPanel Grid.Column="1" Spacing="3">
+                                        <TextBlock Text="Orientation" Classes="ps-label" />
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <Button Classes="ps-opt-btn" Width="28" Height="24" Command="{Binding SwapNewDocOrientationCommand}" ToolTip.Tip="Portrait">
+                                                <materialIcons:MaterialIcon Kind="CropPortrait" Width="14" Height="14" />
+                                            </Button>
+                                            <Button Classes="ps-opt-btn" Width="28" Height="24" Command="{Binding SwapNewDocOrientationCommand}" ToolTip.Tip="Landscape">
+                                                <materialIcons:MaterialIcon Kind="CropLandscape" Width="14" Height="14" />
+                                            </Button>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Resolution -->
+                                <Grid ColumnDefinitions="*,*" Margin="0,2">
+                                    <StackPanel Grid.Column="0" Spacing="3" Margin="0,0,4,0">
+                                        <TextBlock Text="Resolution" Classes="ps-label" />
+                                        <NumericUpDown Classes="ps-num" Value="{Binding NewDocResolution, Mode=TwoWay}" Minimum="1" Maximum="1200" Increment="1" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Spacing="3" Margin="4,0,0,0">
+                                        <TextBlock Text="Rate" Classes="ps-label" />
+                                        <ComboBox Classes="ps-combo" SelectedIndex="0">
+                                            <ComboBoxItem Content="Pixels/Inch" />
+                                            <ComboBoxItem Content="Pixels/Centimeter" />
+                                        </ComboBox>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Color Mode -->
+                                <Grid ColumnDefinitions="*,*" Margin="0,2">
+                                    <StackPanel Grid.Column="0" Spacing="3" Margin="0,0,4,0">
+                                        <TextBlock Text="Color Mode" Classes="ps-label" />
+                                        <ComboBox Classes="ps-combo" SelectedIndex="0">
+                                            <ComboBoxItem Content="RGB Color" />
+                                            <ComboBoxItem Content="Grayscale" />
+                                        </ComboBox>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Spacing="3" Margin="4,0,0,0">
+                                        <TextBlock Text="Depth" Classes="ps-label" />
+                                        <ComboBox Classes="ps-combo" SelectedIndex="0">
+                                            <ComboBoxItem Content="8 bit" />
+                                            <ComboBoxItem Content="16 bit" />
+                                        </ComboBox>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Background Contents -->
+                                <StackPanel Spacing="3" Margin="0,2">
+                                    <TextBlock Text="Background Contents" Classes="ps-label" />
+                                    <ComboBox Classes="ps-combo" SelectedItem="{Binding NewDocBackgroundMode, Mode=TwoWay}"
+                                              ItemsSource="{Binding AvailableBackgroundModes}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+
+                <!-- Footer Action Buttons -->
+                <Border Grid.Row="2" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="14,8">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                        <Button Classes="ps-btn" Content="Cancel" Command="{Binding CloseNewDocumentDialogCommand}" Padding="14,5" />
+                        <Button Classes="ps-btn ps-btn-primary" Content="Create" Command="{Binding ConfirmCreateDocumentCommand}" Padding="18,5" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Border>
+</UserControl>

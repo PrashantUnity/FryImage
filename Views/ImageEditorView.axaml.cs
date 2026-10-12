@@ -66,10 +66,25 @@ public partial class ImageEditorView : UserControl
         QuickActionsCluster.SizeChanged += (_, _) => RepositionQuickActionsCluster();
 
         // Move/resize commit into undo history once per completed drag (not per-tick).
-        CanvasControl.ElementsMoved += moves => vm.RecordElementsMoved(moves);
-        CanvasControl.ElementResized += (el, oldBounds, newBounds) => vm.RecordElementResized(el, oldBounds, newBounds);
+        CanvasControl.ElementsMoved += moves =>
+        {
+            vm.RecordElementsMoved(moves);
+            if (vm.IsFreeTransformActive && moves.Count > 0)
+                vm.SyncTransformSessionFromElement(moves[0].Element);
+        };
+        CanvasControl.ElementResized += (el, oldBounds, newBounds) =>
+        {
+            vm.RecordElementResized(el, oldBounds, newBounds);
+            if (vm.IsFreeTransformActive)
+                vm.SyncTransformSessionFromElement(el);
+        };
         CanvasControl.GroupResized += changes => vm.RecordGroupResized(changes);
-        CanvasControl.ElementRotated += (el, before, after) => vm.RecordElementRotated(el, before, after);
+        CanvasControl.ElementRotated += (el, before, after) =>
+        {
+            vm.RecordElementRotated(el, before, after);
+            if (vm.IsFreeTransformActive)
+                vm.SyncTransformSessionFromElement(el);
+        };
         CanvasControl.GroupRotated += (before, after) => vm.RecordGroupRotated(before, after);
 
         // Click-to-place: canvas reports where the user clicked/dragged for the active tool.
@@ -141,6 +156,14 @@ public partial class ImageEditorView : UserControl
             {
                 CanvasControl.BrushSmoothing = vm.BrushSmoothing;
             }
+            else if (args.PropertyName == nameof(ImageEditorViewModel.BrushPulledStringMode))
+            {
+                CanvasControl.PulledStringMode = vm.BrushPulledStringMode;
+            }
+            else if (args.PropertyName == nameof(ImageEditorViewModel.BrushCatchUpOnStrokeEnd))
+            {
+                CanvasControl.CatchUpOnStrokeEnd = vm.BrushCatchUpOnStrokeEnd;
+            }
             else if (args.PropertyName == nameof(ImageEditorViewModel.BrushWetEdges))
             {
                 CanvasControl.BrushWetEdges = vm.BrushWetEdges;
@@ -200,6 +223,8 @@ public partial class ImageEditorView : UserControl
         CanvasControl.BrushRoundness = vm.BrushRoundness / 100.0;
         CanvasControl.BrushAngle = vm.BrushAngle;
         CanvasControl.BrushSmoothing = vm.BrushSmoothing;
+        CanvasControl.PulledStringMode = vm.BrushPulledStringMode;
+        CanvasControl.CatchUpOnStrokeEnd = vm.BrushCatchUpOnStrokeEnd;
         CanvasControl.BrushWetEdges = vm.BrushWetEdges;
         CanvasControl.BrushAliased = vm.ActiveToolMode == "pencil" || (vm.SelectedBrushPreset?.Settings.Aliased ?? false);
         CanvasControl.ActiveSymmetryMode = vm.ActiveSymmetryMode;
@@ -234,15 +259,24 @@ public partial class ImageEditorView : UserControl
         bool shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
         bool alt = e.KeyModifiers.HasFlag(KeyModifiers.Alt);
 
-        // Escape: dismiss any open modal dialogs, cancel crop, deselect, or reset tool
+        // Escape: dismiss any open modal dialogs, cancel Free Transform, cancel crop, deselect, or reset tool
         if (e.Key == Key.Escape)
         {
+            if (vm.IsFreeTransformActive) { vm.CancelFreeTransformCommand.Execute(null); e.Handled = true; return; }
             if (vm.IsNewDocumentDialogOpen) { vm.IsNewDocumentDialogOpen = false; e.Handled = true; return; }
             if (vm.IsAdjustmentDialogOpen) { vm.CancelAdjustmentDialogCommand.Execute(null); e.Handled = true; return; }
             if (vm.IsFilterDialogOpen) { vm.CancelFilterDialogCommand.Execute(null); e.Handled = true; return; }
             if (vm.IsLayerStyleDialogOpen) { vm.IsLayerStyleDialogOpen = false; e.Handled = true; return; }
             if (vm.SelectedElements.Count > 0) { vm.DeselectAllCommand.Execute(null); e.Handled = true; return; }
             vm.SetToolCommand.Execute("select");
+            e.Handled = true;
+            return;
+        }
+
+        // Enter: commit Free Transform if active
+        if (e.Key == Key.Enter && vm.IsFreeTransformActive)
+        {
+            vm.CommitFreeTransformCommand.Execute(null);
             e.Handled = true;
             return;
         }
@@ -341,6 +375,12 @@ public partial class ImageEditorView : UserControl
         if (ctrl && !shift && (e.Key == Key.J || e.Key == Key.D))
         {
             vm.DuplicateCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+        if (ctrl && !shift && e.Key == Key.T)
+        {
+            vm.BeginFreeTransformCommand.Execute(null);
             e.Handled = true;
             return;
         }

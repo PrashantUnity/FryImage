@@ -222,6 +222,18 @@
                                 </Grid>
                                 <Slider Minimum="-100" Maximum="100" Value="{Binding AdjYellowBlue, Mode=TwoWay}" />
                             </StackPanel>
+
+                            <Border Background="{DynamicResource PsSurfaceSubtleBrush}" CornerRadius="4" Padding="10,8" Margin="0,4,0,0">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="Tone Balance" Classes="ps-label" FontWeight="SemiBold" />
+                                    <StackPanel Orientation="Horizontal" Spacing="16">
+                                        <RadioButton Content="Shadows" IsChecked="{Binding IsColorBalanceToneShadows, Mode=TwoWay}" GroupName="ColorBalanceTone" FontSize="11" />
+                                        <RadioButton Content="Midtones" IsChecked="{Binding IsColorBalanceToneMidtones, Mode=TwoWay}" GroupName="ColorBalanceTone" FontSize="11" />
+                                        <RadioButton Content="Highlights" IsChecked="{Binding IsColorBalanceToneHighlights, Mode=TwoWay}" GroupName="ColorBalanceTone" FontSize="11" />
+                                    </StackPanel>
+                                    <CheckBox Content="Preserve Luminosity" IsChecked="{Binding AdjColorBalancePreserveLuminosity, Mode=TwoWay}" Margin="0,4,0,0" FontSize="11" />
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
 
                         <!-- 6. Threshold View -->

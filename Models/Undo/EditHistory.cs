@@ -86,4 +86,14 @@ public sealed class EditHistory : IEditHistory
         _redo.Clear();
         HistoryChanged?.Invoke(this, EventArgs.Empty);
     }
+
+    public void DeleteCurrentState()
+    {
+        if (_undo.Count == 0) return;
+        var cmd = _undo[^1];
+        _undo.RemoveAt(_undo.Count - 1);
+        cmd.Undo();
+        _redo.Clear();
+        HistoryChanged?.Invoke(this, EventArgs.Empty);
+    }
 }

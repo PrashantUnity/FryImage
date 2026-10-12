@@ -53,6 +53,7 @@
                         <MenuFlyout Placement="BottomEdgeAlignedLeft">
                             <MenuItem Header="Undo" InputGesture="Ctrl+Z" Command="{Binding UndoCommand}" />
                             <MenuItem Header="Redo" InputGesture="Ctrl+Y" Command="{Binding RedoCommand}" />
+                            <MenuItem Header="Create New Snapshot..." Command="{Binding CreateNewSnapshotCommand}" />
                             <Separator />
                             <MenuItem Header="Cut" InputGesture="Ctrl+X" Command="{Binding DeleteSelectedElementCommand}" />
                             <MenuItem Header="Copy" InputGesture="Ctrl+C" Command="{Binding CopyElementsCommand}" />
@@ -63,7 +64,7 @@
                             <MenuItem Header="Content-Aware Fill..." Command="{Binding ApplyContentAwareFillCommand}" />
                             <MenuItem Header="Content-Aware Scale..." InputGesture="Alt+Shift+Ctrl+C" Command="{Binding OpenContentAwareScaleDialogCommand}" />
                             <Separator />
-                            <MenuItem Header="Free Transform" InputGesture="Ctrl+T" Command="{Binding SetToolCommand}" CommandParameter="select" />
+                            <MenuItem Header="Free Transform" InputGesture="Ctrl+T" Command="{Binding BeginFreeTransformCommand}" />
                             <MenuItem Header="Rotate 90° CW" Command="{Binding RotateArtboardClockwiseCommand}" />
                             <MenuItem Header="Rotate 90° CCW" Command="{Binding RotateArtboardCounterClockwiseCommand}" />
                             <Separator />
@@ -114,7 +115,8 @@
                     <Button.Flyout>
                         <MenuFlyout Placement="BottomEdgeAlignedLeft">
                             <MenuItem Header="New Layer" InputGesture="Ctrl+Shift+N" Command="{Binding InsertRectangleCommand}" />
-                            <MenuItem Header="Duplicate Layer" InputGesture="Ctrl+J" Command="{Binding DuplicateCommand}" />
+                            <MenuItem Header="Duplicate Layer..." Command="{Binding OpenDuplicateLayerDialogCommand}" />
+                            <MenuItem Header="Quick Duplicate Layer" InputGesture="Ctrl+J" Command="{Binding DuplicateCommand}" />
                             <MenuItem Header="Delete Layer" Command="{Binding DeleteSelectedElementCommand}" />
                             <Separator />
                             <MenuItem Header="New Adjustment Layer">

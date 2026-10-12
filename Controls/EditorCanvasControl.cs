@@ -69,6 +69,14 @@ public partial class EditorCanvasControl : Control
     public bool BrushAliased { get; set; }
     public TipShapeKind BrushTipShape { get; set; } = TipShapeKind.Round;
     public SymmetryMode ActiveSymmetryMode { get; set; } = SymmetryMode.Off;
+    public bool PulledStringMode { get; set; } = true;
+    public bool CatchUpOnStrokeEnd { get; set; } = true;
+
+    // Real-time brush leash & pulled string dynamics (Photoshop 2026 Parity)
+    private Point _smoothedBrushPos;
+    private Point? _currentPointerCanvasPos;
+    private bool _hasSmoothingLeash;
+    private bool _isTildeEraseActive;
 
     // Retouching tools state (FryImage Studio)
     private bool _isDrawingRetouch;
@@ -141,7 +149,7 @@ public partial class EditorCanvasControl : Control
     private List<(bool IsVertical, double Position)> _activeGuides = new();
 
     // Persistent document user guides
-    private readonly List<(bool IsVertical, double Position)> _userGuides = new();
+    private readonly List<(bool IsVertical, double Position, Color? Color)> _userGuides = new();
     public bool ShowUserGuides { get; set; } = true;
     public bool LockUserGuides { get; set; } = false;
     public bool SnapEnabled { get; set; } = true;
@@ -150,9 +158,9 @@ public partial class EditorCanvasControl : Control
     public bool SnapToLayers { get; set; } = true;
     public bool SnapToDocumentBounds { get; set; } = true;
 
-    public void AddUserGuide(bool isVertical, double position)
+    public void AddUserGuide(bool isVertical, double position, Color? color = null)
     {
-        _userGuides.Add((isVertical, position));
+        _userGuides.Add((isVertical, position, color));
         InvalidateVisual();
     }
 
@@ -189,9 +197,9 @@ public partial class EditorCanvasControl : Control
             double curX = marginLeft;
             for (int c = 0; c < columns; c++)
             {
-                _userGuides.Add((true, curX));
+                _userGuides.Add((true, curX, null));
                 curX += computedColWidth;
-                _userGuides.Add((true, curX));
+                _userGuides.Add((true, curX, null));
                 curX += colGutter;
             }
         }
@@ -205,9 +213,9 @@ public partial class EditorCanvasControl : Control
             double curY = marginTop;
             for (int r = 0; r < rows; r++)
             {
-                _userGuides.Add((false, curY));
+                _userGuides.Add((false, curY, null));
                 curY += computedRowHeight;
-                _userGuides.Add((false, curY));
+                _userGuides.Add((false, curY, null));
                 curY += rowGutter;
             }
         }
@@ -740,6 +748,26 @@ public partial class EditorCanvasControl : Control
                             lineCap: PenLineCap.Round,
                             lineJoin: PenLineJoin.Round);
                         dc.DrawGeometry(null, pen, geometry);
+                    }
+                }
+
+                // Draw live smoothing string (Photoshop pulled string leash mode, #3479 parity)
+                if (BrushSmoothing > 0 && _hasSmoothingLeash && _currentPointerCanvasPos.HasValue)
+                {
+                    var leashBrushPt = _smoothedBrushPos;
+                    var leashPtrPt = _currentPointerCanvasPos.Value;
+                    if (Point.Distance(leashBrushPt, leashPtrPt) >= 2.0 / _zoom)
+                    {
+                        // Dark underlay line (black alpha 110, 3px wide)
+                        var shadowPen = new Pen(new SolidColorBrush(Color.FromArgb(110, 0, 0, 0)), 3.0 / _zoom, lineCap: PenLineCap.Round);
+                        dc.DrawLine(shadowPen, leashBrushPt, leashPtrPt);
+
+                        // Crisp white line (1px wide)
+                        var stringPen = new Pen(Brushes.White, 1.0 / _zoom, lineCap: PenLineCap.Round);
+                        dc.DrawLine(stringPen, leashBrushPt, leashPtrPt);
+
+                        // Tip marker circle dot at brush end
+                        dc.DrawEllipse(Brushes.White, new Pen(new SolidColorBrush(Color.FromArgb(180, 0, 0, 0)), 0.75 / _zoom), leashBrushPt, 2.5 / _zoom, 2.5 / _zoom);
                     }
                 }
             }
@@ -1285,12 +1313,14 @@ public partial class EditorCanvasControl : Control
         return localHandle.Transform(Matrix.CreateRotation(rotationDegrees * Math.PI / 180.0, axisBounds.Center));
     }
 
-    private static void DrawUserGuides(DrawingContext dc, List<(bool IsVertical, double Position)> guides, double zoom)
+    private static void DrawUserGuides(DrawingContext dc, List<(bool IsVertical, double Position, Color? Color)> guides, double zoom)
     {
         const double span = 10000;
-        var guidePen = new Pen(new SolidColorBrush(Color.FromArgb(240, 0, 229, 255)), 1.0 / zoom);
-        foreach (var (isVertical, pos) in guides)
+        var defaultBrush = new SolidColorBrush(Color.FromArgb(240, 0, 229, 255));
+        foreach (var (isVertical, pos, color) in guides)
         {
+            var brush = color.HasValue ? new SolidColorBrush(color.Value) : defaultBrush;
+            var guidePen = new Pen(brush, 1.0 / zoom);
             if (isVertical) dc.DrawLine(guidePen, new Point(pos, -span), new Point(pos, span));
             else dc.DrawLine(guidePen, new Point(-span, pos), new Point(span, pos));
         }
@@ -1576,6 +1606,9 @@ public partial class EditorCanvasControl : Control
                     return;
                 }
                 _isDrawingDoodle = true;
+                _smoothedBrushPos = canvasPt;
+                _currentPointerCanvasPos = canvasPt;
+                _hasSmoothingLeash = false;
                 _currentDoodlePoints.Clear();
                 _currentDoodlePoints.Add(canvasPt);
                 e.Pointer.Capture(this);
@@ -2024,10 +2057,42 @@ public partial class EditorCanvasControl : Control
 
         if (_isDrawingDoodle)
         {
-            if (_currentDoodlePoints.Count == 0 || Point.Distance(_currentDoodlePoints[^1], pos) >= 1.5 / _zoom)
+            _currentPointerCanvasPos = pos;
+            if (BrushSmoothing > 0)
             {
-                _currentDoodlePoints.Add(pos);
+                double leashRadius = (BrushSmoothing / 100.0) * 35.0 / _zoom;
+                double dist = Point.Distance(_smoothedBrushPos, pos);
+                if (dist > leashRadius)
+                {
+                    double angle = Math.Atan2(pos.Y - _smoothedBrushPos.Y, pos.X - _smoothedBrushPos.X);
+                    double pullX = pos.X - Math.Cos(angle) * leashRadius;
+                    double pullY = pos.Y - Math.Sin(angle) * leashRadius;
+                    double smoothRate = Math.Clamp(1.0 - (BrushSmoothing / 100.0) * 0.6, 0.15, 1.0);
+                    _smoothedBrushPos = new Point(
+                        _smoothedBrushPos.X + (pullX - _smoothedBrushPos.X) * smoothRate,
+                        _smoothedBrushPos.Y + (pullY - _smoothedBrushPos.Y) * smoothRate);
+
+                    if (_currentDoodlePoints.Count == 0 || Point.Distance(_currentDoodlePoints[^1], _smoothedBrushPos) >= 1.5 / _zoom)
+                    {
+                        _currentDoodlePoints.Add(_smoothedBrushPos);
+                    }
+                    _hasSmoothingLeash = dist >= 2.0 / _zoom;
+                }
+                else
+                {
+                    _hasSmoothingLeash = dist >= 2.0 / _zoom;
+                }
                 InvalidateVisual();
+            }
+            else
+            {
+                _smoothedBrushPos = pos;
+                _hasSmoothingLeash = false;
+                if (_currentDoodlePoints.Count == 0 || Point.Distance(_currentDoodlePoints[^1], pos) >= 1.5 / _zoom)
+                {
+                    _currentDoodlePoints.Add(pos);
+                    InvalidateVisual();
+                }
             }
             return;
         }
@@ -2170,7 +2235,7 @@ public partial class EditorCanvasControl : Control
 
         if (SnapToGuides && ShowUserGuides)
         {
-            foreach (var (isVertical, pos) in _userGuides)
+            foreach (var (isVertical, pos, _) in _userGuides)
             {
                 if (isVertical) targetsX.Add(pos);
                 else targetsY.Add(pos);
@@ -2311,6 +2376,17 @@ public partial class EditorCanvasControl : Control
         {
             _isDrawingDoodle = false;
             e.Pointer.Capture(null);
+            if (CatchUpOnStrokeEnd && _currentPointerCanvasPos.HasValue && _currentDoodlePoints.Count > 0)
+            {
+                var finalPtr = _currentPointerCanvasPos.Value;
+                if (Point.Distance(_currentDoodlePoints[^1], finalPtr) >= 1.0 / _zoom)
+                {
+                    _currentDoodlePoints.Add(finalPtr);
+                }
+            }
+            _hasSmoothingLeash = false;
+            _currentPointerCanvasPos = null;
+
             if (_currentDoodlePoints.Count > 0)
             {
                 var smoothed = BrushSmoothing > 0
@@ -2574,6 +2650,14 @@ public partial class EditorCanvasControl : Control
             return;
         }
 
+        if (e.Key is Key.OemTilde or Key.Oem3 && !_isTildeEraseActive)
+        {
+            _isTildeEraseActive = true;
+            UpdateCursorForTool();
+            e.Handled = true;
+            return;
+        }
+
         if (e.Key is Key.Enter or Key.Return)
         {
             if (_isCropModeActive) { ConfirmCrop(); e.Handled = true; return; }
@@ -2799,6 +2883,13 @@ public partial class EditorCanvasControl : Control
         if (e.Key == Key.Space)
         {
             _spaceHeld = false;
+            UpdateCursorForTool();
+            e.Handled = true;
+        }
+
+        if (e.Key is Key.OemTilde or Key.Oem3)
+        {
+            _isTildeEraseActive = false;
             UpdateCursorForTool();
             e.Handled = true;
         }

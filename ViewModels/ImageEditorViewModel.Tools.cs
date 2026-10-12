@@ -64,6 +64,12 @@ public partial class ImageEditorViewModel
     private int _brushSmoothing = 15;
 
     [ObservableProperty]
+    private bool _brushPulledStringMode = true;
+
+    [ObservableProperty]
+    private bool _brushCatchUpOnStrokeEnd = true;
+
+    [ObservableProperty]
     private bool _isHighlighterMode;
 
     [ObservableProperty]

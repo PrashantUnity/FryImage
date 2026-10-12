@@ -129,6 +129,36 @@ public sealed class ResizeElementCommand : IUndoableCommand
     }
 }
 
+public sealed class FreeTransformCommand : IUndoableCommand
+{
+    private readonly CanvasElement _element;
+    private readonly (double X, double Y, double Width, double Height, double Rotation) _before;
+    private readonly (double X, double Y, double Width, double Height, double Rotation) _after;
+
+    public FreeTransformCommand(
+        CanvasElement element,
+        (double X, double Y, double Width, double Height, double Rotation) before,
+        (double X, double Y, double Width, double Height, double Rotation) after)
+    {
+        _element = element;
+        _before = before;
+        _after = after;
+    }
+
+    public string Description => "Free Transform";
+    public void Undo() => Apply(_before);
+    public void Redo() => Apply(_after);
+
+    private void Apply((double X, double Y, double Width, double Height, double Rotation) v)
+    {
+        _element.X = v.X;
+        _element.Y = v.Y;
+        _element.Width = v.Width;
+        _element.Height = v.Height;
+        _element.RotationDegrees = v.Rotation;
+    }
+}
+
 public sealed class ZOrderShiftCommand : IUndoableCommand
 {
     private readonly IReadOnlyDictionary<CanvasElement, int> _before;
@@ -376,4 +406,52 @@ public sealed class RetouchImageCommand : IUndoableCommand
     public string Description { get; }
     public void Undo() => _apply(_element, _beforeBytes);
     public void Redo() => _apply(_element, _afterBytes);
+}
+
+/// <summary>
+/// Undoable restoration of a named History snapshot.
+/// </summary>
+public sealed class RestoreSnapshotCommand : IUndoableCommand
+{
+    private readonly ObservableCollection<CanvasElement> _elements;
+    private readonly List<CanvasElement> _oldElements;
+    private readonly List<CanvasElement> _newElements;
+    private readonly string _snapshotName;
+    private readonly Action _onChanged;
+
+    public RestoreSnapshotCommand(
+        ObservableCollection<CanvasElement> elements,
+        IEnumerable<CanvasElement> oldElements,
+        IEnumerable<CanvasElement> newElements,
+        string snapshotName,
+        Action onChanged)
+    {
+        _elements = elements;
+        _oldElements = oldElements.Select(e => e.Clone()).ToList();
+        _newElements = newElements.Select(e => e.Clone()).ToList();
+        _snapshotName = snapshotName;
+        _onChanged = onChanged;
+    }
+
+    public string Description => $"Restore '{_snapshotName}'";
+
+    public void Redo()
+    {
+        _elements.Clear();
+        foreach (var el in _newElements)
+        {
+            _elements.Add(el.Clone());
+        }
+        _onChanged();
+    }
+
+    public void Undo()
+    {
+        _elements.Clear();
+        foreach (var el in _oldElements)
+        {
+            _elements.Add(el.Clone());
+        }
+        _onChanged();
+    }
 }

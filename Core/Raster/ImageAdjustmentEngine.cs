@@ -187,44 +187,139 @@ public static partial class ImageAdjustmentEngine
         return result;
     }
 
-    /// <summary>
-    /// Applies 3-zone Color Balance (Shadows, Midtones, Highlights) [-100..100] on cyanRed, magentaGreen, yellowBlue.
-    /// toneRange: 0 = Shadows, 1 = Midtones, 2 = Highlights.
-    /// </summary>
-    public static byte[] ApplyColorBalance(byte[] bgraPixels, int cyanRed, int magentaGreen, int yellowBlue, int toneRange = 1)
-    {
-        byte[] result = new byte[bgraPixels.Length];
-        double cr = cyanRed / 100.0;
-        double mg = magentaGreen / 100.0;
-        double yb = yellowBlue / 100.0;
+    private const double BalanceLevels = 0.39;
 
+    /// <summary>
+    /// Evaluates Photoshop 2026's exact Color Balance channel curve for a given channel (0=R, 1=G, 2=B).
+    /// tones is a 3x3 array: [shadows[R,G,B], midtones[R,G,B], highlights[R,G,B]].
+    /// </summary>
+    public static double ColorBalanceChannel(double[][] tones, bool preserveLuminosity, int ch, double v)
+    {
+        double[] shadows = tones[0];
+        double[] midtones = tones[1];
+        double[] highlights = tones[2];
+
+        static double Black(double val, double b) => b >= 1.0 ? 0.0 : Math.Max(0.0, (val - b) / (1.0 - b));
+        static double White(double val, double w) => w <= 0.0 ? 1.0 : Math.Min(1.0, val / w);
+
+        v = Math.Clamp(v, 0.0, 1.0);
+
+        (int tone, double[] sliders)[] passes = [
+            (2, highlights),
+            (0, shadows),
+            (1, midtones)
+        ];
+
+        foreach (var (tone, sliders) in passes)
+        {
+            double[] a = [
+                Math.Clamp(sliders[0] / 100.0, -1.0, 1.0),
+                Math.Clamp(sliders[1] / 100.0, -1.0, 1.0),
+                Math.Clamp(sliders[2] / 100.0, -1.0, 1.0)
+            ];
+
+            if (preserveLuminosity && tone != 1)
+            {
+                double own = a[ch];
+                double lo = Math.Min(a[0], Math.Min(a[1], a[2]));
+                double hi = Math.Max(a[0], Math.Max(a[1], a[2]));
+                v = tone == 0
+                    ? Black(v, BalanceLevels * (hi - own))
+                    : White(v, 1.0 - BalanceLevels * (own - lo));
+                continue;
+            }
+
+            for (int src = 0; src < 3; src++)
+            {
+                double sVal = a[src];
+                bool own = src == ch;
+                if (sVal == 0.0 || (!preserveLuminosity && !own)) continue;
+
+                if (tone == 1) // midtones
+                {
+                    if (!preserveLuminosity)
+                    {
+                        v = Math.Pow(v, Math.Pow(2.0, -sVal));
+                    }
+                    else
+                    {
+                        double exp = (own ? -sVal : sVal) / 2.0;
+                        v = Math.Pow(v, Math.Pow(2.0, exp));
+                    }
+                }
+                else if (tone == 0) // shadows
+                {
+                    if (!preserveLuminosity)
+                    {
+                        if (sVal < 0.0)
+                            v = Math.Pow(Black(v, BalanceLevels * -sVal), Math.Pow(2.0, -sVal / 2.0));
+                        else
+                            v = Math.Pow(v, Math.Pow(2.0, -sVal / 2.0));
+                    }
+                }
+                else if (tone == 2) // highlights
+                {
+                    if (!preserveLuminosity)
+                    {
+                        if (sVal > 0.0)
+                            v = Math.Pow(White(v, 1.0 - BalanceLevels * sVal), Math.Pow(2.0, -sVal / 2.0));
+                        else
+                            v = Math.Pow(v, Math.Pow(2.0, -sVal / 2.0));
+                    }
+                }
+            }
+        }
+
+        return Math.Clamp(v, 0.0, 1.0);
+    }
+
+    /// <summary>
+    /// Applies 3-zone Photoshop 2026 Color Balance (Shadows, Midtones, Highlights) with per-channel LUT curves and optional Luminosity Preservation.
+    /// </summary>
+    public static byte[] ApplyColorBalancePhotoshop(byte[] bgraPixels, double[][] tones, bool preserveLuminosity = true)
+    {
+        byte[] lutR = new byte[256];
+        byte[] lutG = new byte[256];
+        byte[] lutB = new byte[256];
+
+        for (int i = 0; i < 256; i++)
+        {
+            double v = i / 255.0;
+            lutR[i] = (byte)Math.Clamp((int)Math.Round(ColorBalanceChannel(tones, preserveLuminosity, 0, v) * 255.0), 0, 255);
+            lutG[i] = (byte)Math.Clamp((int)Math.Round(ColorBalanceChannel(tones, preserveLuminosity, 1, v) * 255.0), 0, 255);
+            lutB[i] = (byte)Math.Clamp((int)Math.Round(ColorBalanceChannel(tones, preserveLuminosity, 2, v) * 255.0), 0, 255);
+        }
+
+        byte[] result = new byte[bgraPixels.Length];
         Parallel.For(0, bgraPixels.Length / 4, p =>
         {
             int idx = p * 4;
-            byte b = bgraPixels[idx];
-            byte g = bgraPixels[idx + 1];
-            byte r = bgraPixels[idx + 2];
-            byte a = bgraPixels[idx + 3];
-
-            double luma = (LumaR * r + LumaG * g + LumaB * b) / 255.0;
-            double weight = toneRange switch
-            {
-                0 => Math.Clamp(1.0 - luma * 2.0, 0.0, 1.0), // Shadows
-                2 => Math.Clamp((luma - 0.5) * 2.0, 0.0, 1.0), // Highlights
-                _ => 1.0 - Math.Abs(luma - 0.5) * 2.0 // Midtones
-            };
-
-            double shiftR = cr * weight * 35.0;
-            double shiftG = mg * weight * 35.0;
-            double shiftB = yb * weight * 35.0;
-
-            result[idx] = (byte)Math.Clamp((int)Math.Round(b + shiftB), 0, 255);
-            result[idx + 1] = (byte)Math.Clamp((int)Math.Round(g + shiftG), 0, 255);
-            result[idx + 2] = (byte)Math.Clamp((int)Math.Round(r + shiftR), 0, 255);
-            result[idx + 3] = a;
+            result[idx] = lutB[bgraPixels[idx]];
+            result[idx + 1] = lutG[bgraPixels[idx + 1]];
+            result[idx + 2] = lutR[bgraPixels[idx + 2]];
+            result[idx + 3] = bgraPixels[idx + 3];
         });
 
         return result;
+    }
+
+    /// <summary>
+    /// Backward-compatible Color Balance calling Photoshop 2026's per-channel curves engine.
+    /// </summary>
+    public static byte[] ApplyColorBalance(byte[] bgraPixels, int cyanRed, int magentaGreen, int yellowBlue, int toneRange = 1)
+    {
+        double[][] tones = [
+            [0, 0, 0], // shadows
+            [0, 0, 0], // midtones
+            [0, 0, 0]  // highlights
+        ];
+
+        int targetTone = Math.Clamp(toneRange, 0, 2);
+        tones[targetTone][0] = cyanRed;
+        tones[targetTone][1] = magentaGreen;
+        tones[targetTone][2] = yellowBlue;
+
+        return ApplyColorBalancePhotoshop(bgraPixels, tones, preserveLuminosity: true);
     }
 
     /// <summary>

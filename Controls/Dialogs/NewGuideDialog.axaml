@@ -17,7 +17,7 @@
                 BorderBrush="{DynamicResource PsBorderLightBrush}"
                 BorderThickness="1"
                 CornerRadius="3"
-                Width="360" Height="220"
+                Width="380" Height="270"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 BoxShadow="0 10 30 #80000000">
@@ -36,7 +36,7 @@
                 </Border>
 
                 <!-- Body -->
-                <StackPanel Grid.Row="1" Margin="16" Spacing="12">
+                <StackPanel Grid.Row="1" Margin="16" Spacing="10">
                     <TextBlock Text="Orientation" Classes="ps-section-header" />
                     <StackPanel Orientation="Horizontal" Spacing="16">
                         <RadioButton Content="Horizontal"
@@ -47,13 +47,37 @@
                                      IsChecked="{Binding NewGuideOrientation, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Vertical', Mode=TwoWay}" />
                     </StackPanel>
 
-                    <Grid ColumnDefinitions="Auto,*" Margin="0,4,0,0">
-                        <TextBlock Grid.Column="0" Text="Position:" Classes="ps-label" Width="70" VerticalAlignment="Center" />
-                        <NumericUpDown Grid.Column="1" Classes="ps-num"
-                                       Value="{Binding NewGuidePosition, Mode=TwoWay}"
-                                       Minimum="0" Maximum="10000" Increment="10"
-                                       FormatString="{}{0:0} px" />
+                    <Grid ColumnDefinitions="70,*" Margin="0,4,0,0">
+                        <TextBlock Grid.Column="0" Text="Position:" Classes="ps-label" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Classes="ps-txt"
+                                 Text="{Binding NewGuidePositionText, Mode=TwoWay}"
+                                 PlaceholderText="e.g. 100 px, 2.5 cm, 1 in, 50%, 12 pt, 3 pc" />
                     </Grid>
+
+                    <Grid ColumnDefinitions="70,*" Margin="0,4,0,0">
+                        <TextBlock Grid.Column="0" Text="Color:" Classes="ps-label" VerticalAlignment="Center" />
+                        <ComboBox Grid.Column="1" Classes="ps-combo"
+                                  ItemsSource="{Binding GuideColorOptions}"
+                                  SelectedIndex="{Binding SelectedNewGuideColorIndex, Mode=TwoWay}"
+                                  HorizontalAlignment="Stretch">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="local:GuideColorOption">
+                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <Border Width="12" Height="12" CornerRadius="2" Background="{Binding DisplayBrush}" BorderBrush="#40FFFFFF" BorderThickness="1" />
+                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontSize="11" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </Grid>
+
+                    <!-- Validation Error Message -->
+                    <TextBlock Text="{Binding NewGuideErrorMessage}"
+                               Foreground="#FF5252"
+                               FontSize="11"
+                               TextWrapping="Wrap"
+                               IsVisible="{Binding NewGuideErrorMessage.Length}"
+                               Margin="70,0,0,0" />
                 </StackPanel>
 
                 <!-- Footer -->

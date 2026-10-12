@@ -39,7 +39,7 @@ public partial class EditorCanvasControl
 
         for (int i = _userGuides.Count - 1; i >= 0; i--)
         {
-            var (isVert, pos) = _userGuides[i];
+            var (isVert, pos, _) = _userGuides[i];
             Point guideScreenPt = CanvasToScreen(new Point(isVert ? pos : 0, isVert ? 0 : pos));
 
             if (isVert)
@@ -189,7 +189,8 @@ public partial class EditorCanvasControl
             }
             else if (_activeDragGuide is { } guide)
             {
-                _userGuides[_draggingGuideIndex] = (guide.IsVertical, guide.Position);
+                var currentColor = _userGuides[_draggingGuideIndex].Color;
+                _userGuides[_draggingGuideIndex] = (guide.IsVertical, guide.Position, currentColor);
                 GuideStatusChanged?.Invoke($"Guide moved to {guide.Position:0.#} px.");
             }
 
@@ -254,7 +255,7 @@ public partial class EditorCanvasControl
             for (int i = 0; i < _userGuides.Count; i++)
             {
                 if (i == _draggingGuideIndex) continue;
-                var (otherIsVert, otherPos) = _userGuides[i];
+                var (otherIsVert, otherPos, _) = _userGuides[i];
                 if (otherIsVert == isVertical) CheckSnap(otherPos);
             }
         }

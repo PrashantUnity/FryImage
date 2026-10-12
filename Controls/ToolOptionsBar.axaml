@@ -62,8 +62,74 @@
                 <Rectangle Width="1" Height="16" Fill="{DynamicResource PsBorderSubtleBrush}" Margin="2,0" />
 
                 <!-- ==========================================
-                     A. BRUSH & ERASER TOOL OPTIONS
+                     0. FREE TRANSFORM SESSION OPTIONS (Ctrl+T)
                      ========================================== -->
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                            IsVisible="{Binding IsFreeTransformActive}">
+                    <!-- Reference Point / Anchor Selector Popover or 3x3 indicator -->
+                    <Button Classes="ps-opt-btn" Padding="4,2" ToolTip.Tip="Reference Point Locator">
+                        <materialIcons:MaterialIcon Kind="GridLarge" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+                    </Button>
+
+                    <TextBlock Text="X:" Classes="ps-label" VerticalAlignment="Center" />
+                    <NumericUpDown Classes="ps-numeric" Width="72" Value="{Binding TransformX, Mode=TwoWay}" FormatString="{}{0:0.0} px" />
+
+                    <TextBlock Text="Y:" Classes="ps-label" VerticalAlignment="Center" />
+                    <NumericUpDown Classes="ps-numeric" Width="72" Value="{Binding TransformY, Mode=TwoWay}" FormatString="{}{0:0.0} px" />
+
+                    <Rectangle Width="1" Height="16" Fill="{DynamicResource PsBorderSubtleBrush}" Margin="2,0" />
+
+                    <TextBlock Text="W:" Classes="ps-label" VerticalAlignment="Center" />
+                    <NumericUpDown Classes="ps-numeric" Width="76" Minimum="1" Maximum="10000" Value="{Binding TransformWPercent, Mode=TwoWay}" FormatString="{}{0:0.0}%" />
+
+                    <!-- Maintain Aspect Ratio link toggle -->
+                    <ToggleButton Classes="ps-tool-btn" Width="24" Height="24"
+                                  IsChecked="{Binding TransformAspectLocked, Mode=TwoWay}"
+                                  ToolTip.Tip="Maintain Aspect Ratio (Link W and H)">
+                        <materialIcons:MaterialIcon Kind="Link" Width="13" Height="13" />
+                    </ToggleButton>
+
+                    <TextBlock Text="H:" Classes="ps-label" VerticalAlignment="Center" />
+                    <NumericUpDown Classes="ps-numeric" Width="76" Minimum="1" Maximum="10000" Value="{Binding TransformHPercent, Mode=TwoWay}" FormatString="{}{0:0.0}%" />
+
+                    <Rectangle Width="1" Height="16" Fill="{DynamicResource PsBorderSubtleBrush}" Margin="2,0" />
+
+                    <TextBlock Text="∠:" Classes="ps-label" VerticalAlignment="Center" />
+                    <NumericUpDown Classes="ps-numeric" Width="74" Minimum="-360" Maximum="360" Value="{Binding TransformAngle, Mode=TwoWay}" FormatString="{}{0:0.0}°" />
+
+                    <Rectangle Width="1" Height="16" Fill="{DynamicResource PsBorderSubtleBrush}" Margin="2,0" />
+
+                    <!-- Interpolation dropdown -->
+                    <TextBlock Text="Interp:" Classes="ps-label" VerticalAlignment="Center" />
+                    <ComboBox SelectedItem="{Binding TransformInterpolation, Mode=TwoWay}" Height="24" FontSize="11" Width="120">
+                        <x:String>Bicubic</x:String>
+                        <x:String>Bilinear</x:String>
+                        <x:String>Nearest Neighbor</x:String>
+                    </ComboBox>
+
+                    <Rectangle Width="1" Height="16" Fill="{DynamicResource PsBorderSubtleBrush}" Margin="4,0" />
+
+                    <!-- Commit and Cancel actions -->
+                    <Button Classes="ps-opt-btn" Command="{Binding CommitFreeTransformCommand}" ToolTip.Tip="Commit transform (Enter)"
+                            Background="#1E3A2F" BorderBrush="#10B981" BorderThickness="1" Padding="6,3">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <materialIcons:MaterialIcon Kind="Check" Width="14" Height="14" Foreground="#34D399" />
+                            <TextBlock Text="Commit" FontSize="11" FontWeight="SemiBold" Foreground="#34D399" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Classes="ps-opt-btn" Command="{Binding CancelFreeTransformCommand}" ToolTip.Tip="Cancel transform (Esc)"
+                            Padding="6,3">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14" Foreground="#F87171" />
+                            <TextBlock Text="Cancel" FontSize="11" Foreground="#F87171" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <!-- Normal Tool Panels (hidden when transforming) -->
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                            IsVisible="{Binding !IsFreeTransformActive}">
                 <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
                             IsVisible="{Binding IsBrushToolActive}">
                     <!-- Brush Presets & Tip Settings Picker Popover -->
@@ -205,6 +271,20 @@
                                        Value="{Binding BrushSmoothing, Mode=TwoWay}"
                                        FormatString="{}{0:0}%" />
                     </StackPanel>
+
+                    <!-- Pulled String Mode Toggle (Leash to Pointer) -->
+                    <ToggleButton Classes="ps-tool-btn" Width="24" Height="24"
+                                  IsChecked="{Binding BrushPulledStringMode, Mode=TwoWay}"
+                                  ToolTip.Tip="Pulled String Mode (smooth brush leash)">
+                        <materialIcons:MaterialIcon Kind="RayStartArrow" Width="14" Height="14" />
+                    </ToggleButton>
+
+                    <!-- Stroke Catch-Up Toggle -->
+                    <ToggleButton Classes="ps-tool-btn" Width="24" Height="24"
+                                  IsChecked="{Binding BrushCatchUpOnStrokeEnd, Mode=TwoWay}"
+                                  ToolTip.Tip="Catch-up on Stroke End">
+                        <materialIcons:MaterialIcon Kind="ArrowRightBold" Width="14" Height="14" />
+                    </ToggleButton>
 
                     <ToggleButton Classes="ps-tool-btn" Width="24" Height="24"
                                   IsChecked="{Binding BrushPressureSize, Mode=TwoWay}"
@@ -904,6 +984,7 @@
                                    Value="{Binding ViewportRotationAngle, Mode=TwoWay}"
                                    FormatString="{}{0:0.0}°" />
                     <Button Classes="ps-opt-btn" Content="Reset View" Padding="8,2" Command="{Binding ResetViewportRotationCommand}" ToolTip.Tip="Reset View to 0° (Esc or Double-Click)" />
+                </StackPanel>
                 </StackPanel>
 
             </StackPanel>

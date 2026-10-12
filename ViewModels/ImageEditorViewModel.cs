@@ -832,6 +832,116 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         RebuildHistoryItems();
     }
 
+    // ── Document Snapshots (History Snapshots Parity) ───
+    [ObservableProperty]
+    private ObservableCollection<HistorySnapshotViewModel> _snapshots = new();
+
+    [ObservableProperty]
+    private HistorySnapshotViewModel? _selectedSnapshot;
+
+    [RelayCommand]
+    public void CreateNewSnapshot(string? name = null)
+    {
+        int nextId = Snapshots.Count + 1;
+        string snapName = string.IsNullOrWhiteSpace(name) ? $"Snapshot {nextId}" : name.Trim();
+        var dtos = Elements.OrderBy(e => e.ZIndex).Select(CanvasElementMapper.ToDto).ToList();
+        string json = JsonSerializer.Serialize(dtos, ProjectJsonOptions);
+
+        var snap = new HistorySnapshotViewModel
+        {
+            Id = nextId,
+            Name = snapName,
+            CreatedAt = DateTime.Now,
+            ElementsJson = json,
+            CanvasWidth = _canvasWidth,
+            CanvasHeight = _canvasHeight,
+            IsActive = true
+        };
+
+        foreach (var s in Snapshots) s.IsActive = false;
+        Snapshots.Add(snap);
+        SelectedSnapshot = snap;
+        StatusMessage = $"Created snapshot '{snapName}'.";
+    }
+
+    [RelayCommand]
+    public void RestoreSnapshot(HistorySnapshotViewModel? snapshot)
+    {
+        if (snapshot == null || _isApplyingHistory) return;
+        try
+        {
+            var dtos = JsonSerializer.Deserialize<List<CanvasElementDto>>(snapshot.ElementsJson, ProjectJsonOptions);
+            if (dtos == null) return;
+
+            var oldElements = Elements.ToList();
+            var newElements = dtos.OrderBy(d => d.ZIndex).Select(CanvasElementMapper.FromDto).ToList();
+
+            _isApplyingHistory = true;
+            Elements.Clear();
+            foreach (var el in newElements)
+            {
+                Elements.Add(el);
+            }
+            SelectedElement = null;
+            _isApplyingHistory = false;
+
+            History.Push(new RestoreSnapshotCommand(Elements, oldElements, newElements, snapshot.Name, () => RefreshCanvas()));
+
+            foreach (var s in Snapshots) s.IsActive = (s == snapshot);
+            SelectedSnapshot = snapshot;
+
+            RefreshCanvas();
+            OnPropertyChanged(nameof(LayersDescendingZ));
+            OnPropertyChanged(nameof(CanUngroupSelection));
+            SyncStyleFieldsToSelection();
+            SyncAdjustmentSlidersToSelection();
+            RebuildHistoryItems();
+            StatusMessage = $"Restored snapshot '{snapshot.Name}'.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Failed to restore snapshot: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    public void RenameSnapshot(HistorySnapshotViewModel? snapshot)
+    {
+        if (snapshot == null) return;
+        snapshot.Name = $"{snapshot.Name} (Edited)";
+        StatusMessage = $"Renamed snapshot to '{snapshot.Name}'.";
+    }
+
+    [RelayCommand]
+    public void DeleteSnapshot(HistorySnapshotViewModel? snapshot)
+    {
+        if (snapshot == null) return;
+        Snapshots.Remove(snapshot);
+        if (SelectedSnapshot == snapshot) SelectedSnapshot = Snapshots.LastOrDefault();
+        StatusMessage = $"Deleted snapshot '{snapshot.Name}'.";
+    }
+
+    [RelayCommand]
+    public void DeleteCurrentHistoryState()
+    {
+        if (!History.CanUndo) return;
+        History.DeleteCurrentState();
+        RefreshCanvas();
+        OnPropertyChanged(nameof(LayersDescendingZ));
+        OnPropertyChanged(nameof(CanUngroupSelection));
+        SyncStyleFieldsToSelection();
+        SyncAdjustmentSlidersToSelection();
+        RebuildHistoryItems();
+        StatusMessage = "Deleted current history state.";
+    }
+
+    [RelayCommand]
+    public void CreateDocumentFromCurrentState()
+    {
+        CreateNewSnapshot($"State at {DateTime.Now:HH:mm:ss}");
+        StatusMessage = "Captured new document snapshot from current state.";
+    }
+
     /// <summary>Called by EditorCanvasControl once per completed drag (on pointer-release,
     /// never per-tick) so moves are a single undo step instead of hundreds.</summary>
     public void RecordElementsMoved(IReadOnlyList<(CanvasElement Element, Point OldPos, Point NewPos)> moves)
@@ -1344,6 +1454,11 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool _isHighlighterField;
     [ObservableProperty] private Color _textForegroundColorField = Colors.Black;
     [ObservableProperty] private string _fontFamilyNameField = "Inter";
+    public IReadOnlyList<string> AvailableFontNames { get; } = [
+        "Inter", "Segoe UI", "Arial", "Roboto", "Open Sans", "Montserrat",
+        "Helvetica", "Times New Roman", "Georgia", "Courier New", "Verdana",
+        "Trebuchet MS", "Impact", "Comic Sans MS", "Fira Code", "Oswald"
+    ];
     [ObservableProperty] private double _opacityField = 100;
     [ObservableProperty] private LayerBlendMode _blendModeField = LayerBlendMode.Normal;
     [ObservableProperty] private double _fillOpacityField = 100;
@@ -1355,8 +1470,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     [ObservableProperty] private double _elementRotationField;
     [ObservableProperty] private bool _aspectLockedField;
 
-    // ── Text-only style fields (Underline/Strikethrough/Alignment/Case/LineHeight/Highlight —
-    // properties TextElement already modeled but no control ever bound to) ──────────────────
+    // ── Text-only style fields (Underline/Strikethrough/Alignment/Case/LineHeight/Highlight/Wrap) ────────
     [ObservableProperty] private bool _isUnderline;
     [ObservableProperty] private bool _isStrikethrough;
     [ObservableProperty] private TextAlignment _textAlignmentField = TextAlignment.Left;
@@ -1364,6 +1478,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     [ObservableProperty] private double _lineHeightField;
     [ObservableProperty] private bool _hasHighlightField;
     [ObservableProperty] private Color _highlightColorField = Colors.Yellow;
+    [ObservableProperty] private bool _isWrapEnabledField;
 
     /// <summary>Refreshes the Properties-tab fields to match the newly-selected element,
     /// without treating the refresh itself as a user edit.</summary>
@@ -1419,6 +1534,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
                     LineHeightField = text.LineHeight;
                     HasHighlightField = text.BackgroundColor.HasValue;
                     HighlightColorField = text.BackgroundColor ?? Colors.Yellow;
+                    IsWrapEnabledField = text.IsWrapEnabled;
                 }
                 OpacityField = el.Opacity * 100;
                 BlendModeField = el.BlendMode;
@@ -1703,6 +1819,20 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         ApplyStyleField(target, target.BackgroundColor, (Color?)value, (t, v) => t.BackgroundColor = v, "Change text highlight color");
     }
 
+    partial void OnFontFamilyNameFieldChanged(string value)
+    {
+        if (_isSyncingStyleFields || string.IsNullOrWhiteSpace(value) || SelectedTextElement is not { } target) return;
+        var before = target.FontFamily;
+        var immediate = FontHelper.CreateFontFamily(value);
+        ApplyStyleField(target, before, immediate, (t, v) => t.FontFamily = v, "Change font family");
+    }
+
+    partial void OnIsWrapEnabledFieldChanged(bool value)
+    {
+        if (_isSyncingStyleFields || SelectedTextElement is not { } target) return;
+        ApplyStyleField(target, target.IsWrapEnabled, value, (t, v) => t.IsWrapEnabled = v, "Toggle text wrap");
+    }
+
     [RelayCommand]
     private void SetTextAlignment(string alignment)
     {
@@ -1848,6 +1978,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         };
         LoadSettings();
         AddSampleElements();
+        CreateNewSnapshot("Initial State");
         BuildFontGroups();
         BuildTextStyleGroups();
         BuildShapeGroups();
@@ -2649,6 +2780,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
             });
             if (file == null) return;
 
+            StatusMessage = "Saving 0%...";
             var dto = new ProjectFileDto
             {
                 CanvasWidth = _canvasWidth,
@@ -2657,10 +2789,14 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
                 Elements = Elements.OrderBy(e => e.ZIndex).Select(CanvasElementMapper.ToDto).ToList(),
             };
 
+            StatusMessage = "Saving 45%...";
             string json = JsonSerializer.Serialize(dto, ProjectJsonOptions);
+
+            StatusMessage = "Saving 85%...";
             await using var outStream = await file.OpenWriteAsync();
             await using var writer = new StreamWriter(outStream);
             await writer.WriteAsync(json);
+            await writer.FlushAsync();
 
             StatusMessage = $"Saved {file.Name}.";
         }

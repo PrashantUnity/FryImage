@@ -430,6 +430,33 @@ public partial class ImageEditorViewModel
     [ObservableProperty] private int _adjCyanRed;
     [ObservableProperty] private int _adjMagentaGreen;
     [ObservableProperty] private int _adjYellowBlue;
+    [ObservableProperty] private int _adjColorBalanceTone = 1; // 0=Shadows, 1=Midtones, 2=Highlights
+    [ObservableProperty] private bool _adjColorBalancePreserveLuminosity = true;
+    private readonly double[][] _adjColorBalanceTones = [
+        [0, 0, 0], // Shadows
+        [0, 0, 0], // Midtones
+        [0, 0, 0]  // Highlights
+    ];
+    private bool _isSwitchingTone = false;
+
+    public bool IsColorBalanceToneShadows
+    {
+        get => AdjColorBalanceTone == 0;
+        set { if (value) AdjColorBalanceTone = 0; }
+    }
+
+    public bool IsColorBalanceToneMidtones
+    {
+        get => AdjColorBalanceTone == 1;
+        set { if (value) AdjColorBalanceTone = 1; }
+    }
+
+    public bool IsColorBalanceToneHighlights
+    {
+        get => AdjColorBalanceTone == 2;
+        set { if (value) AdjColorBalanceTone = 2; }
+    }
+
     [ObservableProperty] private int _adjThreshold = 128;
     [ObservableProperty] private int _adjPosterizeLevels = 4;
 
@@ -504,9 +531,17 @@ public partial class ImageEditorViewModel
         AdjLightness = 0;
         AdjColorize = false;
         AdjVibrance = 0;
+        AdjColorBalanceTone = 1;
+        AdjColorBalancePreserveLuminosity = true;
+        _adjColorBalanceTones[0][0] = 0; _adjColorBalanceTones[0][1] = 0; _adjColorBalanceTones[0][2] = 0;
+        _adjColorBalanceTones[1][0] = 0; _adjColorBalanceTones[1][1] = 0; _adjColorBalanceTones[1][2] = 0;
+        _adjColorBalanceTones[2][0] = 0; _adjColorBalanceTones[2][1] = 0; _adjColorBalanceTones[2][2] = 0;
         AdjCyanRed = 0;
         AdjMagentaGreen = 0;
         AdjYellowBlue = 0;
+        OnPropertyChanged(nameof(IsColorBalanceToneShadows));
+        OnPropertyChanged(nameof(IsColorBalanceToneMidtones));
+        OnPropertyChanged(nameof(IsColorBalanceToneHighlights));
         AdjThreshold = 128;
         AdjPosterizeLevels = 4;
 
@@ -550,9 +585,53 @@ public partial class ImageEditorViewModel
     partial void OnAdjSaturationChanged(int value) => ApplyAdjustmentPreview();
     partial void OnAdjLightnessChanged(int value) => ApplyAdjustmentPreview();
     partial void OnAdjVibranceChanged(int value) => ApplyAdjustmentPreview();
-    partial void OnAdjCyanRedChanged(int value) => ApplyAdjustmentPreview();
-    partial void OnAdjMagentaGreenChanged(int value) => ApplyAdjustmentPreview();
-    partial void OnAdjYellowBlueChanged(int value) => ApplyAdjustmentPreview();
+    partial void OnAdjColorBalanceToneChanged(int value)
+    {
+        if (value < 0 || value > 2) return;
+        _isSwitchingTone = true;
+        try
+        {
+            AdjCyanRed = (int)_adjColorBalanceTones[value][0];
+            AdjMagentaGreen = (int)_adjColorBalanceTones[value][1];
+            AdjYellowBlue = (int)_adjColorBalanceTones[value][2];
+        }
+        finally
+        {
+            _isSwitchingTone = false;
+        }
+        OnPropertyChanged(nameof(IsColorBalanceToneShadows));
+        OnPropertyChanged(nameof(IsColorBalanceToneMidtones));
+        OnPropertyChanged(nameof(IsColorBalanceToneHighlights));
+    }
+
+    partial void OnAdjCyanRedChanged(int value)
+    {
+        if (!_isSwitchingTone && AdjColorBalanceTone >= 0 && AdjColorBalanceTone <= 2)
+            _adjColorBalanceTones[AdjColorBalanceTone][0] = value;
+        ApplyAdjustmentPreview();
+    }
+
+    partial void OnAdjMagentaGreenChanged(int value)
+    {
+        if (!_isSwitchingTone && AdjColorBalanceTone >= 0 && AdjColorBalanceTone <= 2)
+            _adjColorBalanceTones[AdjColorBalanceTone][1] = value;
+        ApplyAdjustmentPreview();
+    }
+
+    partial void OnAdjYellowBlueChanged(int value)
+    {
+        if (!_isSwitchingTone && AdjColorBalanceTone >= 0 && AdjColorBalanceTone <= 2)
+            _adjColorBalanceTones[AdjColorBalanceTone][2] = value;
+        ApplyAdjustmentPreview();
+    }
+
+    partial void OnAdjColorBalancePreserveLuminosityChanged(bool value) => ApplyAdjustmentPreview();
+
+    [RelayCommand]
+    public void SetColorBalanceTone(int tone)
+    {
+        AdjColorBalanceTone = Math.Clamp(tone, 0, 2);
+    }
     partial void OnAdjThresholdChanged(int value) => ApplyAdjustmentPreview();
     partial void OnAdjPosterizeLevelsChanged(int value) => ApplyAdjustmentPreview();
 
@@ -686,7 +765,7 @@ public partial class ImageEditorViewModel
             "Curves" => ExecuteCurvesAdjustment(bgra),
             "HueSaturation" => ImageAdjustmentEngine.ApplyHueSaturation(bgra, AdjHue, AdjSaturation, AdjLightness, AdjColorize),
             "Vibrance" => ImageAdjustmentEngine.ApplyVibrance(bgra, AdjVibrance, AdjSaturation),
-            "ColorBalance" => ImageAdjustmentEngine.ApplyColorBalance(bgra, AdjCyanRed, AdjMagentaGreen, AdjYellowBlue),
+            "ColorBalance" => ImageAdjustmentEngine.ApplyColorBalancePhotoshop(bgra, _adjColorBalanceTones, AdjColorBalancePreserveLuminosity),
             "Threshold" => ImageAdjustmentEngine.ApplyThreshold(bgra, AdjThreshold),
             "Posterize" => ImageAdjustmentEngine.ApplyPosterize(bgra, AdjPosterizeLevels),
             "Exposure" => ImageAdjustmentEngine.ApplyExposure(bgra, AdjExposure, AdjExposureOffset, AdjExposureGamma),
@@ -2007,8 +2086,13 @@ public partial class ImageEditorViewModel
                 Height = (int)CanvasHeight
             };
 
-            foreach (var el in Elements.OrderBy(e => e.ZIndex))
+            StatusMessage = "Saving PSD 0%...";
+            var sortedElements = Elements.OrderBy(e => e.ZIndex).ToList();
+            for (int i = 0; i < sortedElements.Count; i++)
             {
+                var el = sortedElements[i];
+                int pct = (int)((i + 1) * 75.0 / Math.Max(1, sortedElements.Count));
+                StatusMessage = $"Saving PSD {pct}%...";
                 var layer = new PsdCodec.PsdLayerInfo
                 {
                     Name = el.Name ?? "Layer",
@@ -2077,6 +2161,7 @@ public partial class ImageEditorViewModel
                 psd.Layers.Add(layer);
             }
 
+            StatusMessage = "Saving PSD 85%...";
             await using var stream = await file.OpenWriteAsync();
             PsdCodec.Encode(psd, stream);
             StatusMessage = $"Saved PSD: {file.Name}";

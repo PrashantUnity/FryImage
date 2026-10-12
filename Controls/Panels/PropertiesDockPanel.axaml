@@ -104,63 +104,117 @@
                         </StackPanel>
 
                         <!-- TEXT ELEMENT SPECIFIC: Typography & Character -->
-                        <StackPanel Spacing="4" IsVisible="{Binding HasSelectedTextElement}">
+                        <!-- TEXT ELEMENT SPECIFIC: Typography, Character & Paragraph -->
+                        <StackPanel Spacing="6" IsVisible="{Binding HasSelectedTextElement}">
                             <TextBlock Text="▾ Character &amp; Typography" Classes="ps-label" FontWeight="SemiBold" />
-                            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="3">
-                                <!-- Font Size & Color -->
-                                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="4" Margin="0,0,4,0">
-                                    <TextBlock Text="Size:" Classes="ps-label" VerticalAlignment="Center" />
-                                    <NumericUpDown Classes="ps-num" Width="68" Height="22" Minimum="6" Maximum="300"
-                                                   Value="{Binding FontSize, Mode=TwoWay}"
-                                                   FormatString="{}{0:0} pt" />
-                                </StackPanel>
-                                <Button Grid.Row="0" Grid.Column="1" Classes="ps-opt-btn"
+
+                            <!-- 1. Font Family & Size -->
+                            <Grid ColumnDefinitions="*,74" ColumnSpacing="4">
+                                <ComboBox Grid.Column="0" ItemsSource="{Binding AvailableFontNames}"
+                                          SelectedItem="{Binding FontFamilyNameField, Mode=TwoWay}"
+                                          Height="24" FontSize="11" HorizontalAlignment="Stretch" />
+                                <NumericUpDown Grid.Column="1" Classes="ps-num" Height="24" Minimum="6" Maximum="500" Increment="1"
+                                               Value="{Binding FontSize, Mode=TwoWay}"
+                                               FormatString="{}{0:0} pt" />
+                            </Grid>
+
+                            <!-- 2. Color & Highlight Swatches -->
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="4">
+                                <Button Grid.Column="0" Classes="ps-opt-btn"
                                         Command="{Binding OpenColorPickerCommand}" CommandParameter="Foreground"
                                         ToolTip.Tip="Change Text Color">
                                     <StackPanel Orientation="Horizontal" Spacing="4">
                                         <Border Width="14" Height="14" CornerRadius="2"
                                                 Background="{Binding PrimaryColor, Converter={StaticResource ColorToBrushConverter}}"
-                                                BorderBrush="#FFFFFF" BorderThickness="1" />
+                                                BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" />
                                         <TextBlock Text="Color" FontSize="10" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
 
-                                <!-- Style Toggles: Bold, Italic, Underline -->
-                                <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="4" Margin="0,2">
-                                    <ToggleButton Classes="ps-tool-btn" Width="24" Height="20" IsChecked="{Binding IsBold, Mode=TwoWay}" ToolTip.Tip="Bold">
-                                        <TextBlock Text="B" FontWeight="Bold" FontSize="11" />
-                                    </ToggleButton>
-                                    <ToggleButton Classes="ps-tool-btn" Width="24" Height="20" IsChecked="{Binding IsItalic, Mode=TwoWay}" ToolTip.Tip="Italic">
-                                        <TextBlock Text="I" FontStyle="Italic" FontSize="11" />
-                                    </ToggleButton>
-                                    <ToggleButton Classes="ps-tool-btn" Width="24" Height="20" IsChecked="{Binding IsUnderline, Mode=TwoWay}" ToolTip.Tip="Underline">
-                                        <TextBlock Text="U" TextDecorations="Underline" FontSize="11" />
-                                    </ToggleButton>
-                                    <Rectangle Width="1" Height="14" Fill="{DynamicResource PsBorderSubtleBrush}" Margin="2,0" />
-                                    <Button Classes="ps-tool-btn" Width="24" Height="20" Command="{Binding SetTextAlignmentCommand}" CommandParameter="Left" ToolTip.Tip="Align Left">
-                                        <materialIcons:MaterialIcon Kind="FormatAlignLeft" Width="12" Height="12" />
-                                    </Button>
-                                    <Button Classes="ps-tool-btn" Width="24" Height="20" Command="{Binding SetTextAlignmentCommand}" CommandParameter="Center" ToolTip.Tip="Align Center">
-                                        <materialIcons:MaterialIcon Kind="FormatAlignCenter" Width="12" Height="12" />
-                                    </Button>
-                                    <Button Classes="ps-tool-btn" Width="24" Height="20" Command="{Binding SetTextAlignmentCommand}" CommandParameter="Right" ToolTip.Tip="Align Right">
-                                        <materialIcons:MaterialIcon Kind="FormatAlignRight" Width="12" Height="12" />
-                                    </Button>
-                                </StackPanel>
-
-                                <!-- Text Content Box -->
-                                <TextBox Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
-                                         Classes="ps-input" AcceptsReturn="True" TextWrapping="Wrap"
-                                         Height="40" Padding="4,2" FontSize="11"
-                                         Text="{Binding TextContentField, Mode=TwoWay}" />
+                                <Button Grid.Column="1" Classes="ps-opt-btn"
+                                        Command="{Binding OpenColorPickerCommand}" CommandParameter="Background"
+                                        ToolTip.Tip="Text Highlight Background">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <Border Width="14" Height="14" CornerRadius="2"
+                                                Background="{Binding HighlightColorField, Converter={StaticResource ColorToBrushConverter}}"
+                                                BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" />
+                                        <TextBlock Text="Highlight" FontSize="10" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
                             </Grid>
 
-                            <Button Classes="ps-opt-btn" Command="{Binding OpenWarpTextDialogCommand}" Margin="0,2,0,0">
-                                <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <materialIcons:MaterialIcon Kind="FormatTextVariantOutline" Width="13" Height="13" />
-                                    <TextBlock Text="Warp Text..." FontSize="10" VerticalAlignment="Center" />
+                            <!-- 3. Character Faux Styles: Bold, Italic, Underline, Strikethrough, Caps -->
+                            <StackPanel Orientation="Horizontal" Spacing="2">
+                                <ToggleButton Classes="ps-tool-btn" Width="22" Height="20" IsChecked="{Binding IsBold, Mode=TwoWay}" ToolTip.Tip="Bold (Ctrl+B)">
+                                    <TextBlock Text="B" FontWeight="Bold" FontSize="11" />
+                                </ToggleButton>
+                                <ToggleButton Classes="ps-tool-btn" Width="22" Height="20" IsChecked="{Binding IsItalic, Mode=TwoWay}" ToolTip.Tip="Italic (Ctrl+I)">
+                                    <TextBlock Text="I" FontStyle="Italic" FontWeight="Bold" FontSize="11" />
+                                </ToggleButton>
+                                <ToggleButton Classes="ps-tool-btn" Width="22" Height="20" IsChecked="{Binding IsUnderline, Mode=TwoWay}" ToolTip.Tip="Underline (Ctrl+U)">
+                                    <TextBlock Text="U" TextDecorations="Underline" FontSize="11" />
+                                </ToggleButton>
+                                <ToggleButton Classes="ps-tool-btn" Width="22" Height="20" IsChecked="{Binding IsStrikethrough, Mode=TwoWay}" ToolTip.Tip="Strikethrough">
+                                    <TextBlock Text="S" TextDecorations="Strikethrough" FontSize="11" />
+                                </ToggleButton>
+
+                                <Rectangle Width="1" Height="14" Fill="{DynamicResource PsBorderSubtleBrush}" Margin="2,0" />
+
+                                <Button Classes="ps-tool-btn" Width="24" Height="20" Command="{Binding SetTextCaseCommand}" CommandParameter="None" ToolTip.Tip="Normal Case">
+                                    <TextBlock Text="Aa" FontSize="9" />
+                                </Button>
+                                <Button Classes="ps-tool-btn" Width="24" Height="20" Command="{Binding SetTextCaseCommand}" CommandParameter="Uppercase" ToolTip.Tip="All Caps (TT)">
+                                    <TextBlock Text="TT" FontWeight="Bold" FontSize="9" />
+                                </Button>
+                                <Button Classes="ps-tool-btn" Width="24" Height="20" Command="{Binding SetTextCaseCommand}" CommandParameter="TitleCase" ToolTip.Tip="Title Case">
+                                    <TextBlock Text="Tt" FontSize="9" />
+                                </Button>
+                                <Button Classes="ps-tool-btn" Width="24" Height="20" Command="{Binding SetTextCaseCommand}" CommandParameter="Lowercase" ToolTip.Tip="Lowercase">
+                                    <TextBlock Text="aa" FontSize="9" />
+                                </Button>
+                            </StackPanel>
+
+                            <!-- 4. Paragraph Alignment & Text Wrap -->
+                            <StackPanel Orientation="Horizontal" Spacing="3">
+                                <Button Classes="ps-tool-btn" Width="24" Height="20" Command="{Binding SetTextAlignmentCommand}" CommandParameter="Left" ToolTip.Tip="Align Left">
+                                    <materialIcons:MaterialIcon Kind="FormatAlignLeft" Width="12" Height="12" />
+                                </Button>
+                                <Button Classes="ps-tool-btn" Width="24" Height="20" Command="{Binding SetTextAlignmentCommand}" CommandParameter="Center" ToolTip.Tip="Align Center">
+                                    <materialIcons:MaterialIcon Kind="FormatAlignCenter" Width="12" Height="12" />
+                                </Button>
+                                <Button Classes="ps-tool-btn" Width="24" Height="20" Command="{Binding SetTextAlignmentCommand}" CommandParameter="Right" ToolTip.Tip="Align Right">
+                                    <materialIcons:MaterialIcon Kind="FormatAlignRight" Width="12" Height="12" />
+                                </Button>
+                                <Button Classes="ps-tool-btn" Width="24" Height="20" Command="{Binding SetTextAlignmentCommand}" CommandParameter="Justify" ToolTip.Tip="Justify">
+                                    <materialIcons:MaterialIcon Kind="FormatAlignJustify" Width="12" Height="12" />
+                                </Button>
+
+                                <Rectangle Width="1" Height="14" Fill="{DynamicResource PsBorderSubtleBrush}" Margin="2,0" />
+
+                                <CheckBox Content="Wrap" IsChecked="{Binding IsWrapEnabledField, Mode=TwoWay}" FontSize="10" VerticalAlignment="Center" ToolTip.Tip="Wrap text at box width" />
+                            </StackPanel>
+
+                            <!-- 5. Line Height (Leading) & Warp Text -->
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                    <TextBlock Text="Leading:" Classes="ps-label" VerticalAlignment="Center" />
+                                    <NumericUpDown Classes="ps-num" Width="64" Height="22" Minimum="0" Maximum="200"
+                                                   Value="{Binding LineHeightField, Mode=TwoWay}"
+                                                   FormatString="{}{0:0} pt" ToolTip.Tip="Line Height / Leading (0 = Auto)" />
                                 </StackPanel>
-                            </Button>
+
+                                <Button Grid.Column="1" Classes="ps-opt-btn" Command="{Binding OpenWarpTextDialogCommand}" ToolTip.Tip="Create Warped Text">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <materialIcons:MaterialIcon Kind="Waves" Width="13" Height="13" />
+                                        <TextBlock Text="Warp..." FontSize="10" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+
+                            <!-- 6. Text Content Box -->
+                            <TextBox Classes="ps-input" AcceptsReturn="True" TextWrapping="Wrap"
+                                     Height="44" Padding="4,2" FontSize="11"
+                                     Text="{Binding TextContentField, Mode=TwoWay}" />
                         </StackPanel>
 
                         <!-- SHAPE ELEMENT SPECIFIC: Appearance (Fill / Stroke / Corner Radius) -->

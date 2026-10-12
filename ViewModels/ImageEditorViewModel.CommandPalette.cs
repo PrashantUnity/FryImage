@@ -48,7 +48,14 @@ public partial class ImageEditorViewModel
         AddCmd("tool.rect", "Rectangle Tool", "Tools", "U", "RectangleOutline", () => SelectShapeTool("rect"));
         AddCmd("tool.ellipse", "Ellipse Tool", "Tools", "U", "CircleOutline", () => SelectShapeTool("ellipse"));
         AddCmd("tool.hand", "Hand Tool", "Tools", "H", "HandBackRight", () => SetTool("hand"));
+        AddCmd("tool.rotateview", "Rotate View Tool", "Tools", "R", "CompassOutline", () => SetTool("rotateview"));
         AddCmd("tool.zoom", "Zoom Tool", "Tools", "Z", "Magnify", () => SetTool("zoom"));
+        AddCmd("tool.patch", "Patch Tool", "Tools", "J", "VectorSelection", () => SetTool("patch"));
+        AddCmd("tool.redeye", "Red Eye Tool", "Tools", "J", "EyeOutline", () => SetTool("redeye"));
+        AddCmd("tool.ruler", "Ruler / Measure Tool", "Tools", "I", "Ruler", () => SetTool("ruler"));
+        AddCmd("view.resetrotation", "Reset Canvas View Rotation", "View", "Esc", "Compass", ResetViewportRotation);
+        AddCmd("layer.clippingmask", "Create / Release Clipping Mask", "Layer", "Ctrl+Alt+G", "FormatListGroup", () => ToggleClippingMaskCommand.Execute(null));
+        AddCmd("edit.contentawarescale", "Content-Aware Scale...", "Edit", "Alt+Shift+Ctrl+C", "ArrowExpandAll", OpenContentAwareScaleDialog);
 
         // ── 2. Filters ───────────────────────────────────────
         AddCmd("filter.cameraraw", "Camera Raw Filter...", "Filter", "Shift+Ctrl+A", "CameraIris", () => OpenFilterDialog("CameraRaw"));
@@ -76,8 +83,20 @@ public partial class ImageEditorViewModel
         AddCmd("filter.noise.dustAndScratches", "Dust & Scratches...", "Filter", null, "Broom", () => OpenFilterDialog("DustAndScratches"));
         AddCmd("filter.noise.median", "Median Filter...", "Filter", null, "FilterVariant", () => OpenFilterDialog("Median"));
         AddCmd("filter.other.highpass", "High Pass Filter...", "Filter", null, "ContrastBox", () => OpenFilterDialog("HighPass"));
+        AddCmd("filter.other.colortoalpha", "Color to Alpha...", "Filter", null, "FormatColorFill", () => OpenFilterDialog("ColorToAlpha"));
+        AddCmd("automate.cropandstraighten", "Crop and Straighten Photos", "Automate", null, "CropRotate", () => CropAndStraightenPhotosCommand.Execute(null));
         AddCmd("filter.render.clouds", "Clouds...", "Filter", null, "CloudOutline", () => OpenFilterDialog("Clouds"));
         AddCmd("filter.render.lensflare", "Lens Flare...", "Filter", null, "Flare", () => OpenFilterDialog("LensFlare"));
+        AddCmd("filter.render.fibers", "Fibers...", "Filter", null, "Texture", () => OpenFilterDialog("Fibers"));
+        AddCmd("filter.stylize.wind", "Wind...", "Filter", null, "WeatherWindy", () => OpenFilterDialog("Wind"));
+        AddCmd("filter.stylize.diffuse", "Diffuse...", "Filter", null, "Grain", () => OpenFilterDialog("Diffuse"));
+        AddCmd("filter.stylize.extrude", "Extrude 3D Blocks...", "Filter", null, "CubeOutline", () => OpenFilterDialog("Extrude"));
+        AddCmd("filter.stylize.tiles", "Tiles...", "Filter", null, "Grid", () => OpenFilterDialog("Tiles"));
+        AddCmd("filter.stylize.tracecontour", "Trace Contour...", "Filter", null, "VectorPolygon", () => OpenFilterDialog("TraceContour"));
+        AddCmd("filter.distort.zigzag", "ZigZag...", "Filter", null, "Zigzag", () => OpenFilterDialog("ZigZag"));
+        AddCmd("filter.distort.shear", "Shear...", "Filter", null, "ArrowTopRightBottomLeftBold", () => OpenFilterDialog("Shear"));
+        AddCmd("filter.pixelate.mezzotint", "Mezzotint...", "Filter", null, "DotsHorizontalCircleOutline", () => OpenFilterDialog("Mezzotint"));
+        AddCmd("filter.sketch.waterpaper", "Water Paper...", "Filter", null, "Water", () => OpenFilterDialog("WaterPaper"));
 
         // ── 3. Adjustments ───────────────────────────────────
         AddCmd("adjust.brightness", "Brightness / Contrast...", "Adjustments", null, "Brightness6", () => OpenAdjustmentDialog("BrightnessContrast"));
@@ -106,6 +125,7 @@ public partial class ImageEditorViewModel
         AddCmd("select.all", "Select All Elements", "Select", "Ctrl+A", "SelectAll", SelectAllElements);
         AddCmd("select.deselect", "Deselect All", "Select", "Ctrl+D", "SelectOff", DeselectAll);
         AddCmd("select.inverse", "Invert Selection Mask", "Select", "Shift+Ctrl+I", "SelectInverse", InvertSelection);
+        AddCmd("select.makeworkpath", "Make Work Path from Selection...", "Select", null, "VectorPen", () => MakeWorkPathFromSelectionCommand.Execute(null));
 
         // ── Color Swatches ───────────────────────────────────
         AddCmd("swatches.import", "Import Swatches (.aco, .ase)...", "Color", null, "FileImportOutline", () => _ = ImportSwatches());

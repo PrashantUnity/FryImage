@@ -533,4 +533,517 @@ public static class RetouchEngine
             }
         });
     }
+
+    /// <summary>
+    /// Applies pupil-neutralization red-eye reduction around a click point.
+    /// Preserves specular highlights (glint) and scales down luminosity with natural desaturation.
+    /// </summary>
+    public static int ApplyRedEye(
+        byte[] bgra, int width, int height,
+        Point click, double pupilSize = 50.0, double darkenAmount = 50.0)
+    {
+        if (width <= 0 || height <= 0 || bgra == null) return 0;
+
+        double p = Math.Clamp(pupilSize, 1.0, 100.0);
+        double radius = Math.Clamp(4.0 + 1.20 * p, 8.0, 128.0);
+        double tAmt = Math.Clamp(darkenAmount / 100.0, 0.0, 1.0);
+
+        int minX = (int)Math.Max(0, Math.Floor(click.X - radius));
+        int maxX = (int)Math.Min(width - 1, Math.Ceiling(click.X + radius));
+        int minY = (int)Math.Max(0, Math.Floor(click.Y - radius));
+        int maxY = (int)Math.Min(height - 1, Math.Ceiling(click.Y + radius));
+
+        int w = maxX - minX + 1;
+        int h = maxY - minY + 1;
+        if (w <= 0 || h <= 0) return 0;
+
+        bool[] hardMask = new bool[w * h];
+
+        // 1. Detect red-eye candidate pixels within search radius
+        for (int y = minY; y <= maxY; y++)
+        {
+            int ly = y - minY;
+            for (int x = minX; x <= maxX; x++)
+            {
+                int lx = x - minX;
+                double dx = x - click.X;
+                double dy = y - click.Y;
+                if (Math.Sqrt(dx * dx + dy * dy) > radius) continue;
+
+                int idx = (y * width + x) * 4;
+                float b = bgra[idx] / 255.0f;
+                float g = bgra[idx + 1] / 255.0f;
+                float r = bgra[idx + 2] / 255.0f;
+
+                float luma = 0.2126f * r + 0.7152f * g + 0.0722f * b;
+                if (luma >= 0.92f) continue; // specular highlight / glint protection
+
+                if (r > g + 0.15f && r > b + 0.15f)
+                {
+                    float max = Math.Max(r, Math.Max(g, b));
+                    float min = Math.Min(r, Math.Min(g, b));
+                    if (max - min >= 0.08f)
+                    {
+                        hardMask[ly * w + lx] = true;
+                    }
+                }
+            }
+        }
+
+        // 2. Find nearest seed to click point
+        int bestSeed = -1;
+        double bestDistSq = double.MaxValue;
+        for (int ly = 0; ly < h; ly++)
+        {
+            for (int lx = 0; lx < w; lx++)
+            {
+                int i = ly * w + lx;
+                if (!hardMask[i]) continue;
+                double dx = (minX + lx) - click.X;
+                double dy = (minY + ly) - click.Y;
+                double distSq = dx * dx + dy * dy;
+                if (distSq < bestDistSq)
+                {
+                    bestDistSq = distSq;
+                    bestSeed = i;
+                }
+            }
+        }
+
+        if (bestSeed == -1) return 0;
+
+        // 3. Flood fill connected component around seed
+        bool[] connectedMask = new bool[w * h];
+        var queue = new Queue<int>();
+        queue.Enqueue(bestSeed);
+        connectedMask[bestSeed] = true;
+
+        while (queue.Count > 0)
+        {
+            int curr = queue.Dequeue();
+            int cx = curr % w;
+            int cy = curr / w;
+
+            int[] dxs = [-1, 1, 0, 0];
+            int[] dys = [0, 0, -1, 1];
+            for (int d = 0; d < 4; d++)
+            {
+                int nx = cx + dxs[d];
+                int ny = cy + dys[d];
+                if (nx >= 0 && nx < w && ny >= 0 && ny < h)
+                {
+                    int ni = ny * w + nx;
+                    if (hardMask[ni] && !connectedMask[ni])
+                    {
+                        connectedMask[ni] = true;
+                        queue.Enqueue(ni);
+                    }
+                }
+            }
+        }
+
+        // 4. Erode mask by 1 pixel
+        bool[] eroded = new bool[w * h];
+        for (int ly = 0; ly < h; ly++)
+        {
+            for (int lx = 0; lx < w; lx++)
+            {
+                bool allOn = true;
+                for (int dy = -1; dy <= 1 && allOn; dy++)
+                {
+                    for (int dx = -1; dx <= 1 && allOn; dx++)
+                    {
+                        int nx = lx + dx;
+                        int ny = ly + dy;
+                        if (nx < 0 || nx >= w || ny < 0 || ny >= h || !connectedMask[ny * w + nx])
+                        {
+                            allOn = false;
+                        }
+                    }
+                }
+                eroded[ly * w + lx] = allOn;
+            }
+        }
+
+        // 5. Gaussian blur mask (sigma = 0.8)
+        float[] softMask = new float[w * h];
+        float[] temp = new float[w * h];
+        float[] kernel = [0.0545f, 0.2442f, 0.4026f, 0.2442f, 0.0545f];
+        int kRad = 2;
+
+        for (int ly = 0; ly < h; ly++)
+        {
+            for (int lx = 0; lx < w; lx++)
+            {
+                float sum = 0f;
+                for (int k = -kRad; k <= kRad; k++)
+                {
+                    int nx = Math.Clamp(lx + k, 0, w - 1);
+                    if (eroded[ly * w + nx]) sum += kernel[k + kRad];
+                }
+                temp[ly * w + lx] = sum;
+            }
+        }
+        for (int ly = 0; ly < h; ly++)
+        {
+            for (int lx = 0; lx < w; lx++)
+            {
+                float sum = 0f;
+                for (int k = -kRad; k <= kRad; k++)
+                {
+                    int ny = Math.Clamp(ly + k, 0, h - 1);
+                    sum += temp[ny * w + lx] * kernel[k + kRad];
+                }
+                softMask[ly * w + lx] = sum;
+            }
+        }
+
+        // 6. Neutralize and darken pupil pixels
+        int changedCount = 0;
+        for (int ly = 0; ly < h; ly++)
+        {
+            int y = minY + ly;
+            for (int lx = 0; lx < w; lx++)
+            {
+                int x = minX + lx;
+                double dx = x - click.X;
+                double dy = y - click.Y;
+                if (Math.Sqrt(dx * dx + dy * dy) > radius) continue;
+
+                int idx = (y * width + x) * 4;
+                float b0 = bgra[idx] / 255.0f;
+                float g0 = bgra[idx + 1] / 255.0f;
+                float r0 = bgra[idx + 2] / 255.0f;
+                byte a0 = bgra[idx + 3];
+
+                float luma = 0.2126f * r0 + 0.7152f * g0 + 0.0722f * b0;
+                if (luma >= 0.92f) continue; // preserve glint
+
+                float m = Math.Clamp(softMask[ly * w + lx], 0f, 1f);
+                float t = m * (float)tAmt;
+                if (t <= 1e-4f) continue;
+
+                float neut = (g0 + b0) * 0.5f;
+                float r1 = r0 + (neut - r0) * t;
+                float scale = 1.0f - 0.45f * t;
+                float r2 = r1 * scale;
+                float g2 = g0 * scale;
+                float b2 = b0 * scale;
+
+                bgra[idx] = (byte)Math.Clamp(Math.Round(b2 * 255.0f), 0, 255);
+                bgra[idx + 1] = (byte)Math.Clamp(Math.Round(g2 * 255.0f), 0, 255);
+                bgra[idx + 2] = (byte)Math.Clamp(Math.Round(r2 * 255.0f), 0, 255);
+                bgra[idx + 3] = a0;
+                changedCount++;
+            }
+        }
+
+        return changedCount;
+    }
+
+    /// <summary>
+    /// Applies Patch Tool seamless blending:
+    /// Takes texture from source offset and blends into target selection region Ω
+    /// matching the illumination and color at the boundary ∂Ω using harmonic membrane interpolation.
+    /// </summary>
+    public static void ApplyPatch(
+        byte[] bgra, int width, int height,
+        Rect targetRect, Point sourceOffset,
+        bool isDestinationMode = false,
+        byte[]? selectionMask = null)
+    {
+        if (width <= 0 || height <= 0 || bgra == null) return;
+
+        int minX = (int)Math.Max(0, Math.Floor(targetRect.Left));
+        int maxX = (int)Math.Min(width - 1, Math.Ceiling(targetRect.Right));
+        int minY = (int)Math.Max(0, Math.Floor(targetRect.Top));
+        int maxY = (int)Math.Min(height - 1, Math.Ceiling(targetRect.Bottom));
+        int w = maxX - minX + 1;
+        int h = maxY - minY + 1;
+        if (w <= 0 || h <= 0) return;
+
+        int offX = (int)Math.Round(sourceOffset.X);
+        int offY = (int)Math.Round(sourceOffset.Y);
+
+        // Compute boundary differences for B, G, R
+        // Difference array: D = Target - Source
+        float[] diffB = new float[w * h];
+        float[] diffG = new float[w * h];
+        float[] diffR = new float[w * h];
+        bool[] isInterior = new bool[w * h];
+
+        // Identify interior and boundary
+        for (int ly = 0; ly < h; ly++)
+        {
+            int ty = minY + ly;
+            int sy = ty + offY;
+            for (int lx = 0; lx < w; lx++)
+            {
+                int tx = minX + lx;
+                int sx = tx + offX;
+                int li = ly * w + lx;
+
+                bool inside = (selectionMask == null) || (selectionMask[ty * width + tx] > 128);
+                // Also check source bounds
+                if (inside && sx >= 0 && sx < width && sy >= 0 && sy < height)
+                {
+                    isInterior[li] = true;
+                }
+            }
+        }
+
+        // Compute boundary Dirichlet conditions
+        for (int ly = 0; ly < h; ly++)
+        {
+            int ty = minY + ly;
+            int sy = Math.Clamp(ty + offY, 0, height - 1);
+            for (int lx = 0; lx < w; lx++)
+            {
+                int tx = minX + lx;
+                int sx = Math.Clamp(tx + offX, 0, width - 1);
+                int li = ly * w + lx;
+
+                if (!isInterior[li] || lx == 0 || lx == w - 1 || ly == 0 || ly == h - 1
+                    || (lx > 0 && !isInterior[li - 1])
+                    || (lx < w - 1 && !isInterior[li + 1])
+                    || (ly > 0 && !isInterior[li - w])
+                    || (ly < h - 1 && !isInterior[li + w]))
+                {
+                    int tIdx = (ty * width + tx) * 4;
+                    int sIdx = (sy * width + sx) * 4;
+                    diffB[li] = bgra[tIdx] - bgra[sIdx];
+                    diffG[li] = bgra[tIdx + 1] - bgra[sIdx + 1];
+                    diffR[li] = bgra[tIdx + 2] - bgra[sIdx + 2];
+                }
+            }
+        }
+
+        // Solve harmonic equation ΔD = 0 inside interior using Successive Over-Relaxation (SOR)
+        float omega = 1.7f;
+        for (int iter = 0; iter < 24; iter++)
+        {
+            for (int ly = 1; ly < h - 1; ly++)
+            {
+                for (int lx = 1; lx < w - 1; lx++)
+                {
+                    int li = ly * w + lx;
+                    if (!isInterior[li]) continue;
+
+                    // Skip boundary pixels
+                    if (!isInterior[li - 1] || !isInterior[li + 1] || !isInterior[li - w] || !isInterior[li + w])
+                        continue;
+
+                    float avgB = 0.25f * (diffB[li - 1] + diffB[li + 1] + diffB[li - w] + diffB[li + w]);
+                    diffB[li] += omega * (avgB - diffB[li]);
+
+                    float avgG = 0.25f * (diffG[li - 1] + diffG[li + 1] + diffG[li - w] + diffG[li + w]);
+                    diffG[li] += omega * (avgG - diffG[li]);
+
+                    float avgR = 0.25f * (diffR[li - 1] + diffR[li + 1] + diffR[li - w] + diffR[li + w]);
+                    diffR[li] += omega * (avgR - diffR[li]);
+                }
+            }
+        }
+
+        // Synthesize target: Target[x, y] = Source[x, y] + D[x, y]
+        for (int ly = 0; ly < h; ly++)
+        {
+            int ty = minY + ly;
+            int sy = Math.Clamp(ty + offY, 0, height - 1);
+            for (int lx = 0; lx < w; lx++)
+            {
+                int tx = minX + lx;
+                int sx = Math.Clamp(tx + offX, 0, width - 1);
+                int li = ly * w + lx;
+
+                if (!isInterior[li]) continue;
+
+                int tIdx = (ty * width + tx) * 4;
+                int sIdx = (sy * width + sx) * 4;
+
+                byte origA = bgra[tIdx + 3];
+                bgra[tIdx] = (byte)Math.Clamp(Math.Round(bgra[sIdx] + diffB[li]), 0, 255);
+                bgra[tIdx + 1] = (byte)Math.Clamp(Math.Round(bgra[sIdx + 1] + diffG[li]), 0, 255);
+                bgra[tIdx + 2] = (byte)Math.Clamp(Math.Round(bgra[sIdx + 2] + diffR[li]), 0, 255);
+                bgra[tIdx + 3] = origA;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Finds the best proximity source offset for Spot Healing by evaluating surrounding ring SSD.
+    /// (Barnes et al. 2009 / Wexler 2007 proximity match).
+    /// </summary>
+    public static Point FindBestHealingOffset(byte[] bgra, int width, int height, Point center, double radius)
+    {
+        double bestErr = double.MaxValue;
+        Point bestOffset = new Point(center.X + radius * 1.5, center.Y);
+        double rInner = radius * 1.1;
+
+        // Sample 16 candidate angles and 2 distances
+        double[] dists = [radius * 1.5, radius * 2.2];
+        for (int a = 0; a < 16; a++)
+        {
+            double angle = a * (Math.PI * 2.0 / 16.0);
+            double cos = Math.Cos(angle);
+            double sin = Math.Sin(angle);
+
+            foreach (double d in dists)
+            {
+                double offX = d * cos;
+                double offY = d * sin;
+                double srcX = center.X + offX;
+                double srcY = center.Y + offY;
+
+                if (srcX - radius < 0 || srcX + radius >= width || srcY - radius < 0 || srcY + radius >= height)
+                    continue;
+
+                // Evaluate boundary ring SSD error
+                double ssd = 0.0;
+                int samples = 0;
+                for (int s = 0; s < 12; s++)
+                {
+                    double ringAngle = s * (Math.PI * 2.0 / 12.0);
+                    int bx = (int)Math.Round(center.X + rInner * Math.Cos(ringAngle));
+                    int by = (int)Math.Round(center.Y + rInner * Math.Sin(ringAngle));
+                    int sx = (int)Math.Round(bx + offX);
+                    int sy = (int)Math.Round(by + offY);
+
+                    if (bx >= 0 && bx < width && by >= 0 && by < height &&
+                        sx >= 0 && sx < width && sy >= 0 && sy < height)
+                    {
+                        int bIdx = (by * width + bx) * 4;
+                        int sIdx = (sy * width + sx) * 4;
+                        int db = bgra[bIdx] - bgra[sIdx];
+                        int dg = bgra[bIdx + 1] - bgra[sIdx + 1];
+                        int dr = bgra[bIdx + 2] - bgra[sIdx + 2];
+                        ssd += db * db + dg * dg + dr * dr;
+                        samples++;
+                    }
+                }
+
+                if (samples > 0 && ssd < bestErr)
+                {
+                    bestErr = ssd;
+                    bestOffset = new Point(srcX, srcY);
+                }
+            }
+        }
+
+        return bestOffset;
+    }
+
+    /// <summary>
+    /// Applies Healing dab using gradient-domain Poisson seamless cloning (Pérez et al. SIGGRAPH 2003).
+    /// Clones texture gradients from source to destination while harmonizing boundary illumination.
+    /// </summary>
+    public static void ApplyHealingDab(
+        byte[] targetBgra, int targetW, int targetH,
+        byte[] sourceBgra, int sourceW, int sourceH,
+        Point targetCenter, Point sourceCenter,
+        double radius, double hardness, double opacity)
+    {
+        if (targetW <= 0 || targetH <= 0 || sourceW <= 0 || sourceH <= 0) return;
+        if (targetBgra == null || sourceBgra == null) return;
+
+        int minX = (int)Math.Max(0, Math.Floor(targetCenter.X - radius));
+        int maxX = (int)Math.Min(targetW - 1, Math.Ceiling(targetCenter.X + radius));
+        int minY = (int)Math.Max(0, Math.Floor(targetCenter.Y - radius));
+        int maxY = (int)Math.Min(targetH - 1, Math.Ceiling(targetCenter.Y + radius));
+        int w = maxX - minX + 1;
+        int h = maxY - minY + 1;
+        if (w <= 2 || h <= 2) return;
+
+        double offX = sourceCenter.X - targetCenter.X;
+        double offY = sourceCenter.Y - targetCenter.Y;
+
+        float[] diffB = new float[w * h];
+        float[] diffG = new float[w * h];
+        float[] diffR = new float[w * h];
+        bool[] isInterior = new bool[w * h];
+
+        // 1. Mark interior (inside dab radius) and Dirichlet boundary
+        for (int ly = 0; ly < h; ly++)
+        {
+            int ty = minY + ly;
+            int sy = (int)Math.Clamp(Math.Round(ty + offY), 0, sourceH - 1);
+            for (int lx = 0; lx < w; lx++)
+            {
+                int tx = minX + lx;
+                int sx = (int)Math.Clamp(Math.Round(tx + offX), 0, sourceW - 1);
+                int li = ly * w + lx;
+
+                double dist = Math.Sqrt((tx - targetCenter.X) * (tx - targetCenter.X) + (ty - targetCenter.Y) * (ty - targetCenter.Y));
+                if (dist < radius)
+                {
+                    isInterior[li] = true;
+                }
+
+                // If on boundary or outside dab interior, set Dirichlet boundary difference
+                if (!isInterior[li] || lx == 0 || lx == w - 1 || ly == 0 || ly == h - 1)
+                {
+                    int tIdx = (ty * targetW + tx) * 4;
+                    int sIdx = (sy * sourceW + sx) * 4;
+                    diffB[li] = targetBgra[tIdx] - sourceBgra[sIdx];
+                    diffG[li] = targetBgra[tIdx + 1] - sourceBgra[sIdx + 1];
+                    diffR[li] = targetBgra[tIdx + 2] - sourceBgra[sIdx + 2];
+                }
+            }
+        }
+
+        // 2. Solve Laplace membrane equation ΔD = 0 on unknown interior pixels using Successive Over-Relaxation (SOR)
+        float omega = 1.72f;
+        for (int iter = 0; iter < 28; iter++)
+        {
+            for (int ly = 1; ly < h - 1; ly++)
+            {
+                for (int lx = 1; lx < w - 1; lx++)
+                {
+                    int li = ly * w + lx;
+                    if (!isInterior[li]) continue;
+
+                    float avgB = 0.25f * (diffB[li - 1] + diffB[li + 1] + diffB[li - w] + diffB[li + w]);
+                    diffB[li] += omega * (avgB - diffB[li]);
+
+                    float avgG = 0.25f * (diffG[li - 1] + diffG[li + 1] + diffG[li - w] + diffG[li + w]);
+                    diffG[li] += omega * (avgG - diffG[li]);
+
+                    float avgR = 0.25f * (diffR[li - 1] + diffR[li + 1] + diffR[li - w] + diffR[li + w]);
+                    diffR[li] += omega * (avgR - diffR[li]);
+                }
+            }
+        }
+
+        // 3. Composite reconstructed source + membrane with falloff and opacity
+        double alphaFactor = Math.Clamp(opacity / 100.0, 0.0, 1.0);
+        for (int ly = 0; ly < h; ly++)
+        {
+            int ty = minY + ly;
+            int sy = (int)Math.Clamp(Math.Round(ty + offY), 0, sourceH - 1);
+            for (int lx = 0; lx < w; lx++)
+            {
+                int tx = minX + lx;
+                int sx = (int)Math.Clamp(Math.Round(tx + offX), 0, sourceW - 1);
+                int li = ly * w + lx;
+
+                if (!isInterior[li]) continue;
+
+                double dist = Math.Sqrt((tx - targetCenter.X) * (tx - targetCenter.X) + (ty - targetCenter.Y) * (ty - targetCenter.Y));
+                double cov = DabCoverage(dist, radius, hardness) * alphaFactor;
+                if (cov <= 0.0) continue;
+
+                int tIdx = (ty * targetW + tx) * 4;
+                int sIdx = (sy * sourceW + sx) * 4;
+
+                double healedB = Math.Clamp(sourceBgra[sIdx] + diffB[li], 0.0, 255.0);
+                double healedG = Math.Clamp(sourceBgra[sIdx + 1] + diffG[li], 0.0, 255.0);
+                double healedR = Math.Clamp(sourceBgra[sIdx + 2] + diffR[li], 0.0, 255.0);
+
+                targetBgra[tIdx] = (byte)Math.Clamp(Math.Round(targetBgra[tIdx] * (1.0 - cov) + healedB * cov), 0, 255);
+                targetBgra[tIdx + 1] = (byte)Math.Clamp(Math.Round(targetBgra[tIdx + 1] * (1.0 - cov) + healedG * cov), 0, 255);
+                targetBgra[tIdx + 2] = (byte)Math.Clamp(Math.Round(targetBgra[tIdx + 2] * (1.0 - cov) + healedR * cov), 0, 255);
+            }
+        }
+    }
 }
+

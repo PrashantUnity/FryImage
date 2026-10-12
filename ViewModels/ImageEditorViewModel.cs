@@ -101,7 +101,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     public void SelectRightDockTab(string tab)
     {
         ActiveRightDockTab = tab;
-        if (tab is "Properties" or "Histogram" or "Brushes")
+        if (tab is "Properties" or "Histogram" or "Navigator" or "Info" or "Brushes")
         {
             ActivePropertiesDockTab = tab;
             if (tab == "Histogram")
@@ -195,6 +195,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     }
 
     public string DimensionStatusText => $"{(int)_canvasWidth} × {(int)_canvasHeight} px";
+    public string CanvasDimensionsString => DimensionStatusText;
 
     public string SelectionStatusText
     {
@@ -255,6 +256,17 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         element.IsLocked = !element.IsLocked;
         RefreshCanvas();
         OnPropertyChanged(nameof(LayersDescendingZ));
+    }
+
+    [RelayCommand]
+    public void ToggleClippingMask(CanvasElement? element = null)
+    {
+        var target = element ?? SelectedElement;
+        if (target == null) return;
+        target.IsClippingMask = !target.IsClippingMask;
+        RefreshCanvas();
+        OnPropertyChanged(nameof(LayersDescendingZ));
+        StatusMessage = target.IsClippingMask ? "Created clipping mask." : "Released clipping mask.";
     }
 
     [RelayCommand]
@@ -345,15 +357,36 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     private string _activePaperSize = "640x480";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SelectedImageElement))]
+    [NotifyPropertyChangedFor(nameof(SelectedFillable))]
+    [NotifyPropertyChangedFor(nameof(SelectedStrokeable))]
+    [NotifyPropertyChangedFor(nameof(SelectedTextElement))]
+    [NotifyPropertyChangedFor(nameof(SelectedRectangleElement))]
+    [NotifyPropertyChangedFor(nameof(SelectedPolygonElement))]
+    [NotifyPropertyChangedFor(nameof(SelectedStarElement))]
+    [NotifyPropertyChangedFor(nameof(SelectedArrowElement))]
+    [NotifyPropertyChangedFor(nameof(SelectedDoodleElement))]
+    [NotifyPropertyChangedFor(nameof(HasSelectedTextElement))]
+    [NotifyPropertyChangedFor(nameof(HasSelectedImageElement))]
+    [NotifyPropertyChangedFor(nameof(HasSelectedShapeElement))]
+    [NotifyPropertyChangedFor(nameof(HasSelectedElements))]
+    [NotifyPropertyChangedFor(nameof(HasSelection))]
     private CanvasElement? _selectedElement;
 
     /// <summary>Full multi-selection mirrored from EditorCanvasControl. SelectedElement above
     /// stays the single-target convenience (null when 0 or 2+ are selected).</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasMultiSelection))]
+    [NotifyPropertyChangedFor(nameof(HasTripleSelection))]
+    [NotifyPropertyChangedFor(nameof(HasSelectedElements))]
+    [NotifyPropertyChangedFor(nameof(HasSelection))]
     private ObservableCollection<CanvasElement> _selectedElements = [];
 
     public bool HasMultiSelection => SelectedElements.Count >= 2;
     public bool HasTripleSelection => SelectedElements.Count >= 3;
+    public bool HasSelectedTextElement => SelectedElement is TextElement;
+    public bool HasSelectedImageElement => SelectedElement is ImageElement;
+    public bool HasSelectedShapeElement => SelectedElement is RectangleElement or EllipseElement or PolygonElement or StarElement or ArrowElement;
 
     /// <summary>Statically-typed convenience for XAML bindings that need ImageElement-only
     /// members (e.g. AspectLocked) — SelectedElement itself is CanvasElement-typed.</summary>
@@ -1921,11 +1954,17 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
 
     // ── Element placement (click-to-place, driven by EditorCanvasControl's tool-placement
     //    events — see PlaceTextRequested/ShapePlaced wired in ImageEditorView.axaml.cs) ────
-    private void CommitNewElement(CanvasElement el)
+    private void CommitNewElement(CanvasElement el, bool selectElement = true, bool keepCurrentTool = true)
     {
         Elements.Add(el);
-        SelectedElement = el;
-        ActiveToolMode = "select";
+        if (selectElement)
+        {
+            SelectedElement = el;
+        }
+        if (!keepCurrentTool)
+        {
+            ActiveToolMode = "select";
+        }
         RefreshCanvas();
         if (!_isApplyingHistory) History.Push(new AddElementCommand(Elements, el));
     }
@@ -1943,7 +1982,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
             FontStyle = IsItalic ? FontStyle.Italic : FontStyle.Normal,
             ZIndex = Elements.Count + 1
         };
-        CommitNewElement(el);
+        CommitNewElement(el, selectElement: false, keepCurrentTool: true);
     }
 
     public void PlaceDoodleElement(IReadOnlyList<Point> points)
@@ -1969,17 +2008,18 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
             newElements.Add(doodle);
         }
 
-        if (newElements.Count == 1)
+        foreach (var el in newElements) Elements.Add(el);
+        if (!_isApplyingHistory)
         {
-            CommitNewElement(newElements[0]);
+            if (newElements.Count == 1)
+                History.Push(new AddElementCommand(Elements, newElements[0]));
+            else
+                History.Push(new AddElementsCommand(Elements, newElements));
         }
-        else if (newElements.Count > 1)
-        {
-            foreach (var el in newElements) Elements.Add(el);
-            if (!_isApplyingHistory) History.Push(new AddElementsCommand(Elements, newElements));
-            SelectedElement = newElements[^1];
-            RefreshCanvas();
-        }
+
+        // Keep active brush/pencil tool active! Do NOT switch to select tool, and do NOT show bounding handles over strokes
+        RefreshCanvas();
+        ScheduleHistogramUpdate();
     }
 
     public void EraseElement(CanvasElement el)
@@ -2038,7 +2078,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
             if (el is not ArrowElement) strokeable.StrokeThickness = 2.0;
         }
 
-        CommitNewElement(el);
+        CommitNewElement(el, selectElement: false, keepCurrentTool: true);
     }
 
     // ── Shapes library (beyond the 3 basic draw tools above) ────────────────

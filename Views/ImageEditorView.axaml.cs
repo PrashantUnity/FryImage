@@ -81,11 +81,10 @@ public partial class ImageEditorView : UserControl
         // Crop confirm/reset reports before/after state so the ViewModel can push undo.
         CanvasControl.ElementCropped += (el, before, after) => vm.RecordElementCropped(el, before, after);
 
-        // Eyedropper is one-shot: sample, apply as the primary color, revert to Select.
+        // Eyedropper samples color into primary color (sticky tool mode matching Photoshop).
         CanvasControl.ColorSampled += color =>
         {
             vm.PrimaryColor = color;
-            vm.SetToolCommand.Execute("select");
         };
 
         // Inline double-click text editing: overlay a real TextBox positioned/sized to match
@@ -103,6 +102,8 @@ public partial class ImageEditorView : UserControl
         // Retouching tool integration
         CanvasControl.CloneSourceDefined += pt => vm.SetCloneSource(pt);
         CanvasControl.RetouchStrokeCompleted += (tool, pts) => vm.ApplyRetouchStroke(tool, pts);
+        CanvasControl.ViewportRotationAngleChanged += angle => vm.ViewportRotationAngle = angle;
+        CanvasControl.RulerMeasurementChanged += (start, end) => vm.UpdateRulerMeasurement(start, end);
 
         // Command Palette & Brush Settings hotkey integration
         CanvasControl.CommandPaletteRequested += () => vm.ToggleCommandPalette();
@@ -172,6 +173,10 @@ public partial class ImageEditorView : UserControl
             else if (args.PropertyName == nameof(ImageEditorViewModel.CloneAligned))
             {
                 CanvasControl.CloneAligned = vm.CloneAligned;
+            }
+            else if (args.PropertyName == nameof(ImageEditorViewModel.ViewportRotationAngle))
+            {
+                CanvasControl.ViewportRotationAngle = vm.ViewportRotationAngle;
             }
             else if (args.PropertyName == nameof(ImageEditorViewModel.ActiveDocumentPath))
             {
@@ -418,22 +423,46 @@ public partial class ImageEditorView : UserControl
             return;
         }
 
-        // Single-key FryImage tools
+        // Sub-tool Cycling with Shift + Key (Photoshop Standard: Shift+W, Shift+M, Shift+L, Shift+B, etc.)
+        if (shift)
+        {
+            switch (e.Key)
+            {
+                case Key.W: vm.CycleSubToolInSlot("w"); e.Handled = true; return;
+                case Key.M: vm.CycleSubToolInSlot("m"); e.Handled = true; return;
+                case Key.L: vm.CycleSubToolInSlot("l"); e.Handled = true; return;
+                case Key.B: if (vm.SelectedTextElement == null) { vm.CycleSubToolInSlot("b"); e.Handled = true; return; } break;
+                case Key.E: vm.CycleSubToolInSlot("e"); e.Handled = true; return;
+                case Key.G: vm.CycleSubToolInSlot("g"); e.Handled = true; return;
+                case Key.C: vm.CycleSubToolInSlot("c"); e.Handled = true; return;
+                case Key.I: if (vm.SelectedTextElement == null) { vm.CycleSubToolInSlot("i"); e.Handled = true; return; } break;
+                case Key.U: vm.CycleSubToolInSlot("u"); e.Handled = true; return;
+                case Key.P: vm.CycleSubToolInSlot("p"); e.Handled = true; return;
+                case Key.O: vm.CycleSubToolInSlot("o"); e.Handled = true; return;
+                case Key.R: if (vm.SelectedTextElement == null) { vm.CycleSubToolInSlot("r"); e.Handled = true; return; } break;
+                case Key.V: vm.CycleSubToolInSlot("v"); e.Handled = true; return;
+            }
+        }
+
+        // Single-key FryImage tools (activates the active sub-tool in that slot)
         switch (e.Key)
         {
-            case Key.V: vm.SetToolCommand.Execute("select"); e.Handled = true; break;
-            case Key.M: vm.SetToolCommand.Execute("marquee"); e.Handled = true; break;
-            case Key.L: vm.SetToolCommand.Execute("lasso"); e.Handled = true; break;
-            case Key.W: vm.SetToolCommand.Execute("wand"); e.Handled = true; break;
-            case Key.C: vm.SetToolCommand.Execute("crop"); e.Handled = true; break;
-            case Key.I: if (vm.SelectedTextElement == null) { vm.SetToolCommand.Execute("eyedropper"); e.Handled = true; } break;
-            case Key.B: if (vm.SelectedTextElement == null) { vm.SetToolCommand.Execute("brush"); e.Handled = true; } break;
-            case Key.E: vm.SetToolCommand.Execute("eraser"); e.Handled = true; break;
-            case Key.G: vm.SetToolCommand.Execute("gradient"); e.Handled = true; break;
+            case Key.V: vm.SelectMoveSlotCommand.Execute(null); e.Handled = true; break;
+            case Key.M: vm.SelectMarqueeSlotCommand.Execute(null); e.Handled = true; break;
+            case Key.L: vm.SelectLassoSlotCommand.Execute(null); e.Handled = true; break;
+            case Key.W: vm.SelectWandSlotCommand.Execute(null); e.Handled = true; break;
+            case Key.C: vm.SelectCropSlotCommand.Execute(null); e.Handled = true; break;
+            case Key.I: if (vm.SelectedTextElement == null) { vm.SelectEyedropperSlotCommand.Execute(null); e.Handled = true; } break;
+            case Key.B: if (vm.SelectedTextElement == null) { vm.SelectBrushSlotCommand.Execute(null); e.Handled = true; } break;
+            case Key.E: vm.SelectEraserSlotCommand.Execute(null); e.Handled = true; break;
+            case Key.G: vm.SelectGradientSlotCommand.Execute(null); e.Handled = true; break;
             case Key.T: vm.SetToolCommand.Execute("text"); e.Handled = true; break;
-            case Key.U: vm.SetToolCommand.Execute(vm.SelectedShapeTool); e.Handled = true; break;
-            case Key.H: vm.SetToolCommand.Execute("hand"); e.Handled = true; break;
-            case Key.Z: vm.SetToolCommand.Execute("zoom"); e.Handled = true; break;
+            case Key.U: vm.SelectShapeSlotCommand.Execute(null); e.Handled = true; break;
+            case Key.H: vm.SelectHandSlotCommand.Execute(null); e.Handled = true; break;
+            case Key.R: if (vm.SelectedTextElement == null) { vm.SetToolCommand.Execute("rotateview"); e.Handled = true; } break;
+            case Key.Z: vm.SelectZoomSlotCommand.Execute(null); e.Handled = true; break;
+            case Key.P: vm.SelectPenSlotCommand.Execute(null); e.Handled = true; break;
+            case Key.O: vm.SelectToningSlotCommand.Execute(null); e.Handled = true; break;
             case Key.X: vm.SwapColorsCommand.Execute(null); e.Handled = true; break;
             case Key.D: vm.ResetColorsCommand.Execute(null); e.Handled = true; break;
             case Key.Q: vm.ToggleQuickMaskCommand.Execute(null); e.Handled = true; break;

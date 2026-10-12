@@ -190,55 +190,6 @@ public partial class ImageEditorViewModel
         CanvasControl?.InvalidateVisual();
     }
 
-    [RelayCommand]
-    public void MakeWorkPathFromSelection()
-    {
-        int w = (int)Math.Max(100, CanvasWidth);
-        int h = (int)Math.Max(100, CanvasHeight);
-
-        // Build a selection mask from current selection bounds or layer
-        byte[] mask = new byte[w * h];
-        if (SelectedElement != null)
-        {
-            var b = SelectedElement.Bounds;
-            int minX = (int)Math.Clamp(b.X, 0, w - 1);
-            int maxX = (int)Math.Clamp(b.Right, 0, w - 1);
-            int minY = (int)Math.Clamp(b.Y, 0, h - 1);
-            int maxY = (int)Math.Clamp(b.Bottom, 0, h - 1);
-
-            for (int y = minY; y <= maxY; y++)
-            {
-                for (int x = minX; x <= maxX; x++)
-                {
-                    mask[y * w + x] = 255;
-                }
-            }
-        }
-        else
-        {
-            // Default center rect
-            int cx = w / 2;
-            int cy = h / 2;
-            int halfW = w / 4;
-            int halfH = h / 4;
-            for (int y = cy - halfH; y < cy + halfH; y++)
-            {
-                for (int x = cx - halfW; x < cx + halfW; x++)
-                {
-                    if (x >= 0 && x < w && y >= 0 && y < h)
-                        mask[y * w + x] = 255;
-                }
-            }
-        }
-
-        var path = VectorDocumentPath.CreateFromSelectionMask(mask, w, h, "Work Path");
-        DocumentPaths.Add(path);
-        ActiveDocumentPath = path;
-        ActiveLayersDockTab = "Paths";
-        StatusMessage = "Created Work Path from selection.";
-        CanvasControl?.InvalidateVisual();
-    }
-
     // ── Live Channels Commands ──────────────────────────────────────────────
     [RelayCommand]
     public void SelectChannel(string channel)

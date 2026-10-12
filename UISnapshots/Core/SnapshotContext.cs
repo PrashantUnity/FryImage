@@ -64,7 +64,7 @@ public sealed class SnapshotContext
         {
             var destination = Path.Combine(OutputDirectory, fileName);
             using var fs = File.Create(destination);
-            frame.Save(fs);
+            frame.Save(fs, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
             Console.WriteLine($"[Snapshot] Captured {fileName} ({frame.PixelSize.Width}x{frame.PixelSize.Height}, {new FileInfo(destination).Length:N0} bytes)");
         }
         else

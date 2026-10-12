@@ -26,6 +26,11 @@ public static class DialogSnapshotSuite
         ctx.Capture("dialog_filter_camera_raw.png");
         vm.CancelFilterDialogCommand.Execute(null);
 
+        // 3b. Filter - Color to Alpha
+        vm.OpenFilterDialogCommand.Execute("ColorToAlpha");
+        ctx.Capture("dialog_filter_color_to_alpha.png");
+        vm.CancelFilterDialogCommand.Execute(null);
+
         // 4. Adjustment - Curves
         vm.OpenAdjustmentDialogCommand.Execute("Curves");
         ctx.Capture("dialog_adjustment_curves.png");
@@ -80,6 +85,15 @@ public static class DialogSnapshotSuite
         vm.PromptConfirmDiscard("Save changes to the document \"Untitled Design\" before closing?", () => { });
         ctx.Capture("dialog_confirm_discard.png");
         vm.CancelDiscardCommand.Execute(null);
+
+        // 15. Photoshop Studio Color Picker Dialog
+        vm.OpenColorPicker("Foreground");
+        ctx.Capture("dialog_color_picker_foreground.png");
+        vm.CancelColorPickerCommand.Execute(null);
+
+        vm.OpenColorPicker("Background");
+        ctx.Capture("dialog_color_picker_background.png");
+        vm.CancelColorPickerCommand.Execute(null);
 
         ctx.FlushUi();
     }

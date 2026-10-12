@@ -36,8 +36,11 @@
                             <Separator />
                             <MenuItem Header="Save PSD..." InputGesture="Ctrl+S" Command="{Binding SavePsdFileCommand}" />
                             <MenuItem Header="Save Project JSON" Command="{Binding SaveProjectJsonCommand}" />
-                            <Separator />
                             <MenuItem Header="Export As..." InputGesture="Ctrl+Shift+W" Command="{Binding OpenExportDialogCommand}" />
+                            <Separator />
+                            <MenuItem Header="Automate">
+                                <MenuItem Header="Crop and Straighten Photos" Command="{Binding CropAndStraightenPhotosCommand}" />
+                            </MenuItem>
                             <Separator />
                             <MenuItem Header="Close" InputGesture="Ctrl+W" Command="{Binding CloseOverlayCommand}" />
                         </MenuFlyout>
@@ -99,6 +102,7 @@
                             <MenuItem Header="Equalize" Command="{Binding ApplyEqualizeCommand}" />
                             <Separator />
                             <MenuItem Header="Canvas Size..." Command="{Binding OpenCanvasSetupCommand}" />
+                            <MenuItem Header="Crop and Straighten Photos" Command="{Binding CropAndStraightenPhotosCommand}" />
                             <MenuItem Header="Rotate Canvas 90° CW" Command="{Binding RotateArtboardClockwiseCommand}" />
                             <MenuItem Header="Rotate Canvas 90° CCW" Command="{Binding RotateArtboardCounterClockwiseCommand}" />
                         </MenuFlyout>
@@ -160,8 +164,11 @@
                             <MenuItem Header="Deselect" InputGesture="Ctrl+D" Command="{Binding DeselectAllCommand}" />
                             <MenuItem Header="Inverse" InputGesture="Ctrl+Shift+I" Command="{Binding InvertSelectionCommand}" />
                             <Separator />
+                            <MenuItem Header="Subject" Command="{Binding SelectSubjectCommand}" />
                             <MenuItem Header="Color Range..." Command="{Binding OpenColorRangeDialogCommand}" />
                             <MenuItem Header="Select and Mask..." InputGesture="Ctrl+Alt+R" Command="{Binding OpenSelectAndMaskDialogCommand}" />
+                            <Separator />
+                            <MenuItem Header="Make Work Path from Selection..." Command="{Binding MakeWorkPathFromSelectionCommand}" />
                         </MenuFlyout>
                     </Button.Flyout>
                 </Button>
@@ -192,6 +199,8 @@
                                 <MenuItem Header="Polar Coordinates..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="PolarCoordinates" />
                                 <MenuItem Header="Twirl..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Twirl" />
                                 <MenuItem Header="Spherize..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Spherize" />
+                                <MenuItem Header="ZigZag..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="ZigZag" />
+                                <MenuItem Header="Shear..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Shear" />
                             </MenuItem>
                             <MenuItem Header="Pixelate">
                                 <MenuItem Header="Color Halftone..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="ColorHalftone" />
@@ -199,17 +208,27 @@
                                 <MenuItem Header="Pointillize..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Pointillize" />
                                 <MenuItem Header="Mosaic..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Mosaic" />
                                 <MenuItem Header="Facet" Command="{Binding OpenFilterDialogCommand}" CommandParameter="Facet" />
+                                <MenuItem Header="Mezzotint..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Mezzotint" />
                             </MenuItem>
                             <MenuItem Header="Render">
                                 <MenuItem Header="Lens Flare..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="LensFlare" />
                                 <MenuItem Header="Clouds" Command="{Binding OpenFilterDialogCommand}" CommandParameter="Clouds" />
                                 <MenuItem Header="Difference Clouds" Command="{Binding OpenFilterDialogCommand}" CommandParameter="DifferenceClouds" />
+                                <MenuItem Header="Fibers..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Fibers" />
                             </MenuItem>
                             <MenuItem Header="Stylize">
                                 <MenuItem Header="Oil Paint..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="OilPaint" />
+                                <MenuItem Header="Wind..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Wind" />
+                                <MenuItem Header="Diffuse..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Diffuse" />
+                                <MenuItem Header="Extrude..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Extrude" />
+                                <MenuItem Header="Tiles..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Tiles" />
+                                <MenuItem Header="Trace Contour..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="TraceContour" />
                                 <MenuItem Header="Find Edges" Command="{Binding OpenFilterDialogCommand}" CommandParameter="FindEdges" />
                                 <MenuItem Header="Solarize..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Solarize" />
                                 <MenuItem Header="Emboss..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Emboss" />
+                            </MenuItem>
+                            <MenuItem Header="Sketch">
+                                <MenuItem Header="Water Paper..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="WaterPaper" />
                             </MenuItem>
                             <MenuItem Header="Noise">
                                 <MenuItem Header="Add Noise..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="AddNoise" />
@@ -218,6 +237,7 @@
                             </MenuItem>
                             <MenuItem Header="Other">
                                 <MenuItem Header="High Pass..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="HighPass" />
+                                <MenuItem Header="Color to Alpha..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="ColorToAlpha" />
                             </MenuItem>
                         </MenuFlyout>
                     </Button.Flyout>
@@ -301,6 +321,8 @@
                         <MenuFlyout Placement="BottomEdgeAlignedLeft">
                             <MenuItem Header="Properties" Command="{Binding SelectRightDockTabCommand}" CommandParameter="Properties" />
                             <MenuItem Header="Adjustments &amp; Histogram" Command="{Binding SelectRightDockTabCommand}" CommandParameter="Histogram" />
+                            <MenuItem Header="Navigator" Command="{Binding SelectRightDockTabCommand}" CommandParameter="Navigator" />
+                            <MenuItem Header="Info" Command="{Binding SelectRightDockTabCommand}" CommandParameter="Info" />
                             <MenuItem Header="Brush Settings" InputGesture="F5" Command="{Binding SelectRightDockTabCommand}" CommandParameter="Brushes" />
                             <MenuItem Header="Brushes" Command="{Binding SelectRightDockTabCommand}" CommandParameter="Brushes" />
                             <Separator />
@@ -312,6 +334,9 @@
                             <MenuItem Header="Color" InputGesture="F6" Command="{Binding SelectColorDockTabCommand}" CommandParameter="Color" />
                             <MenuItem Header="Swatches" Command="{Binding SelectColorDockTabCommand}" CommandParameter="Swatches" />
                             <MenuItem Header="Gradients" Command="{Binding SelectColorDockTabCommand}" CommandParameter="Gradients" />
+                            <Separator />
+                            <MenuItem Header="Color Picker..." Command="{Binding OpenColorPickerCommand}" CommandParameter="Foreground" />
+                            <MenuItem Header="Contextual Task Bar" Command="{Binding ToggleContextualTaskBarCommand}" />
                         </MenuFlyout>
                     </Button.Flyout>
                 </Button>

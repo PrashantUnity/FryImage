@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.StatusBarControl"
              x:DataType="local:ImageEditorViewModel"
              Height="24"
@@ -8,23 +9,73 @@
 
     <Border BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="8,0">
         <Grid ColumnDefinitions="Auto,Auto,*,Auto">
-            <!-- Zoom Percent Readout (FryImage Parity: 102% ›) -->
-            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                <TextBlock Text="{Binding ZoomPercent, StringFormat='{}{0:0}%'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
-                <TextBlock Text="›" FontSize="10" Foreground="{DynamicResource PsTextFaintBrush}" VerticalAlignment="Center" />
+            <!-- Zoom Percent Interactive Button (Click opens Zoom Menu) -->
+            <Button Grid.Column="0" Classes="ps-opt-btn" Padding="4,1" VerticalAlignment="Center">
+                <Button.Flyout>
+                    <MenuFlyout Placement="TopEdgeAlignedLeft">
+                        <MenuItem Header="Fit on Screen" InputGesture="Ctrl+0" Command="{Binding FitToWindowCommand}" />
+                        <MenuItem Header="100% (Actual Pixels)" InputGesture="Ctrl+1" Command="{Binding ResetZoomCommand}" />
+                        <MenuItem Header="200%" Command="{Binding ZoomInCommand}" />
+                        <MenuItem Header="400%" Command="{Binding ZoomInCommand}" />
+                        <MenuItem Header="800%" Command="{Binding ZoomInCommand}" />
+                        <Separator />
+                        <MenuItem Header="50%" Command="{Binding ZoomOutCommand}" />
+                        <MenuItem Header="25%" Command="{Binding ZoomOutCommand}" />
+                    </MenuFlyout>
+                </Button.Flyout>
+                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding ZoomPercent, StringFormat='{}{0:0}%'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="›" FontSize="10" Foreground="{DynamicResource PsTextFaintBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+
+            <!-- Document Dimensions Interactive Button (Click opens Document Details Flyout) -->
+            <Button Grid.Column="1" Classes="ps-opt-btn" Padding="4,1" Margin="8,0,0,0" VerticalAlignment="Center">
+                <Button.Flyout>
+                    <Flyout Placement="TopEdgeAlignedLeft">
+                        <Border Width="260" Background="{DynamicResource PsPanelBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="10">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="DOCUMENT DETAILS" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource PsTextDimBrush}" />
+                                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="3">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Dimensions:" Classes="ps-label" />
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding CanvasDimensionsString}" HorizontalAlignment="Right" Foreground="{DynamicResource PsTextBrush}" FontSize="10" />
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Resolution:" Classes="ps-label" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="300 ppi" HorizontalAlignment="Right" Foreground="{DynamicResource PsTextBrush}" FontSize="10" />
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Color Profile:" Classes="ps-label" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="sRGB IEC61966-2.1" HorizontalAlignment="Right" Foreground="{DynamicResource PsTextBrush}" FontSize="10" />
+
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Active Layers:" Classes="ps-label" />
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Elements.Count, StringFormat='{}{0} layers'}" HorizontalAlignment="Right" Foreground="{DynamicResource PsTextBrush}" FontSize="10" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </Flyout>
+                </Button.Flyout>
+                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding CanvasWidth, StringFormat='{}{0:0}'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="px x" FontSize="10" Foreground="{DynamicResource PsTextFaintBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding CanvasHeight, StringFormat='{}{0:0}'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="px (300 ppi)" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="›" FontSize="10" Foreground="{DynamicResource PsTextFaintBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+
+            <!-- Middle: Active Tool Hint -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" Margin="16,0,0,0" VerticalAlignment="Center">
+                <TextBlock Text="{Binding StatusMessage}" FontSize="10" Foreground="{DynamicResource PsTextFaintBrush}" VerticalAlignment="Center" />
             </StackPanel>
 
-            <!-- Document Dimensions & DPI Readout (FryImage Parity: 2100 px x 1500 px (300 ppi) ›) -->
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="12,0,0,0" VerticalAlignment="Center">
-                <TextBlock Text="{Binding CanvasWidth, StringFormat='{}{0:0}'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
-                <TextBlock Text="px x" FontSize="10" Foreground="{DynamicResource PsTextFaintBrush}" VerticalAlignment="Center" />
-                <TextBlock Text="{Binding CanvasHeight, StringFormat='{}{0:0}'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
-                <TextBlock Text="px (300 ppi)" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
-                <TextBlock Text="›" FontSize="10" Foreground="{DynamicResource PsTextFaintBrush}" VerticalAlignment="Center" />
+            <!-- Right: GPU Acceleration Status Badge -->
+            <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <Border Background="#1A2D20" BorderBrush="#2D6A4F" BorderThickness="1" CornerRadius="2" Padding="4,1">
+                    <StackPanel Orientation="Horizontal" Spacing="3">
+                        <materialIcons:MaterialIcon Kind="CheckCircle" Width="10" Height="10" Foreground="#52B788" />
+                        <TextBlock Text="GPU: Skia" FontSize="9" Foreground="#52B788" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
             </StackPanel>
-
-            <!-- Right: Status Readout -->
-            <TextBlock Grid.Column="3" Text="{Binding StatusMessage}" FontSize="10" Foreground="{DynamicResource PsTextFaintBrush}" VerticalAlignment="Center" />
         </Grid>
     </Border>
 </UserControl>

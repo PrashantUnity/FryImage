@@ -134,6 +134,9 @@
                                         <MenuItem Header="Delete Layer"
                                                   Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).DeleteSelectedElementCommand}" />
                                         <Separator />
+                                        <MenuItem Header="Create Clipping Mask" InputGesture="Ctrl+Alt+G"
+                                                  Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleClippingMaskCommand}"
+                                                  CommandParameter="{Binding}" />
                                         <MenuItem Header="Toggle Lock"
                                                   Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleLayerLockCommand}"
                                                   CommandParameter="{Binding}" />
@@ -157,14 +160,20 @@
                                                                 Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
                                 </Button>
 
-                                <!-- Layer Thumbnail Frame (Square Box) -->
-                                <Border Grid.Column="1" Width="22" Height="20"
-                                        Background="#FFFFFF"
-                                        BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1"
-                                        CornerRadius="1" HorizontalAlignment="Center">
-                                    <materialIcons:MaterialIcon Kind="{Binding ElementType, Converter={StaticResource ElementTypeToIconConverter}}"
-                                                                Width="12" Height="12" Foreground="#333333" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
+                                <!-- Layer Thumbnail Frame with Optional Clipping Mask Indent -->
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
+                                    <materialIcons:MaterialIcon Kind="ArrowBottomLeft" Width="10" Height="10"
+                                                                Foreground="{DynamicResource PsAccentBrush}"
+                                                                IsVisible="{Binding IsClippingMask}"
+                                                                VerticalAlignment="Center" />
+                                    <Border Width="22" Height="20"
+                                            Background="#FFFFFF"
+                                            BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1"
+                                            CornerRadius="1" HorizontalAlignment="Center">
+                                        <materialIcons:MaterialIcon Kind="{Binding ElementType, Converter={StaticResource ElementTypeToIconConverter}}"
+                                                                    Width="12" Height="12" Foreground="#333333" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                </StackPanel>
 
                                 <!-- Layer Name -->
                                 <TextBlock Grid.Column="2" Text="{Binding DisplayName}"

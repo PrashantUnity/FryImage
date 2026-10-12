@@ -1,0 +1,122 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.ContextualTaskBarControl"
+             x:DataType="local:ImageEditorViewModel"
+             IsVisible="{Binding IsContextualTaskBarVisible}">
+
+    <UserControl.Resources>
+        <local:ColorToBrushConverter x:Key="ColorToBrushConverter" />
+    </UserControl.Resources>
+
+    <!-- Modern Photoshop Floating Contextual Task Bar -->
+    <Border Background="{DynamicResource PsPanelHeaderBrush}"
+            BorderBrush="{DynamicResource PsBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="6"
+            Padding="6,3"
+            BoxShadow="0 4 16 #60000000"
+            Height="34">
+        <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+            <!-- Drag Grip -->
+            <materialIcons:MaterialIcon Kind="DragVertical" Width="14" Height="14"
+                                        Foreground="{DynamicResource PsTextDimBrush}"
+                                        VerticalAlignment="Center" Margin="0,0,2,0" />
+
+            <!-- MODE 1: Selection Active (Marquee, Lasso, Wand, Object Selection) -->
+            <StackPanel Orientation="Horizontal" Spacing="4"
+                        IsVisible="{Binding IsWandToolActive}">
+                <Button Classes="ps-opt-btn" Command="{Binding SelectSubjectCommand}" ToolTip.Tip="Auto-detect and select subject">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <materialIcons:MaterialIcon Kind="AccountFilter" Width="13" Height="13" Foreground="{DynamicResource PsAccentBrush}" />
+                        <TextBlock Text="Select Subject" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button Classes="ps-opt-btn" Command="{Binding OpenSelectAndMaskDialogCommand}" ToolTip.Tip="Refine selection edges in dedicated workspace">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <materialIcons:MaterialIcon Kind="AutoFix" Width="13" Height="13" />
+                        <TextBlock Text="Select and Mask..." FontSize="11" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Rectangle Width="1" Height="14" Fill="{DynamicResource PsBorderSubtleBrush}" Margin="2,0" />
+                <Button Classes="ps-opt-btn" Command="{Binding DeselectAllCommand}" ToolTip.Tip="Deselect (Ctrl+D)">
+                    <materialIcons:MaterialIcon Kind="CloseBoxOutline" Width="13" Height="13" />
+                </Button>
+            </StackPanel>
+
+            <!-- MODE 2: Text Element Selected -->
+            <StackPanel Orientation="Horizontal" Spacing="4"
+                        IsVisible="{Binding HasSelectedTextElement}">
+                <TextBlock Text="Text:" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                <NumericUpDown Classes="ps-num" Width="64" Height="22"
+                               Minimum="6" Maximum="200"
+                               Value="{Binding FontSize, Mode=TwoWay}"
+                               FormatString="{}{0:0} pt" />
+                <Button Classes="ps-opt-btn" Command="{Binding OpenColorPickerCommand}" CommandParameter="Foreground" ToolTip.Tip="Text Color">
+                    <Border Width="14" Height="14" CornerRadius="2"
+                            Background="{Binding PrimaryColor, Converter={StaticResource ColorToBrushConverter}}"
+                            BorderBrush="#FFFFFF" BorderThickness="1" />
+                </Button>
+                <Button Classes="ps-opt-btn" Command="{Binding OpenWarpTextDialogCommand}" ToolTip.Tip="Warp Text...">
+                    <materialIcons:MaterialIcon Kind="FormatTextVariantOutline" Width="13" Height="13" />
+                </Button>
+                <Button Classes="ps-btn-primary" Padding="8,2" Command="{Binding DeselectAllCommand}" ToolTip.Tip="Commit Text">
+                    <materialIcons:MaterialIcon Kind="Check" Width="13" Height="13" />
+                </Button>
+            </StackPanel>
+
+            <!-- MODE 3: Image / Pixel Element Selected -->
+            <StackPanel Orientation="Horizontal" Spacing="4"
+                        IsVisible="{Binding HasSelectedImageElement}">
+                <Button Classes="ps-opt-btn" Command="{Binding RemoveBackgroundCommand}" ToolTip.Tip="One-click AI Background Removal">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <materialIcons:MaterialIcon Kind="AutoFix" Width="13" Height="13" Foreground="{DynamicResource PsAccentBrush}" />
+                        <TextBlock Text="Remove Background" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button Classes="ps-opt-btn" Command="{Binding SelectSubjectCommand}" ToolTip.Tip="Select Subject">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <materialIcons:MaterialIcon Kind="AccountFilter" Width="13" Height="13" />
+                        <TextBlock Text="Select Subject" FontSize="11" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button Classes="ps-opt-btn" Command="{Binding DuplicateCommand}" ToolTip.Tip="Duplicate Layer (Ctrl+J)">
+                    <materialIcons:MaterialIcon Kind="ContentCopy" Width="13" Height="13" />
+                </Button>
+            </StackPanel>
+
+            <!-- MODE 4: Default / General Workspace Quick Actions -->
+            <StackPanel Orientation="Horizontal" Spacing="4">
+                <StackPanel.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="!HasSelectedElements" />
+                        <Binding Path="!IsWandToolActive" />
+                    </MultiBinding>
+                </StackPanel.IsVisible>
+                <Button Classes="ps-opt-btn" Command="{Binding SelectSubjectCommand}" ToolTip.Tip="Auto-detect subject on canvas">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <materialIcons:MaterialIcon Kind="AccountFilter" Width="13" Height="13" Foreground="{DynamicResource PsAccentBrush}" />
+                        <TextBlock Text="Select Subject" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button Classes="ps-opt-btn" Command="{Binding RemoveBackgroundCommand}" ToolTip.Tip="Remove Background from canvas">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <materialIcons:MaterialIcon Kind="AutoFix" Width="13" Height="13" />
+                        <TextBlock Text="Remove Background" FontSize="11" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button Classes="ps-opt-btn" Command="{Binding OpenPsdOrImageCommand}" ToolTip.Tip="Open an image file">
+                    <materialIcons:MaterialIcon Kind="FolderOpenOutline" Width="13" Height="13" />
+                </Button>
+            </StackPanel>
+
+            <!-- Right Controls: Hide Task Bar -->
+            <Rectangle Width="1" Height="14" Fill="{DynamicResource PsBorderSubtleBrush}" Margin="2,0" />
+            <Button Classes="ps-opt-btn" Width="18" Height="18" Padding="0"
+                    Command="{Binding HideContextualTaskBarCommand}" ToolTip.Tip="Hide Task Bar">
+                <materialIcons:MaterialIcon Kind="Close" Width="11" Height="11" Foreground="{DynamicResource PsTextDimBrush}" />
+            </Button>
+        </StackPanel>
+    </Border>
+</UserControl>

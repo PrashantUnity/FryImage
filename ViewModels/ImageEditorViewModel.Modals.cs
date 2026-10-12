@@ -10,7 +10,9 @@ using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PdfEditorApp.Plugins.ImageEditor.Core.Codecs;
+using PdfEditorApp.Plugins.ImageEditor.Core.Paint;
 using PdfEditorApp.Plugins.ImageEditor.Core.Raster;
+using PdfEditorApp.Plugins.ImageEditor.Core.Vector;
 using PdfEditorApp.Plugins.ImageEditor.Models;
 using PdfEditorApp.Plugins.ImageEditor.Models.Undo;
 using SkiaSharp;
@@ -63,7 +65,58 @@ public partial class ImageEditorViewModel
     [ObservableProperty] private double _fxStrokeOpacity = 1.0;
     [ObservableProperty] private LayerStrokePosition _fxStrokePosition = LayerStrokePosition.Outside;
 
+    // Inner Glow
+    [ObservableProperty] private bool _fxInnerGlowEnabled;
+    [ObservableProperty] private Color _fxInnerGlowColor = Color.FromRgb(255, 255, 190);
+    [ObservableProperty] private double _fxInnerGlowOpacity = 0.75;
+    [ObservableProperty] private double _fxInnerGlowSize = 8.0;
+    [ObservableProperty] private double _fxInnerGlowSpread = 0.0;
+    [ObservableProperty] private LayerBlendMode _fxInnerGlowBlendMode = LayerBlendMode.Screen;
+
+    // Bevel & Emboss
+    [ObservableProperty] private bool _fxBevelEmbossEnabled;
+    [ObservableProperty] private BevelEmbossType _fxBevelEmbossStyle = BevelEmbossType.InnerBevel;
+    [ObservableProperty] private double _fxBevelEmbossDepth = 100.0;
+    [ObservableProperty] private double _fxBevelEmbossSize = 5.0;
+    [ObservableProperty] private double _fxBevelEmbossSoften = 0.0;
+    [ObservableProperty] private double _fxBevelEmbossAngle = 120.0;
+    [ObservableProperty] private double _fxBevelEmbossAltitude = 30.0;
+    [ObservableProperty] private Color _fxBevelHighlightColor = Colors.White;
+    [ObservableProperty] private double _fxBevelHighlightOpacity = 0.75;
+    [ObservableProperty] private LayerBlendMode _fxBevelHighlightMode = LayerBlendMode.Screen;
+    [ObservableProperty] private Color _fxBevelShadowColor = Colors.Black;
+    [ObservableProperty] private double _fxBevelShadowOpacity = 0.75;
+    [ObservableProperty] private LayerBlendMode _fxBevelShadowMode = LayerBlendMode.Multiply;
+
+    // Satin
+    [ObservableProperty] private bool _fxSatinEnabled;
+    [ObservableProperty] private Color _fxSatinColor = Colors.Black;
+    [ObservableProperty] private double _fxSatinOpacity = 0.5;
+    [ObservableProperty] private LayerBlendMode _fxSatinBlendMode = LayerBlendMode.Multiply;
+    [ObservableProperty] private double _fxSatinAngle = 19.0;
+    [ObservableProperty] private double _fxSatinDistance = 11.0;
+    [ObservableProperty] private double _fxSatinSize = 14.0;
+    [ObservableProperty] private bool _fxSatinInvert = true;
+
+    // Gradient Overlay
+    [ObservableProperty] private bool _fxGradientOverlayEnabled;
+    [ObservableProperty] private LayerBlendMode _fxGradientOverlayBlendMode = LayerBlendMode.Normal;
+    [ObservableProperty] private double _fxGradientOverlayOpacity = 1.0;
+    [ObservableProperty] private Color _fxGradientOverlayStartColor = Colors.Black;
+    [ObservableProperty] private Color _fxGradientOverlayEndColor = Colors.White;
+    [ObservableProperty] private double _fxGradientOverlayAngle = 90.0;
+    [ObservableProperty] private double _fxGradientOverlayScale = 100.0;
+    [ObservableProperty] private bool _fxGradientOverlayReverse = false;
+
+    // Pattern Overlay
+    [ObservableProperty] private bool _fxPatternOverlayEnabled;
+    [ObservableProperty] private LayerBlendMode _fxPatternOverlayBlendMode = LayerBlendMode.Normal;
+    [ObservableProperty] private double _fxPatternOverlayOpacity = 1.0;
+    [ObservableProperty] private double _fxPatternOverlayScale = 100.0;
+    [ObservableProperty] private string _fxPatternOverlayName = "Grid";
+
     public IReadOnlyList<LayerStrokePosition> AvailableStrokePositions { get; } = Enum.GetValues<LayerStrokePosition>();
+    public IReadOnlyList<BevelEmbossType> AvailableBevelTypes { get; } = Enum.GetValues<BevelEmbossType>();
 
     [RelayCommand]
     private void SelectLayerStyleSection(string section) => ActiveLayerStyleSection = section;
@@ -98,10 +151,55 @@ public partial class ImageEditorViewModel
         FxInnerShadowSize = fx.InnerShadow.Size;
         FxInnerShadowBlendMode = fx.InnerShadow.BlendMode;
 
+        FxInnerGlowEnabled = fx.InnerGlow.IsEnabled;
+        FxInnerGlowColor = fx.InnerGlow.Color;
+        FxInnerGlowOpacity = fx.InnerGlow.Opacity;
+        FxInnerGlowSize = fx.InnerGlow.Size;
+        FxInnerGlowSpread = fx.InnerGlow.Spread;
+        FxInnerGlowBlendMode = fx.InnerGlow.BlendMode;
+
+        FxBevelEmbossEnabled = fx.BevelEmboss.IsEnabled;
+        FxBevelEmbossStyle = fx.BevelEmboss.Style;
+        FxBevelEmbossDepth = fx.BevelEmboss.Depth;
+        FxBevelEmbossSize = fx.BevelEmboss.Size;
+        FxBevelEmbossSoften = fx.BevelEmboss.Soften;
+        FxBevelEmbossAngle = fx.BevelEmboss.Angle;
+        FxBevelEmbossAltitude = fx.BevelEmboss.Altitude;
+        FxBevelHighlightColor = fx.BevelEmboss.HighlightColor;
+        FxBevelHighlightOpacity = fx.BevelEmboss.HighlightOpacity;
+        FxBevelHighlightMode = fx.BevelEmboss.HighlightMode;
+        FxBevelShadowColor = fx.BevelEmboss.ShadowColor;
+        FxBevelShadowOpacity = fx.BevelEmboss.ShadowOpacity;
+        FxBevelShadowMode = fx.BevelEmboss.ShadowMode;
+
+        FxSatinEnabled = fx.Satin.IsEnabled;
+        FxSatinColor = fx.Satin.Color;
+        FxSatinOpacity = fx.Satin.Opacity;
+        FxSatinBlendMode = fx.Satin.BlendMode;
+        FxSatinAngle = fx.Satin.Angle;
+        FxSatinDistance = fx.Satin.Distance;
+        FxSatinSize = fx.Satin.Size;
+        FxSatinInvert = fx.Satin.Invert;
+
         FxColorOverlayEnabled = fx.ColorOverlay.IsEnabled;
         FxColorOverlayColor = fx.ColorOverlay.Color;
         FxColorOverlayOpacity = fx.ColorOverlay.Opacity;
         FxColorOverlayBlendMode = fx.ColorOverlay.BlendMode;
+
+        FxGradientOverlayEnabled = fx.GradientOverlay.IsEnabled;
+        FxGradientOverlayBlendMode = fx.GradientOverlay.BlendMode;
+        FxGradientOverlayOpacity = fx.GradientOverlay.Opacity;
+        FxGradientOverlayStartColor = fx.GradientOverlay.StartColor;
+        FxGradientOverlayEndColor = fx.GradientOverlay.EndColor;
+        FxGradientOverlayAngle = fx.GradientOverlay.Angle;
+        FxGradientOverlayScale = fx.GradientOverlay.Scale;
+        FxGradientOverlayReverse = fx.GradientOverlay.Reverse;
+
+        FxPatternOverlayEnabled = fx.PatternOverlay.IsEnabled;
+        FxPatternOverlayBlendMode = fx.PatternOverlay.BlendMode;
+        FxPatternOverlayOpacity = fx.PatternOverlay.Opacity;
+        FxPatternOverlayScale = fx.PatternOverlay.Scale;
+        FxPatternOverlayName = fx.PatternOverlay.PatternName;
 
         FxStrokeEnabled = fx.Stroke.IsEnabled;
         FxStrokeColor = fx.Stroke.Color;
@@ -157,12 +255,67 @@ public partial class ImageEditorViewModel
                 Size = FxInnerShadowSize,
                 BlendMode = FxInnerShadowBlendMode
             },
+            InnerGlow = new InnerGlowStyle
+            {
+                IsEnabled = FxInnerGlowEnabled,
+                Color = FxInnerGlowColor,
+                Opacity = FxInnerGlowOpacity,
+                Size = FxInnerGlowSize,
+                Spread = FxInnerGlowSpread,
+                BlendMode = FxInnerGlowBlendMode
+            },
+            BevelEmboss = new BevelEmbossStyle
+            {
+                IsEnabled = FxBevelEmbossEnabled,
+                Style = FxBevelEmbossStyle,
+                Depth = FxBevelEmbossDepth,
+                Size = FxBevelEmbossSize,
+                Soften = FxBevelEmbossSoften,
+                Angle = FxBevelEmbossAngle,
+                Altitude = FxBevelEmbossAltitude,
+                HighlightColor = FxBevelHighlightColor,
+                HighlightOpacity = FxBevelHighlightOpacity,
+                HighlightMode = FxBevelHighlightMode,
+                ShadowColor = FxBevelShadowColor,
+                ShadowOpacity = FxBevelShadowOpacity,
+                ShadowMode = FxBevelShadowMode
+            },
+            Satin = new SatinStyle
+            {
+                IsEnabled = FxSatinEnabled,
+                Color = FxSatinColor,
+                Opacity = FxSatinOpacity,
+                BlendMode = FxSatinBlendMode,
+                Angle = FxSatinAngle,
+                Distance = FxSatinDistance,
+                Size = FxSatinSize,
+                Invert = FxSatinInvert
+            },
             ColorOverlay = new ColorOverlayStyle
             {
                 IsEnabled = FxColorOverlayEnabled,
                 Color = FxColorOverlayColor,
                 Opacity = FxColorOverlayOpacity,
                 BlendMode = FxColorOverlayBlendMode
+            },
+            GradientOverlay = new GradientOverlayStyle
+            {
+                IsEnabled = FxGradientOverlayEnabled,
+                BlendMode = FxGradientOverlayBlendMode,
+                Opacity = FxGradientOverlayOpacity,
+                StartColor = FxGradientOverlayStartColor,
+                EndColor = FxGradientOverlayEndColor,
+                Angle = FxGradientOverlayAngle,
+                Scale = FxGradientOverlayScale,
+                Reverse = FxGradientOverlayReverse
+            },
+            PatternOverlay = new PatternOverlayStyle
+            {
+                IsEnabled = FxPatternOverlayEnabled,
+                BlendMode = FxPatternOverlayBlendMode,
+                Opacity = FxPatternOverlayOpacity,
+                Scale = FxPatternOverlayScale,
+                PatternName = FxPatternOverlayName
             },
             Stroke = new LayerStrokeStyle
             {
@@ -1011,6 +1164,32 @@ public partial class ImageEditorViewModel
     [ObservableProperty] private int _filterLensType = 0;
     [ObservableProperty] private int _filterSolarizeThreshold = 128;
 
+    // 10 Photoshop Creative & Optical Filters Properties
+    [ObservableProperty] private int _filterWindStrength = 15;
+    [ObservableProperty] private int _filterWindDirection = 0; // 0=FromLeft, 1=FromRight
+    [ObservableProperty] private int _filterDiffuseMode = 0; // 0=Normal, 1=DarkenOnly, 2=LightenOnly
+    [ObservableProperty] private int _filterDiffuseRadius = 3;
+    [ObservableProperty] private int _filterExtrudeBlockSize = 20;
+    [ObservableProperty] private int _filterExtrudeDepth = 30;
+    [ObservableProperty] private bool _filterExtrudeRandom = false;
+    [ObservableProperty] private int _filterTilesNumTiles = 10;
+    [ObservableProperty] private int _filterTilesMaximumOffset = 10;
+    [ObservableProperty] private int _filterFibersVariance = 16;
+    [ObservableProperty] private int _filterFibersStrength = 4;
+    [ObservableProperty] private double _filterZigZagAmount = 50.0;
+    [ObservableProperty] private int _filterZigZagRidges = 5;
+    [ObservableProperty] private int _filterZigZagStyle = 0; // 0=AroundCenter, 1=OutFromCenter, 2=PondRipples
+    [ObservableProperty] private double _filterShearOffset = 25.0;
+    [ObservableProperty] private int _filterMezzotintType = 0; // 0=FineDots, 1=MediumDots, 2=GrainyDots, 3=ShortLines, 4=MediumLines, 5=LongLines
+    [ObservableProperty] private int _filterTraceContourLevel = 128;
+    [ObservableProperty] private int _filterTraceContourEdge = 0; // 0=Lower, 1=Upper
+    [ObservableProperty] private int _filterWaterPaperFiberLength = 15;
+    [ObservableProperty] private int _filterWaterPaperBrightness = 50;
+    [ObservableProperty] private int _filterWaterPaperContrast = 60;
+    [ObservableProperty] private Color _filterColorToAlphaKeyColor = Colors.White;
+    [ObservableProperty] private double _filterColorToAlphaTransparency = 0.0;
+    [ObservableProperty] private double _filterColorToAlphaOpacity = 1.0;
+
     private ImageElement? _filterTargetImageElement;
     private byte[]? _filterOriginalBytes;
 
@@ -1049,6 +1228,17 @@ public partial class ImageEditorViewModel
             "FindEdges" => "Find Edges",
             "Solarize" => "Solarize",
             "Emboss" => "Emboss",
+            "Wind" => "Wind",
+            "Diffuse" => "Diffuse",
+            "Extrude" => "Extrude",
+            "Tiles" => "Tiles",
+            "Fibers" => "Fibers",
+            "ZigZag" => "ZigZag",
+            "Shear" => "Shear",
+            "Mezzotint" => "Mezzotint",
+            "TraceContour" => "Trace Contour",
+            "WaterPaper" => "Water Paper",
+            "ColorToAlpha" => "Color to Alpha",
             _ => "Filter"
         };
 
@@ -1120,11 +1310,51 @@ public partial class ImageEditorViewModel
         FilterLensBrightness = 100.0;
         FilterLensType = 0;
         FilterSolarizeThreshold = 128;
+        FilterWindStrength = 15;
+        FilterWindDirection = 0;
+        FilterDiffuseMode = 0;
+        FilterDiffuseRadius = 3;
+        FilterExtrudeBlockSize = 20;
+        FilterExtrudeDepth = 30;
+        FilterExtrudeRandom = false;
+        FilterTilesNumTiles = 10;
+        FilterTilesMaximumOffset = 10;
+        FilterFibersVariance = 16;
+        FilterFibersStrength = 4;
+        FilterZigZagAmount = 50.0;
+        FilterZigZagRidges = 5;
+        FilterZigZagStyle = 0;
+        FilterShearOffset = 25.0;
+        FilterMezzotintType = 0;
+        FilterTraceContourLevel = 128;
+        FilterTraceContourEdge = 0;
+        FilterWaterPaperFiberLength = 15;
+        FilterWaterPaperBrightness = 50;
+        FilterWaterPaperContrast = 60;
+        FilterColorToAlphaKeyColor = Colors.White;
+        FilterColorToAlphaTransparency = 0.0;
+        FilterColorToAlphaOpacity = 1.0;
         FilterPreviewEnabled = true;
 
         IsFilterDialogOpen = true;
     }
 
+    partial void OnFilterColorToAlphaKeyColorChanged(Color value) => ApplyFilterPreview();
+    partial void OnFilterColorToAlphaTransparencyChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterColorToAlphaOpacityChanged(double value) => ApplyFilterPreview();
+
+    [RelayCommand]
+    public void SetColorToAlphaKeyColor(string colorOrMode)
+    {
+        if (colorOrMode == "Primary")
+        {
+            FilterColorToAlphaKeyColor = PrimaryColor;
+        }
+        else if (Color.TryParse(colorOrMode, out var c))
+        {
+            FilterColorToAlphaKeyColor = c;
+        }
+    }
     partial void OnFilterBlurRadiusChanged(double value) => ApplyFilterPreview();
     partial void OnFilterSharpenAmountChanged(double value) => ApplyFilterPreview();
     partial void OnFilterHighPassRadiusChanged(double value) => ApplyFilterPreview();
@@ -1186,6 +1416,27 @@ public partial class ImageEditorViewModel
     partial void OnFilterDustRadiusChanged(int value) => ApplyFilterPreview();
     partial void OnFilterDustThresholdChanged(int value) => ApplyFilterPreview();
     partial void OnFilterMedianRadiusChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterWindStrengthChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterWindDirectionChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterDiffuseModeChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterDiffuseRadiusChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterExtrudeBlockSizeChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterExtrudeDepthChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterExtrudeRandomChanged(bool value) => ApplyFilterPreview();
+    partial void OnFilterTilesNumTilesChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterTilesMaximumOffsetChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterFibersVarianceChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterFibersStrengthChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterZigZagAmountChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterZigZagRidgesChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterZigZagStyleChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterShearOffsetChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterMezzotintTypeChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterTraceContourLevelChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterTraceContourEdgeChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterWaterPaperFiberLengthChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterWaterPaperBrightnessChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterWaterPaperContrastChanged(int value) => ApplyFilterPreview();
 
     private byte[] ExecuteFilterMode(byte[] bgra, int width, int height)
     {
@@ -1220,6 +1471,17 @@ public partial class ImageEditorViewModel
             "FindEdges" => ImageAdjustmentEngine.ApplyFindEdges(bgra, width, height),
             "Solarize" => ImageAdjustmentEngine.ApplySolarize(bgra, FilterSolarizeThreshold),
             "Emboss" => ImageAdjustmentEngine.ApplyEmboss(bgra, width, height, FilterEmbossAngle, FilterEmbossDepth),
+            "Wind" => ImageAdjustmentEngine.ApplyWind(bgra, width, height, FilterWindDirection, 0, FilterWindStrength),
+            "Diffuse" => ImageAdjustmentEngine.ApplyDiffuse(bgra, width, height, FilterDiffuseMode, FilterDiffuseRadius),
+            "Extrude" => ImageAdjustmentEngine.ApplyExtrude(bgra, width, height, FilterExtrudeRandom ? 1 : 0, FilterExtrudeBlockSize, FilterExtrudeDepth),
+            "Tiles" => ImageAdjustmentEngine.ApplyTiles(bgra, width, height, FilterTilesNumTiles, FilterTilesMaximumOffset, 0),
+            "Fibers" => ImageAdjustmentEngine.ApplyFibers(width, height, FilterFibersVariance, FilterFibersStrength, 12345u),
+            "ZigZag" => ImageAdjustmentEngine.ApplyZigZag(bgra, width, height, (int)FilterZigZagAmount, FilterZigZagRidges, FilterZigZagStyle),
+            "Shear" => ImageAdjustmentEngine.ApplyShear(bgra, width, height, FilterShearOffset),
+            "Mezzotint" => ImageAdjustmentEngine.ApplyMezzotint(bgra, width, height, FilterMezzotintType),
+            "TraceContour" => ImageAdjustmentEngine.ApplyTraceContour(bgra, width, height, FilterTraceContourLevel, FilterTraceContourEdge == 1),
+            "WaterPaper" => ImageAdjustmentEngine.ApplyWaterPaper(bgra, width, height, FilterWaterPaperFiberLength, FilterWaterPaperBrightness, FilterWaterPaperContrast),
+            "ColorToAlpha" => ImageAdjustmentEngine.ApplyColorToAlpha(bgra, FilterColorToAlphaKeyColor, FilterColorToAlphaTransparency, FilterColorToAlphaOpacity),
             _ => bgra
         };
     }
@@ -1328,6 +1590,132 @@ public partial class ImageEditorViewModel
         IsFilterDialogOpen = false;
     }
 
+    [RelayCommand]
+    public void CropAndStraightenPhotos()
+    {
+        var targetImg = SelectedElement as ImageElement ?? Elements.OfType<ImageElement>().LastOrDefault();
+        if (targetImg?.OriginalImageBytes == null)
+        {
+            StatusMessage = "Select an image layer to crop and straighten.";
+            return;
+        }
+
+        try
+        {
+            using var srcBmp = SKBitmap.Decode(targetImg.OriginalImageBytes);
+            if (srcBmp == null) return;
+
+            byte[] bgra = srcBmp.Bytes;
+            var detected = ImageAdjustmentEngine.DetectScannedPhotos(bgra, srcBmp.Width, srcBmp.Height);
+            if (detected.Count == 0)
+            {
+                StatusMessage = "No distinct photographs detected on flatbed scan.";
+                return;
+            }
+
+            int idx = Elements.IndexOf(targetImg);
+            var undoBatch = new List<CanvasElement>();
+
+            for (int i = 0; i < detected.Count; i++)
+            {
+                var photo = detected[i];
+                var (croppedBgra, cropW, cropH) = ImageAdjustmentEngine.ExtractStraightenedPhoto(
+                    bgra, srcBmp.Width, srcBmp.Height, photo);
+
+                using var skPhoto = new SKBitmap(cropW, cropH, SKColorType.Bgra8888, SKAlphaType.Premul);
+                var pin = System.Runtime.InteropServices.GCHandle.Alloc(croppedBgra, System.Runtime.InteropServices.GCHandleType.Pinned);
+                byte[] encodedBytes;
+                try
+                {
+                    skPhoto.InstallPixels(skPhoto.Info, pin.AddrOfPinnedObject());
+                    using var img = SKImage.FromBitmap(skPhoto);
+                    using var enc = img.Encode(SKEncodedImageFormat.Png, 100);
+                    encodedBytes = enc.ToArray();
+                }
+                finally
+                {
+                    pin.Free();
+                }
+
+                var newElement = new ImageElement
+                {
+                    Name = $"{targetImg.Name} - Straightened {i + 1}",
+                    X = photo.Center.X - cropW / 2.0,
+                    Y = photo.Center.Y - cropH / 2.0,
+                    Width = cropW,
+                    Height = cropH,
+                    OriginalImageBytes = encodedBytes,
+                    Source = new Bitmap(new MemoryStream(encodedBytes)),
+                    NaturalPixelWidth = cropW,
+                    NaturalPixelHeight = cropH,
+                    ZIndex = targetImg.ZIndex + i + 1
+                };
+
+                Elements.Insert(idx + 1 + i, newElement);
+                undoBatch.Add(newElement);
+            }
+
+            SelectedElement = undoBatch.LastOrDefault();
+            StatusMessage = $"Crop and Straighten completed: {detected.Count} photo(s) extracted upright.";
+            RefreshCanvas();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Crop and Straighten failed: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    public void MakeWorkPathFromSelection()
+    {
+        VectorDocumentPath? workPath = null;
+        var selectionPolygon = CanvasControl?.GetActiveSelectionPolygon();
+        if (selectionPolygon != null && selectionPolygon.Count >= 3)
+        {
+            workPath = VectorPathTracer.FitPolygonToPath(selectionPolygon, tolerance: 2.0, isClosed: true);
+        }
+        else if (CanvasControl?.QuickMaskBuffer is { } qm)
+        {
+            int w = (int)CanvasWidth;
+            int h = (int)CanvasHeight;
+            float[] mask = new float[w * h];
+            for (int i = 0; i < mask.Length; i++)
+            {
+                mask[i] = qm[i] / 255.0f;
+            }
+            workPath = VectorPathTracer.TraceMaskToPath(mask, w, h, tolerance: 2.0);
+        }
+        else if (SelectedElement != null)
+        {
+            var bounds = SelectedElement.Bounds;
+            Point[] rectPoints = [
+                new(bounds.Left, bounds.Top),
+                new(bounds.Right, bounds.Top),
+                new(bounds.Right, bounds.Bottom),
+                new(bounds.Left, bounds.Bottom)
+            ];
+            workPath = VectorPathTracer.FitPolygonToPath(rectPoints, tolerance: 2.0, isClosed: true);
+        }
+
+        if (workPath != null)
+        {
+            workPath.Name = "Work Path";
+            DocumentPaths.Add(workPath);
+            ActiveDocumentPath = workPath;
+            if (CanvasControl != null)
+            {
+                CanvasControl.ActiveDocumentPath = workPath;
+            }
+            ActiveToolMode = "pen";
+            ActiveLayersDockTab = "Paths";
+            StatusMessage = $"Work path created with {workPath.Subpaths.Sum(s => s.Knots.Count)} vector knots.";
+            RefreshCanvas();
+            return;
+        }
+
+        StatusMessage = "No active selection to convert into a work path.";
+    }
+
     // ── 5. PSD File Format Import & Export ──────────────────────────────────
     [RelayCommand]
     public async Task OpenPsdOrImageAsync()
@@ -1339,15 +1727,19 @@ public partial class ImageEditorViewModel
 
             var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                Title = "Open Images, PSD or FITS Documents",
+                Title = "Open Images, PSD, Brushes or Swatches",
                 AllowMultiple = true,
                 FileTypeFilter =
                 [
-                    new FilePickerFileType("Supported Images, PSD & FITS")
+                    new FilePickerFileType("Supported Studio Formats (*.psd, *.abr, *.aco, *.ase, *.grd, *.pat, *.fits, images)")
                     {
-                        Patterns = ["*.psd", "*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp", "*.gif", "*.tif", "*.tiff", "*.fits", "*.fit", "*.fts"]
+                        Patterns = ["*.psd", "*.abr", "*.aco", "*.ase", "*.grd", "*.pat", "*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp", "*.gif", "*.tif", "*.tiff", "*.fits", "*.fit", "*.fts"]
                     },
                     new FilePickerFileType("Layered Document (*.psd)") { Patterns = ["*.psd"] },
+                    new FilePickerFileType("Adobe Photoshop Brushes (*.abr)") { Patterns = ["*.abr"] },
+                    new FilePickerFileType("Adobe Swatches (*.aco, *.ase)") { Patterns = ["*.aco", "*.ase"] },
+                    new FilePickerFileType("Adobe Gradients (*.grd)") { Patterns = ["*.grd"] },
+                    new FilePickerFileType("Adobe Patterns (*.pat)") { Patterns = ["*.pat"] },
                     new FilePickerFileType("Astronomical Image (*.fits, *.fit, *.fts)") { Patterns = ["*.fits", "*.fit", "*.fts"] },
                     new FilePickerFileType("All Files") { Patterns = ["*.*"] }
                 ]
@@ -1403,19 +1795,30 @@ public partial class ImageEditorViewModel
                                     Source = avaloniaBmp,
                                     OriginalImageBytes = pngBytes,
                                     Opacity = layer.Opacity / 255.0,
-                                    BlendMode = layer.BlendMode switch
+                                    BlendMode = layer.BlendMode.Trim() switch
                                     {
-                                        "mul" => LayerBlendMode.Multiply,
-                                        "scrn" => LayerBlendMode.Screen,
-                                        "over" => LayerBlendMode.Overlay,
+                                        "diss" => LayerBlendMode.Dissolve,
                                         "dark" => LayerBlendMode.Darken,
-                                        "lite" => LayerBlendMode.Lighten,
-                                        "div" => LayerBlendMode.ColorDodge,
+                                        "mul" => LayerBlendMode.Multiply,
                                         "idiv" => LayerBlendMode.ColorBurn,
-                                        "hLit" => LayerBlendMode.HardLight,
+                                        "lbrn" => LayerBlendMode.LinearBurn,
+                                        "dkCl" => LayerBlendMode.DarkerColor,
+                                        "lite" => LayerBlendMode.Lighten,
+                                        "scrn" => LayerBlendMode.Screen,
+                                        "div" => LayerBlendMode.ColorDodge,
+                                        "lddg" => LayerBlendMode.LinearDodge,
+                                        "lgCl" => LayerBlendMode.LighterColor,
+                                        "over" => LayerBlendMode.Overlay,
                                         "sLit" => LayerBlendMode.SoftLight,
+                                        "hLit" => LayerBlendMode.HardLight,
+                                        "vLit" => LayerBlendMode.VividLight,
+                                        "lLit" => LayerBlendMode.LinearLight,
+                                        "pLit" => LayerBlendMode.PinLight,
+                                        "hMix" => LayerBlendMode.HardMix,
                                         "diff" => LayerBlendMode.Difference,
                                         "smud" => LayerBlendMode.Exclusion,
+                                        "fsub" => LayerBlendMode.Subtract,
+                                        "fdiv" => LayerBlendMode.Divide,
                                         "hue" => LayerBlendMode.Hue,
                                         "sat" => LayerBlendMode.Saturation,
                                         "colr" => LayerBlendMode.Color,
@@ -1483,6 +1886,50 @@ public partial class ImageEditorViewModel
                     }
 
                     openedCount++;
+                }
+                else if (ext == ".abr")
+                {
+                    var abrBrushes = AbrCodec.Decode(stream);
+                    if (abrBrushes.Count > 0)
+                    {
+                        var presets = abrBrushes.Select(b => AbrCodec.ToBrushPreset(b, Path.GetFileNameWithoutExtension(file.Name))).ToList();
+                        BrushPresetLibrary.AddPresets(presets);
+                        OnPropertyChanged(nameof(AvailableBrushPresets));
+                        ActiveLayersDockTab = "Brushes";
+                        StatusMessage = $"Imported {abrBrushes.Count} brushes from {file.Name}.";
+                        openedCount++;
+                    }
+                }
+                else if (ext is ".aco" or ".ase")
+                {
+                    List<SwatchItem> items = ext == ".ase" ? SwatchCodec.DecodeAse(stream) : SwatchCodec.DecodeAco(stream);
+                    if (items.Count > 0)
+                    {
+                        SwatchesList.Clear();
+                        foreach (var it in items) SwatchesList.Add(it.Color);
+                        ActiveColorDockTab = "Swatches";
+                        StatusMessage = $"Imported {items.Count} swatches from {file.Name}.";
+                        openedCount++;
+                    }
+                }
+                else if (ext == ".grd")
+                {
+                    var grads = GrdCodec.Decode(stream);
+                    if (grads.Count > 0)
+                    {
+                        ActiveColorDockTab = "Gradients";
+                        StatusMessage = $"Imported {grads.Count} gradients from {file.Name}.";
+                        openedCount++;
+                    }
+                }
+                else if (ext == ".pat")
+                {
+                    var patterns = PatternCodec.Decode(stream);
+                    if (patterns.Count > 0)
+                    {
+                        StatusMessage = $"Imported {patterns.Count} patterns from {file.Name}.";
+                        openedCount++;
+                    }
                 }
                 else
                 {
@@ -1573,17 +2020,28 @@ public partial class ImageEditorViewModel
                     IsVisible = el.IsVisible,
                     BlendMode = el.BlendMode switch
                     {
-                        LayerBlendMode.Multiply => "mul ",
-                        LayerBlendMode.Screen => "scrn",
-                        LayerBlendMode.Overlay => "over",
+                        LayerBlendMode.Dissolve => "diss",
                         LayerBlendMode.Darken => "dark",
-                        LayerBlendMode.Lighten => "lite",
-                        LayerBlendMode.ColorDodge => "div ",
+                        LayerBlendMode.Multiply => "mul ",
                         LayerBlendMode.ColorBurn => "idiv",
-                        LayerBlendMode.HardLight => "hLit",
+                        LayerBlendMode.LinearBurn => "lbrn",
+                        LayerBlendMode.DarkerColor => "dkCl",
+                        LayerBlendMode.Lighten => "lite",
+                        LayerBlendMode.Screen => "scrn",
+                        LayerBlendMode.ColorDodge => "div ",
+                        LayerBlendMode.LinearDodge => "lddg",
+                        LayerBlendMode.LighterColor => "lgCl",
+                        LayerBlendMode.Overlay => "over",
                         LayerBlendMode.SoftLight => "sLit",
+                        LayerBlendMode.HardLight => "hLit",
+                        LayerBlendMode.VividLight => "vLit",
+                        LayerBlendMode.LinearLight => "lLit",
+                        LayerBlendMode.PinLight => "pLit",
+                        LayerBlendMode.HardMix => "hMix",
                         LayerBlendMode.Difference => "diff",
                         LayerBlendMode.Exclusion => "smud",
+                        LayerBlendMode.Subtract => "fsub",
+                        LayerBlendMode.Divide => "fdiv",
                         LayerBlendMode.Hue => "hue ",
                         LayerBlendMode.Saturation => "sat ",
                         LayerBlendMode.Color => "colr",

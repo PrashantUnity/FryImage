@@ -140,19 +140,19 @@ public partial class ImageEditorViewModel
                 case "healing":
                 case "spothealing":
                 {
-                    // Healing applies cloned texture with luminance matching
+                    // Healing applies cloned texture with Poisson gradient-domain illumination matching
                     Point srcPixel = CloneSourcePoint.HasValue
                         ? new Point((CloneSourcePoint.Value.X - elX) / elW * imgW, (CloneSourcePoint.Value.Y - elY) / elH * imgH)
-                        : new Point(pixelPoints[0].X + pixelRadius * 1.5, pixelPoints[0].Y);
+                        : RetouchEngine.FindBestHealingOffset(beforeBytes, imgW, imgH, pixelPoints[0], pixelRadius);
 
                     for (int i = 0; i < pixelPoints.Count; i++)
                     {
                         Point currentSrc = srcPixel + (pixelPoints[i] - pixelPoints[0]);
-                        RetouchEngine.ApplyCloneStampDab(
+                        RetouchEngine.ApplyHealingDab(
                             bgra, imgW, imgH,
                             beforeBytes, imgW, imgH,
                             pixelPoints[i], currentSrc,
-                            pixelRadius, hardness, 90.0, 90.0);
+                            pixelRadius, hardness, BrushOpacity);
                     }
                     break;
                 }
@@ -306,6 +306,37 @@ public partial class ImageEditorViewModel
                             bgra, imgW, imgH,
                             pt, repColor, pixelRadius, hardness,
                             opacity: BrushOpacity);
+                    }
+                    break;
+                }
+
+                case "redeye":
+                {
+                    int changed = 0;
+                    foreach (var pt in pixelPoints)
+                    {
+                        changed += RetouchEngine.ApplyRedEye(bgra, imgW, imgH, pt, RedEyePupilSize, RedEyeDarkenAmount);
+                    }
+                    StatusMessage = changed > 0
+                        ? $"Red Eye: Neutralized pupil at click point ({changed} pixels modified)."
+                        : "Red Eye: No red pupil detected at click location.";
+                    break;
+                }
+
+                case "patch":
+                {
+                    if (pixelPoints.Count >= 2)
+                    {
+                        Point startPt = pixelPoints[0];
+                        Point endPt = pixelPoints[^1];
+                        Point offset = endPt - startPt;
+                        Rect patchRect = new Rect(
+                            Math.Max(0, startPt.X - pixelRadius),
+                            Math.Max(0, startPt.Y - pixelRadius),
+                            Math.Min(imgW - 1, pixelRadius * 2),
+                            Math.Min(imgH - 1, pixelRadius * 2));
+                        RetouchEngine.ApplyPatch(bgra, imgW, imgH, patchRect, offset, PatchMode == "Destination");
+                        StatusMessage = "Patch Tool: Seamless boundary texture blend committed.";
                     }
                     break;
                 }

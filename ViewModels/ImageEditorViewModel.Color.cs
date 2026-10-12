@@ -205,4 +205,99 @@ public partial class ImageEditorViewModel
             OnPropertyChanged(nameof(PrimaryColorHex));
         }
     }
+
+    // ── Photoshop Studio Color Picker Dialog State ─────────────────────────
+    [ObservableProperty]
+    private bool _isColorPickerVisible;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ColorPickerHex))]
+    [NotifyPropertyChangedFor(nameof(ColorPickerR))]
+    [NotifyPropertyChangedFor(nameof(ColorPickerG))]
+    [NotifyPropertyChangedFor(nameof(ColorPickerB))]
+    [NotifyPropertyChangedFor(nameof(ColorPickerH))]
+    [NotifyPropertyChangedFor(nameof(ColorPickerS))]
+    [NotifyPropertyChangedFor(nameof(ColorPickerV))]
+    [NotifyPropertyChangedFor(nameof(ColorPickerC))]
+    [NotifyPropertyChangedFor(nameof(ColorPickerM))]
+    [NotifyPropertyChangedFor(nameof(ColorPickerY))]
+    [NotifyPropertyChangedFor(nameof(ColorPickerK))]
+    private Color _colorPickerWorkingColor = Colors.Black;
+
+    [ObservableProperty]
+    private Color _colorPickerOriginalColor = Colors.Black;
+
+    [ObservableProperty]
+    private string _colorPickerTarget = "Foreground"; // Foreground | Background
+
+    [ObservableProperty]
+    private bool _colorPickerOnlyWebColors;
+
+    public string ColorPickerHex => ColorConversions.ToHexRgb(ColorPickerWorkingColor);
+    public byte ColorPickerR => ColorPickerWorkingColor.R;
+    public byte ColorPickerG => ColorPickerWorkingColor.G;
+    public byte ColorPickerB => ColorPickerWorkingColor.B;
+
+    public int ColorPickerH => (int)Math.Round(ColorConversions.RgbToHsv(ColorPickerWorkingColor).H);
+    public int ColorPickerS => (int)Math.Round(ColorConversions.RgbToHsv(ColorPickerWorkingColor).S * 100.0);
+    public int ColorPickerV => (int)Math.Round(ColorConversions.RgbToHsv(ColorPickerWorkingColor).V * 100.0);
+
+    public int ColorPickerC => (int)Math.Round(ColorConversions.RgbToCmyk(ColorPickerWorkingColor).C * 100.0);
+    public int ColorPickerM => (int)Math.Round(ColorConversions.RgbToCmyk(ColorPickerWorkingColor).M * 100.0);
+    public int ColorPickerY => (int)Math.Round(ColorConversions.RgbToCmyk(ColorPickerWorkingColor).Y * 100.0);
+    public int ColorPickerK => (int)Math.Round(ColorConversions.RgbToCmyk(ColorPickerWorkingColor).K * 100.0);
+
+    [RelayCommand]
+    public void OpenColorPicker(string target = "Foreground")
+    {
+        ColorPickerTarget = target;
+        ColorPickerOriginalColor = target.Equals("Background", StringComparison.OrdinalIgnoreCase)
+            ? SecondaryColor
+            : PrimaryColor;
+        ColorPickerWorkingColor = ColorPickerOriginalColor;
+        IsColorPickerVisible = true;
+    }
+
+    [RelayCommand]
+    public void CommitColorPicker()
+    {
+        if (ColorPickerTarget.Equals("Background", StringComparison.OrdinalIgnoreCase))
+        {
+            SecondaryColor = ColorPickerWorkingColor;
+        }
+        else
+        {
+            PrimaryColor = ColorPickerWorkingColor;
+            if (SelectedElement is IHasFill fillable)
+                FillColorField = PrimaryColor;
+            else if (SelectedElement is IHasStroke strokeable)
+                StrokeColorField = PrimaryColor;
+            OnPropertyChanged(nameof(PrimaryColorHex));
+        }
+
+        IsColorPickerVisible = false;
+        StatusMessage = $"Color updated to {ColorConversions.ToHexRgb(ColorPickerWorkingColor)}";
+    }
+
+    [RelayCommand]
+    public void CancelColorPicker()
+    {
+        IsColorPickerVisible = false;
+    }
+
+    [RelayCommand]
+    public void AddWorkingColorToSwatches()
+    {
+        SwatchesList.Add(ColorPickerWorkingColor);
+        StatusMessage = $"Added {ColorConversions.ToHexRgb(ColorPickerWorkingColor)} to swatches.";
+    }
+
+    [RelayCommand]
+    public void SetWorkingColorFromHex(string hex)
+    {
+        if (ColorConversions.TryParseHex(hex, out var c))
+        {
+            ColorPickerWorkingColor = ColorPickerOnlyWebColors ? ColorConversions.SnapToWebSafe(c) : c;
+        }
+    }
 }

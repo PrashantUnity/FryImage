@@ -1,0 +1,147 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:colorPrimitives="clr-namespace:Avalonia.Controls.Primitives;assembly=Avalonia.Controls.ColorPicker"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Dialogs.ColorPickerDialog"
+             x:DataType="local:ImageEditorViewModel"
+             Background="#99000000">
+
+    <UserControl.Resources>
+        <local:ColorToBrushConverter x:Key="ColorToBrushConverter" />
+    </UserControl.Resources>
+
+    <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+        <Border Width="530"
+                Background="{DynamicResource PsPanelBrush}"
+                BorderBrush="{DynamicResource PsBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="6"
+                BoxShadow="0 8 32 #80000000"
+                Padding="16">
+            <Grid RowDefinitions="Auto,*,Auto">
+                <!-- Header -->
+                <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,14">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <materialIcons:MaterialIcon Kind="Palette" Width="16" Height="16" Foreground="{DynamicResource PsAccentBrush}" />
+                        <TextBlock Text="{Binding ColorPickerTarget, StringFormat='Color Picker ({0} Color)'}"
+                                   FontWeight="Bold" FontSize="13" Foreground="{DynamicResource PsTextBrush}" />
+                    </StackPanel>
+                    <Button Grid.Column="1" Classes="ps-opt-btn" Width="20" Height="20" Padding="0"
+                            Command="{Binding CancelColorPickerCommand}">
+                        <materialIcons:MaterialIcon Kind="Close" Width="13" Height="13" />
+                    </Button>
+                </Grid>
+
+                <!-- Center: Spectrum + Sliders + Values -->
+                <Grid Grid.Row="1" ColumnDefinitions="Auto,12,Auto,20,*">
+                    <!-- Column 0: 2D Saturation / Value Box -->
+                    <Border Grid.Column="0" Width="240" Height="240"
+                            BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" CornerRadius="2">
+                        <colorPrimitives:ColorSpectrum Color="{Binding ColorPickerWorkingColor, Mode=TwoWay}"
+                                                       Components="SaturationValue"
+                                                       Shape="Box"
+                                                       HorizontalAlignment="Stretch"
+                                                       VerticalAlignment="Stretch" />
+                    </Border>
+
+                    <!-- Column 2: Rainbow Hue Slider -->
+                    <Border Grid.Column="2" Width="24" Height="240"
+                            BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" CornerRadius="2">
+                        <colorPrimitives:ColorSlider Color="{Binding ColorPickerWorkingColor, Mode=TwoWay}"
+                                                     Orientation="Vertical"
+                                                     Width="24"
+                                                     HorizontalAlignment="Stretch"
+                                                     VerticalAlignment="Stretch" />
+                    </Border>
+
+                    <!-- Column 4: Comparison Swatch + Action Buttons + Readouts -->
+                    <StackPanel Grid.Column="4" Spacing="10">
+                        <!-- Top Action Buttons -->
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="6">
+                            <Button Grid.Column="0" Classes="ps-btn-primary" Content="OK"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                    Command="{Binding CommitColorPickerCommand}" />
+                            <Button Grid.Column="1" Classes="ps-btn-secondary" Content="Cancel"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                    Command="{Binding CancelColorPickerCommand}" />
+                        </Grid>
+
+                        <Button Classes="ps-opt-btn" Content="Add to Swatches"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                Padding="8,4"
+                                Command="{Binding AddWorkingColorToSwatchesCommand}" />
+
+                        <!-- Split Comparison Swatch (Top: New, Bottom: Current) -->
+                        <Border BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" CornerRadius="3" Height="50" Margin="0,2">
+                            <Grid RowDefinitions="*,*">
+                                <Border Grid.Row="0" Background="{Binding ColorPickerWorkingColor, Converter={StaticResource ColorToBrushConverter}}" ToolTip.Tip="New Color">
+                                    <TextBlock Text="new" FontSize="9" Foreground="#88FFFFFF" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,1,4,0" />
+                                </Border>
+                                <Border Grid.Row="1" Background="{Binding ColorPickerOriginalColor, Converter={StaticResource ColorToBrushConverter}}" ToolTip.Tip="Current Color">
+                                    <TextBlock Text="current" FontSize="9" Foreground="#88FFFFFF" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,4,1" />
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <!-- Color Space Readouts Grid (HSB, RGB, CMYK & Hex) -->
+                        <Grid ColumnDefinitions="16,*,8,16,*,8,16,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4">
+                            <!-- Row 0: H & R & C -->
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="H:" Classes="ps-label" VerticalAlignment="Center" />
+                            <TextBox Grid.Row="0" Grid.Column="1" Classes="ps-input" Height="20" Padding="4,1"
+                                     Text="{Binding ColorPickerH, StringFormat='{}{0}°', Mode=OneWay}" IsReadOnly="True" />
+
+                            <TextBlock Grid.Row="0" Grid.Column="3" Text="R:" Classes="ps-label" VerticalAlignment="Center" />
+                            <TextBox Grid.Row="0" Grid.Column="4" Classes="ps-input" Height="20" Padding="4,1"
+                                     Text="{Binding ColorPickerR, Mode=OneWay}" IsReadOnly="True" />
+
+                            <TextBlock Grid.Row="0" Grid.Column="6" Text="C:" Classes="ps-label" VerticalAlignment="Center" />
+                            <TextBox Grid.Row="0" Grid.Column="7" Classes="ps-input" Height="20" Padding="4,1"
+                                     Text="{Binding ColorPickerC, StringFormat='{}{0}%', Mode=OneWay}" IsReadOnly="True" />
+
+                            <!-- Row 1: S & G & M -->
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="S:" Classes="ps-label" VerticalAlignment="Center" />
+                            <TextBox Grid.Row="1" Grid.Column="1" Classes="ps-input" Height="20" Padding="4,1"
+                                     Text="{Binding ColorPickerS, StringFormat='{}{0}%', Mode=OneWay}" IsReadOnly="True" />
+
+                            <TextBlock Grid.Row="1" Grid.Column="3" Text="G:" Classes="ps-label" VerticalAlignment="Center" />
+                            <TextBox Grid.Row="1" Grid.Column="4" Classes="ps-input" Height="20" Padding="4,1"
+                                     Text="{Binding ColorPickerG, Mode=OneWay}" IsReadOnly="True" />
+
+                            <TextBlock Grid.Row="1" Grid.Column="6" Text="M:" Classes="ps-label" VerticalAlignment="Center" />
+                            <TextBox Grid.Row="1" Grid.Column="7" Classes="ps-input" Height="20" Padding="4,1"
+                                     Text="{Binding ColorPickerM, StringFormat='{}{0}%', Mode=OneWay}" IsReadOnly="True" />
+
+                            <!-- Row 2: B & B & Y -->
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="B:" Classes="ps-label" VerticalAlignment="Center" />
+                            <TextBox Grid.Row="2" Grid.Column="1" Classes="ps-input" Height="20" Padding="4,1"
+                                     Text="{Binding ColorPickerV, StringFormat='{}{0}%', Mode=OneWay}" IsReadOnly="True" />
+
+                            <TextBlock Grid.Row="2" Grid.Column="3" Text="B:" Classes="ps-label" VerticalAlignment="Center" />
+                            <TextBox Grid.Row="2" Grid.Column="4" Classes="ps-input" Height="20" Padding="4,1"
+                                     Text="{Binding ColorPickerB, Mode=OneWay}" IsReadOnly="True" />
+
+                            <TextBlock Grid.Row="2" Grid.Column="6" Text="Y:" Classes="ps-label" VerticalAlignment="Center" />
+                            <TextBox Grid.Row="2" Grid.Column="7" Classes="ps-input" Height="20" Padding="4,1"
+                                     Text="{Binding ColorPickerY, StringFormat='{}{0}%', Mode=OneWay}" IsReadOnly="True" />
+
+                            <!-- Row 3: Hex # & K -->
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="#" Classes="ps-label" VerticalAlignment="Center" />
+                            <TextBox Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="4" Classes="ps-input" Height="20" Padding="4,1"
+                                     Text="{Binding ColorPickerHex, Mode=OneWay}" />
+
+                            <TextBlock Grid.Row="3" Grid.Column="6" Text="K:" Classes="ps-label" VerticalAlignment="Center" />
+                            <TextBox Grid.Row="3" Grid.Column="7" Classes="ps-input" Height="20" Padding="4,1"
+                                     Text="{Binding ColorPickerK, StringFormat='{}{0}%', Mode=OneWay}" IsReadOnly="True" />
+                        </Grid>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Footer: Only Web Colors -->
+                <Grid Grid.Row="2" Margin="0,10,0,0">
+                    <CheckBox Content="Only Web Colors" IsChecked="{Binding ColorPickerOnlyWebColors, Mode=TwoWay}" FontSize="11" />
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

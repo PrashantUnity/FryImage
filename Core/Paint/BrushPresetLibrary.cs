@@ -42,6 +42,18 @@ public static class BrushPresetLibrary
 
     public static BrushPreset DefaultPreset => _allPresets[0];
 
+    public static void AddPreset(BrushPreset preset)
+    {
+        if (preset == null) return;
+        _allPresets.Add(preset);
+    }
+
+    public static void AddPresets(IEnumerable<BrushPreset> presets)
+    {
+        if (presets == null) return;
+        _allPresets.AddRange(presets);
+    }
+
     private static void InitializePresets()
     {
         // ── 1. General Presets ──────────────────────────────────────────────────

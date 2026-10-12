@@ -11,6 +11,42 @@ namespace PdfEditorApp.Plugins.ImageEditor;
 
 public partial class ImageEditorViewModel
 {
+    // ── Two-Column Tool Palette Layout State ───────────────────────────────
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ToolPaletteWidth))]
+    [NotifyPropertyChangedFor(nameof(ToolPaletteChevron))]
+    private bool _isTwoColumnToolPalette;
+
+    public double ToolPaletteWidth => IsTwoColumnToolPalette ? 68.0 : 36.0;
+
+    public string ToolPaletteChevron => IsTwoColumnToolPalette ? "«" : "»";
+
+    [RelayCommand]
+    public void ToggleToolPaletteColumns()
+    {
+        IsTwoColumnToolPalette = !IsTwoColumnToolPalette;
+    }
+
+    // ── Active Sub-Tools per Toolbar Slot ──────────────────────────────────
+    [ObservableProperty] private string _activeMoveSubTool = "select"; // select | artboard
+    [ObservableProperty] private string _activeMarqueeSubTool = "marquee"; // marquee | ellipsemarquee | rowmarquee | colmarquee
+    [ObservableProperty] private string _activeWandSubTool = "objectselection"; // objectselection | quickselection | wand
+    [ObservableProperty] private string _activeCropSubTool = "crop"; // crop | perspectivecrop | slice | sliceselect
+    [ObservableProperty] private string _activeEyedropperSubTool = "eyedropper"; // eyedropper | materialeyedropper | colorsampler | ruler | note | count
+    [ObservableProperty] private string _activeHealingSubTool = "healing"; // healing | healingbrush | patch | contentawaremove | redeye
+    [ObservableProperty] private string _activeBrushSubTool = "brush"; // brush | pencil | colorreplace | mixerbrush
+    [ObservableProperty] private string _activeStampSubTool = "clonestamp"; // clonestamp | patternstamp
+    [ObservableProperty] private string _activeHistorySubTool = "historybrush"; // historybrush | arthistorybrush
+    [ObservableProperty] private string _activeEraserSubTool = "eraser"; // eraser | bgeraser | magiceraser
+    [ObservableProperty] private string _activeGradientSubTool = "gradient"; // gradient | bucket | materialdrop
+    [ObservableProperty] private string _activeFocusSubTool = "blur"; // blur | sharpen | smudge
+    [ObservableProperty] private string _activeToningSubTool = "dodge"; // dodge | burn | sponge
+    [ObservableProperty] private string _activePenSubTool = "pen"; // pen | freepen | curvaturepen | addanchor | deleteanchor | convertpoint
+    [ObservableProperty] private string _activeTypeSubTool = "text"; // text | verticaltext | verticaltextmask | textmask
+    [ObservableProperty] private string _activePathSubTool = "pathselection"; // pathselection | directselection
+    [ObservableProperty] private string _activeShapeSubTool = "rect"; // rect | roundedrect | ellipse | triangle | polygon | line | star
+    [ObservableProperty] private string _activeHandSubTool = "hand"; // hand | rotateview
+
     // ── Tool state ─────────────────────────────────────────────────────────
     [ObservableProperty]
     private string _activeToolMode = "select"; // select | marquee | lasso | wand | crop | eyedropper | brush | pencil | eraser | gradient | text | rect | ellipse | triangle | star | polygon | line | arrow | hand | zoom
@@ -130,6 +166,46 @@ public partial class ImageEditorViewModel
     [ObservableProperty]
     private bool _fingerPainting;
 
+    // Red Eye Tool settings
+    [ObservableProperty]
+    private int _redEyePupilSize = 50; // 1..100%
+
+    [ObservableProperty]
+    private int _redEyeDarkenAmount = 50; // 1..100%
+
+    // Patch Tool settings
+    [ObservableProperty]
+    private string _patchMode = "Source"; // Source | Destination
+
+    // Ruler Tool measurements
+    [ObservableProperty]
+    private double _rulerStartX;
+
+    [ObservableProperty]
+    private double _rulerStartY;
+
+    [ObservableProperty]
+    private double _rulerEndX;
+
+    [ObservableProperty]
+    private double _rulerEndY;
+
+    [ObservableProperty]
+    private double _rulerDistance;
+
+    [ObservableProperty]
+    private double _rulerAngle;
+
+    [ObservableProperty]
+    private double _rulerDeltaX;
+
+    [ObservableProperty]
+    private double _rulerDeltaY;
+
+    // Rotate View Tool settings
+    [ObservableProperty]
+    private double _viewportRotationAngle = 0.0; // -180..180 degrees
+
     public bool IsSymmetryActive => ActiveSymmetryMode != SymmetryMode.Off;
     public bool IsBrushToolActive => ActiveToolMode is "brush" or "pencil";
     public bool IsStandardBrushToolActive => ActiveToolMode == "brush";
@@ -140,7 +216,7 @@ public partial class ImageEditorViewModel
     public bool IsSelectToolActive => ActiveToolMode is "select" or "move";
     public bool IsMarqueeToolActive => ActiveToolMode is "marquee" or "rectmarquee" or "ellipsemarquee";
     public bool IsLassoToolActive => ActiveToolMode == "lasso";
-    public bool IsWandToolActive => ActiveToolMode == "wand";
+    public bool IsWandToolActive => ActiveToolMode is "wand" or "objectselection" or "quickselection";
     public bool IsEyedropperToolActive => ActiveToolMode == "eyedropper";
     public bool IsCropToolActive => ActiveToolMode == "crop";
     public bool IsGradientToolActive => ActiveToolMode is "gradient" or "bucket";
@@ -157,17 +233,223 @@ public partial class ImageEditorViewModel
     public bool IsDodgeToolActive => ActiveToolMode == "dodge";
     public bool IsBurnToolActive => ActiveToolMode == "burn";
     public bool IsSpongeToolActive => ActiveToolMode == "sponge";
+    public bool IsRedEyeToolActive => ActiveToolMode == "redeye";
+    public bool IsPatchToolActive => ActiveToolMode == "patch";
     public bool IsBlurSharpenSmudgeActive => ActiveToolMode is "blur" or "sharpen" or "smudge";
     public bool IsDodgeBurnSpongeActive => ActiveToolMode is "dodge" or "burn" or "sponge";
-    public bool IsRetouchToolActive => ActiveToolMode is "clonestamp" or "healing" or "historybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge";
+    public bool IsRetouchToolActive => ActiveToolMode is "clonestamp" or "healing" or "historybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" or "redeye" or "patch";
+
+    // Navigation & Measurement predicates
+    public bool IsRulerToolActive => ActiveToolMode == "ruler";
+    public bool IsRotateViewToolActive => ActiveToolMode == "rotateview";
 
     // Vector Path tool predicates
     public bool IsPenToolActive => ActiveToolMode is "pen" or "freepen";
     public bool IsPathSelectionToolActive => ActiveToolMode is "pathselection" or "directselection";
 
+    // Slot Active Predicates (Photoshop blue border highlight on active slot)
+    public bool IsMoveSlotActive => ActiveToolMode is "select" or "move" or "artboard";
+    public bool IsMarqueeSlotActive => ActiveToolMode is "marquee" or "rectmarquee" or "ellipsemarquee" or "rowmarquee" or "colmarquee";
+    public bool IsLassoSlotActive => ActiveToolMode == "lasso";
+    public bool IsWandSlotActive => ActiveToolMode is "objectselection" or "quickselection" or "wand";
+    public bool IsCropSlotActive => ActiveToolMode is "crop" or "perspectivecrop" or "slice" or "sliceselect";
+    public bool IsFrameSlotActive => ActiveToolMode == "frame";
+    public bool IsEyedropperSlotActive => ActiveToolMode is "eyedropper" or "materialeyedropper" or "colorsampler" or "ruler" or "note" or "count";
+    public bool IsHealingSlotActive => ActiveToolMode is "healing" or "healingbrush" or "patch" or "contentawaremove" or "redeye";
+    public bool IsBrushSlotActive => ActiveToolMode is "brush" or "pencil" or "colorreplace" or "mixerbrush";
+    public bool IsStampSlotActive => ActiveToolMode is "clonestamp" or "patternstamp";
+    public bool IsHistorySlotActive => ActiveToolMode is "historybrush" or "arthistorybrush";
+    public bool IsEraserSlotActive => ActiveToolMode is "eraser" or "bgeraser" or "magiceraser";
+    public bool IsGradientSlotActive => ActiveToolMode is "gradient" or "bucket" or "materialdrop";
+    public bool IsFocusSlotActive => ActiveToolMode is "blur" or "sharpen" or "smudge";
+    public bool IsToningSlotActive => ActiveToolMode is "dodge" or "burn" or "sponge";
+    public bool IsPenSlotActive => ActiveToolMode is "pen" or "freepen" or "curvaturepen" or "addanchor" or "deleteanchor" or "convertpoint";
+    public bool IsTypeSlotActive => ActiveToolMode is "text" or "verticaltext" or "verticaltextmask" or "textmask";
+    public bool IsPathSlotActive => ActiveToolMode is "pathselection" or "directselection";
+    public bool IsShapeSlotActive => ActiveToolMode is "rect" or "roundedrect" or "ellipse" or "triangle" or "polygon" or "line" or "star";
+    public bool IsHandSlotActive => ActiveToolMode is "hand" or "rotateview";
+    public bool IsZoomSlotActive => ActiveToolMode == "zoom";
+
+    // Flyout Menu Sub-Tool Active Predicates (shows ▪ active indicator square)
+    public bool IsSubMoveActive => ActiveToolMode is "select" or "move";
+    public bool IsSubArtboardActive => ActiveToolMode == "artboard";
+
+    public bool IsSubRectMarqueeActive => ActiveToolMode is "marquee" or "rectmarquee";
+    public bool IsSubEllipseMarqueeActive => ActiveToolMode == "ellipsemarquee";
+    public bool IsSubRowMarqueeActive => ActiveToolMode == "rowmarquee";
+    public bool IsSubColMarqueeActive => ActiveToolMode == "colmarquee";
+
+    public bool IsSubLassoActive => ActiveToolMode == "lasso" && LassoSubMode == "standard";
+    public bool IsSubPolygonalLassoActive => ActiveToolMode == "lasso" && LassoSubMode == "polygonal";
+    public bool IsSubMagneticLassoActive => ActiveToolMode == "lasso" && LassoSubMode == "magnetic";
+
+    public bool IsSubObjectSelectionActive => ActiveToolMode == "objectselection";
+    public bool IsSubQuickSelectionActive => ActiveToolMode == "quickselection";
+    public bool IsSubMagicWandActive => ActiveToolMode == "wand";
+
+    public bool IsSubCropActive => ActiveToolMode == "crop";
+    public bool IsSubPerspectiveCropActive => ActiveToolMode == "perspectivecrop";
+    public bool IsSubSliceActive => ActiveToolMode == "slice";
+    public bool IsSubSliceSelectActive => ActiveToolMode == "sliceselect";
+
+    public bool IsSubEyedropperActive => ActiveToolMode == "eyedropper";
+    public bool IsSubMaterialEyedropperActive => ActiveToolMode == "materialeyedropper";
+    public bool IsSubColorSamplerActive => ActiveToolMode == "colorsampler";
+    public bool IsSubRulerActive => ActiveToolMode == "ruler";
+    public bool IsSubNoteActive => ActiveToolMode == "note";
+    public bool IsSubCountActive => ActiveToolMode == "count";
+
+    public bool IsSubSpotHealingActive => ActiveToolMode == "healing";
+    public bool IsSubHealingBrushActive => ActiveToolMode == "healingbrush";
+    public bool IsSubPatchActive => ActiveToolMode == "patch";
+    public bool IsSubContentAwareMoveActive => ActiveToolMode == "contentawaremove";
+    public bool IsSubRedEyeActive => ActiveToolMode == "redeye";
+
+    public bool IsSubBrushActive => ActiveToolMode == "brush";
+    public bool IsSubPencilActive => ActiveToolMode == "pencil";
+    public bool IsSubColorReplaceActive => ActiveToolMode == "colorreplace";
+    public bool IsSubMixerBrushActive => ActiveToolMode == "mixerbrush";
+
+    public bool IsSubCloneStampActive => ActiveToolMode == "clonestamp";
+    public bool IsSubPatternStampActive => ActiveToolMode == "patternstamp";
+
+    public bool IsSubHistoryBrushActive => ActiveToolMode == "historybrush";
+    public bool IsSubArtHistoryBrushActive => ActiveToolMode == "arthistorybrush";
+
+    public bool IsSubEraserActive => ActiveToolMode == "eraser";
+    public bool IsSubBgEraserActive => ActiveToolMode == "bgeraser";
+    public bool IsSubMagicEraserActive => ActiveToolMode == "magiceraser";
+
+    public bool IsSubGradientActive => ActiveToolMode == "gradient";
+    public bool IsSubBucketActive => ActiveToolMode == "bucket";
+    public bool IsSubMaterialDropActive => ActiveToolMode == "materialdrop";
+
+    public bool IsSubBlurActive => ActiveToolMode == "blur";
+    public bool IsSubSharpenActive => ActiveToolMode == "sharpen";
+    public bool IsSubSmudgeActive => ActiveToolMode == "smudge";
+
+    public bool IsSubDodgeActive => ActiveToolMode == "dodge";
+    public bool IsSubBurnActive => ActiveToolMode == "burn";
+    public bool IsSubSpongeActive => ActiveToolMode == "sponge";
+
+    public bool IsSubPenActive => ActiveToolMode == "pen";
+    public bool IsSubFreePenActive => ActiveToolMode == "freepen";
+    public bool IsSubCurvaturePenActive => ActiveToolMode == "curvaturepen";
+    public bool IsSubAddAnchorActive => ActiveToolMode == "addanchor";
+    public bool IsSubDeleteAnchorActive => ActiveToolMode == "deleteanchor";
+    public bool IsSubConvertPointActive => ActiveToolMode == "convertpoint";
+
+    public bool IsSubTextActive => ActiveToolMode == "text";
+    public bool IsSubVerticalTextActive => ActiveToolMode == "verticaltext";
+    public bool IsSubVerticalTextMaskActive => ActiveToolMode == "verticaltextmask";
+    public bool IsSubTextMaskActive => ActiveToolMode == "textmask";
+
+    public bool IsSubPathSelectionActive => ActiveToolMode == "pathselection";
+    public bool IsSubDirectSelectionActive => ActiveToolMode == "directselection";
+
+    public bool IsSubRectActive => ActiveToolMode == "rect";
+    public bool IsSubRoundedRectActive => ActiveToolMode == "roundedrect";
+    public bool IsSubEllipseActive => ActiveToolMode == "ellipse";
+    public bool IsSubTriangleActive => ActiveToolMode == "triangle";
+    public bool IsSubPolygonActive => ActiveToolMode == "polygon";
+    public bool IsSubLineActive => ActiveToolMode == "line";
+    public bool IsSubStarActive => ActiveToolMode == "star";
+
+    public bool IsSubHandActive => ActiveToolMode == "hand";
+    public bool IsSubRotateViewActive => ActiveToolMode == "rotateview";
+
+    // Slot Execution Commands (clicking slot button directly)
+    [RelayCommand] public void SelectMoveSlot() => SetTool(ActiveMoveSubTool);
+    [RelayCommand] public void SelectMarqueeSlot() => SetTool(ActiveMarqueeSubTool);
+    [RelayCommand] public void SelectLassoSlot() => SetTool("lasso");
+    [RelayCommand] public void SelectWandSlot() => SetTool(ActiveWandSubTool);
+    [RelayCommand] public void SelectCropSlot() => SetTool(ActiveCropSubTool);
+    [RelayCommand] public void SelectFrameSlot() => SetTool("frame");
+    [RelayCommand] public void SelectEyedropperSlot() => SetTool(ActiveEyedropperSubTool);
+    [RelayCommand] public void SelectHealingSlot() => SetTool(ActiveHealingSubTool);
+    [RelayCommand] public void SelectBrushSlot() => SetTool(ActiveBrushSubTool);
+    [RelayCommand] public void SelectStampSlot() => SetTool(ActiveStampSubTool);
+    [RelayCommand] public void SelectHistorySlot() => SetTool(ActiveHistorySubTool);
+    [RelayCommand] public void SelectEraserSlot() => SetTool(ActiveEraserSubTool);
+    [RelayCommand] public void SelectGradientSlot() => SetTool(ActiveGradientSubTool);
+    [RelayCommand] public void SelectFocusSlot() => SetTool(ActiveFocusSubTool);
+    [RelayCommand] public void SelectToningSlot() => SetTool(ActiveToningSubTool);
+    [RelayCommand] public void SelectPenSlot() => SetTool(ActivePenSubTool);
+    [RelayCommand] public void SelectTypeSlot() => SetTool(ActiveTypeSubTool);
+    [RelayCommand] public void SelectPathSlot() => SetTool(ActivePathSubTool);
+    [RelayCommand] public void SelectShapeSlot() => SelectShapeTool(ActiveShapeSubTool);
+    [RelayCommand] public void SelectHandSlot() => SetTool(ActiveHandSubTool);
+    [RelayCommand] public void SelectZoomSlot() => SetTool("zoom");
+
+    [RelayCommand]
+    public void ActivateSubTool(string toolMode)
+    {
+        if (toolMode is "select" or "artboard") ActiveMoveSubTool = toolMode;
+        else if (toolMode is "marquee" or "rectmarquee" or "ellipsemarquee" or "rowmarquee" or "colmarquee") ActiveMarqueeSubTool = toolMode;
+        else if (toolMode is "objectselection" or "quickselection" or "wand") ActiveWandSubTool = toolMode;
+        else if (toolMode is "crop" or "perspectivecrop" or "slice" or "sliceselect") ActiveCropSubTool = toolMode;
+        else if (toolMode is "eyedropper" or "materialeyedropper" or "colorsampler" or "ruler" or "note" or "count") ActiveEyedropperSubTool = toolMode;
+        else if (toolMode is "healing" or "healingbrush" or "patch" or "contentawaremove" or "redeye") ActiveHealingSubTool = toolMode;
+        else if (toolMode is "brush" or "pencil" or "colorreplace" or "mixerbrush") ActiveBrushSubTool = toolMode;
+        else if (toolMode is "clonestamp" or "patternstamp") ActiveStampSubTool = toolMode;
+        else if (toolMode is "historybrush" or "arthistorybrush") ActiveHistorySubTool = toolMode;
+        else if (toolMode is "eraser" or "bgeraser" or "magiceraser") ActiveEraserSubTool = toolMode;
+        else if (toolMode is "gradient" or "bucket" or "materialdrop") ActiveGradientSubTool = toolMode;
+        else if (toolMode is "blur" or "sharpen" or "smudge") ActiveFocusSubTool = toolMode;
+        else if (toolMode is "dodge" or "burn" or "sponge") ActiveToningSubTool = toolMode;
+        else if (toolMode is "pen" or "freepen" or "curvaturepen" or "addanchor" or "deleteanchor" or "convertpoint") ActivePenSubTool = toolMode;
+        else if (toolMode is "text" or "verticaltext" or "verticaltextmask" or "textmask") ActiveTypeSubTool = toolMode;
+        else if (toolMode is "pathselection" or "directselection") ActivePathSubTool = toolMode;
+        else if (toolMode is "rect" or "roundedrect" or "ellipse" or "triangle" or "polygon" or "line" or "star")
+        {
+            ActiveShapeSubTool = toolMode;
+            SelectShapeTool(toolMode);
+            return;
+        }
+        else if (toolMode is "hand" or "rotateview") ActiveHandSubTool = toolMode;
+
+        SetTool(toolMode);
+    }
+
+    [RelayCommand]
+    public void ActivateLassoSubMode(string mode)
+    {
+        LassoSubMode = mode;
+        SetTool("lasso");
+    }
+
     public bool HasContextualToolOptions => true;
 
-    partial void OnActiveToolModeChanged(string value)
+    [RelayCommand]
+    private void ClearRuler()
+    {
+        RulerDistance = 0;
+        RulerAngle = 0;
+        RulerDeltaX = 0;
+        RulerDeltaY = 0;
+    }
+
+    [RelayCommand]
+    private void ResetViewportRotation()
+    {
+        ViewportRotationAngle = 0.0;
+        StatusMessage = "Canvas view rotation reset to 0°";
+    }
+
+    public void UpdateRulerMeasurement(Point start, Point end)
+    {
+        RulerStartX = Math.Round(start.X, 1);
+        RulerStartY = Math.Round(start.Y, 1);
+        RulerEndX = Math.Round(end.X, 1);
+        RulerEndY = Math.Round(end.Y, 1);
+        RulerDeltaX = Math.Round(end.X - start.X, 1);
+        RulerDeltaY = Math.Round(end.Y - start.Y, 1);
+        RulerDistance = Math.Round(Math.Sqrt(RulerDeltaX * RulerDeltaX + RulerDeltaY * RulerDeltaY), 1);
+        RulerAngle = Math.Round(Math.Atan2(-RulerDeltaY, RulerDeltaX) * 180.0 / Math.PI, 1);
+        StatusMessage = $"Ruler: D={RulerDistance} px, Angle={RulerAngle}°, W={RulerDeltaX} px, H={RulerDeltaY} px";
+    }
+
+    private void InvalidateAllToolProperties()
     {
         OnPropertyChanged(nameof(IsBrushToolActive));
         OnPropertyChanged(nameof(IsStandardBrushToolActive));
@@ -193,12 +475,131 @@ public partial class ImageEditorViewModel
         OnPropertyChanged(nameof(IsDodgeToolActive));
         OnPropertyChanged(nameof(IsBurnToolActive));
         OnPropertyChanged(nameof(IsSpongeToolActive));
+        OnPropertyChanged(nameof(IsRedEyeToolActive));
+        OnPropertyChanged(nameof(IsPatchToolActive));
+        OnPropertyChanged(nameof(IsRulerToolActive));
+        OnPropertyChanged(nameof(IsRotateViewToolActive));
         OnPropertyChanged(nameof(IsBlurSharpenSmudgeActive));
         OnPropertyChanged(nameof(IsDodgeBurnSpongeActive));
         OnPropertyChanged(nameof(IsRetouchToolActive));
         OnPropertyChanged(nameof(IsPenToolActive));
         OnPropertyChanged(nameof(IsPathSelectionToolActive));
         OnPropertyChanged(nameof(HasContextualToolOptions));
+
+        // Slot active highlights
+        OnPropertyChanged(nameof(IsMoveSlotActive));
+        OnPropertyChanged(nameof(IsMarqueeSlotActive));
+        OnPropertyChanged(nameof(IsLassoSlotActive));
+        OnPropertyChanged(nameof(IsWandSlotActive));
+        OnPropertyChanged(nameof(IsCropSlotActive));
+        OnPropertyChanged(nameof(IsFrameSlotActive));
+        OnPropertyChanged(nameof(IsEyedropperSlotActive));
+        OnPropertyChanged(nameof(IsHealingSlotActive));
+        OnPropertyChanged(nameof(IsBrushSlotActive));
+        OnPropertyChanged(nameof(IsStampSlotActive));
+        OnPropertyChanged(nameof(IsHistorySlotActive));
+        OnPropertyChanged(nameof(IsEraserSlotActive));
+        OnPropertyChanged(nameof(IsGradientSlotActive));
+        OnPropertyChanged(nameof(IsFocusSlotActive));
+        OnPropertyChanged(nameof(IsToningSlotActive));
+        OnPropertyChanged(nameof(IsPenSlotActive));
+        OnPropertyChanged(nameof(IsTypeSlotActive));
+        OnPropertyChanged(nameof(IsPathSlotActive));
+        OnPropertyChanged(nameof(IsShapeSlotActive));
+        OnPropertyChanged(nameof(IsHandSlotActive));
+        OnPropertyChanged(nameof(IsZoomSlotActive));
+
+        // Subtool indicators
+        OnPropertyChanged(nameof(IsSubMoveActive));
+        OnPropertyChanged(nameof(IsSubArtboardActive));
+        OnPropertyChanged(nameof(IsSubRectMarqueeActive));
+        OnPropertyChanged(nameof(IsSubEllipseMarqueeActive));
+        OnPropertyChanged(nameof(IsSubRowMarqueeActive));
+        OnPropertyChanged(nameof(IsSubColMarqueeActive));
+        OnPropertyChanged(nameof(IsSubLassoActive));
+        OnPropertyChanged(nameof(IsSubPolygonalLassoActive));
+        OnPropertyChanged(nameof(IsSubMagneticLassoActive));
+        OnPropertyChanged(nameof(IsSubObjectSelectionActive));
+        OnPropertyChanged(nameof(IsSubQuickSelectionActive));
+        OnPropertyChanged(nameof(IsSubMagicWandActive));
+        OnPropertyChanged(nameof(IsSubCropActive));
+        OnPropertyChanged(nameof(IsSubPerspectiveCropActive));
+        OnPropertyChanged(nameof(IsSubSliceActive));
+        OnPropertyChanged(nameof(IsSubSliceSelectActive));
+        OnPropertyChanged(nameof(IsSubEyedropperActive));
+        OnPropertyChanged(nameof(IsSubMaterialEyedropperActive));
+        OnPropertyChanged(nameof(IsSubColorSamplerActive));
+        OnPropertyChanged(nameof(IsSubRulerActive));
+        OnPropertyChanged(nameof(IsSubNoteActive));
+        OnPropertyChanged(nameof(IsSubCountActive));
+        OnPropertyChanged(nameof(IsSubSpotHealingActive));
+        OnPropertyChanged(nameof(IsSubHealingBrushActive));
+        OnPropertyChanged(nameof(IsSubPatchActive));
+        OnPropertyChanged(nameof(IsSubContentAwareMoveActive));
+        OnPropertyChanged(nameof(IsSubRedEyeActive));
+        OnPropertyChanged(nameof(IsSubBrushActive));
+        OnPropertyChanged(nameof(IsSubPencilActive));
+        OnPropertyChanged(nameof(IsSubColorReplaceActive));
+        OnPropertyChanged(nameof(IsSubMixerBrushActive));
+        OnPropertyChanged(nameof(IsSubCloneStampActive));
+        OnPropertyChanged(nameof(IsSubPatternStampActive));
+        OnPropertyChanged(nameof(IsSubHistoryBrushActive));
+        OnPropertyChanged(nameof(IsSubArtHistoryBrushActive));
+        OnPropertyChanged(nameof(IsSubEraserActive));
+        OnPropertyChanged(nameof(IsSubBgEraserActive));
+        OnPropertyChanged(nameof(IsSubMagicEraserActive));
+        OnPropertyChanged(nameof(IsSubGradientActive));
+        OnPropertyChanged(nameof(IsSubBucketActive));
+        OnPropertyChanged(nameof(IsSubMaterialDropActive));
+        OnPropertyChanged(nameof(IsSubBlurActive));
+        OnPropertyChanged(nameof(IsSubSharpenActive));
+        OnPropertyChanged(nameof(IsSubSmudgeActive));
+        OnPropertyChanged(nameof(IsSubDodgeActive));
+        OnPropertyChanged(nameof(IsSubBurnActive));
+        OnPropertyChanged(nameof(IsSubSpongeActive));
+        OnPropertyChanged(nameof(IsSubPenActive));
+        OnPropertyChanged(nameof(IsSubFreePenActive));
+        OnPropertyChanged(nameof(IsSubCurvaturePenActive));
+        OnPropertyChanged(nameof(IsSubAddAnchorActive));
+        OnPropertyChanged(nameof(IsSubDeleteAnchorActive));
+        OnPropertyChanged(nameof(IsSubConvertPointActive));
+        OnPropertyChanged(nameof(IsSubTextActive));
+        OnPropertyChanged(nameof(IsSubVerticalTextActive));
+        OnPropertyChanged(nameof(IsSubVerticalTextMaskActive));
+        OnPropertyChanged(nameof(IsSubTextMaskActive));
+        OnPropertyChanged(nameof(IsSubPathSelectionActive));
+        OnPropertyChanged(nameof(IsSubDirectSelectionActive));
+        OnPropertyChanged(nameof(IsSubRectActive));
+        OnPropertyChanged(nameof(IsSubRoundedRectActive));
+        OnPropertyChanged(nameof(IsSubEllipseActive));
+        OnPropertyChanged(nameof(IsSubTriangleActive));
+        OnPropertyChanged(nameof(IsSubPolygonActive));
+        OnPropertyChanged(nameof(IsSubLineActive));
+        OnPropertyChanged(nameof(IsSubStarActive));
+        OnPropertyChanged(nameof(IsSubHandActive));
+        OnPropertyChanged(nameof(IsSubRotateViewActive));
+    }
+
+    partial void OnActiveToolModeChanged(string value)
+    {
+        InvalidateAllToolProperties();
+
+        if (value == "redeye")
+        {
+            StatusMessage = "Red Eye Tool: Click directly on the red pupil to automatically neutralize and darken it.";
+        }
+        else if (value == "patch")
+        {
+            StatusMessage = "Patch Tool: Drag across the target area to seamlessly blend texture from the source.";
+        }
+        else if (value == "ruler")
+        {
+            StatusMessage = "Ruler Tool: Click and drag on the canvas to measure distances and angles.";
+        }
+        else if (value == "rotateview")
+        {
+            StatusMessage = "Rotate View Tool (R): Drag around the canvas center to rotate the camera. Shift snaps to 15°. Esc resets.";
+        }
 
         if (value == "pencil")
         {
@@ -377,6 +778,8 @@ public partial class ImageEditorViewModel
     {
         SelectedShapeTool = shape;
         ActiveToolMode = shape;
+        SelectedElement = null;
+        SelectedElements.Clear();
     }
 
     [RelayCommand]
@@ -523,6 +926,9 @@ public partial class ImageEditorViewModel
         OnPropertyChanged(nameof(IsStandardLassoMode));
         OnPropertyChanged(nameof(IsPolygonalLassoMode));
         OnPropertyChanged(nameof(IsMagneticLassoMode));
+        OnPropertyChanged(nameof(IsSubLassoActive));
+        OnPropertyChanged(nameof(IsSubPolygonalLassoActive));
+        OnPropertyChanged(nameof(IsSubMagneticLassoActive));
     }
 
     partial void OnMagneticLassoWidthChanged(double value)
@@ -570,5 +976,138 @@ public partial class ImageEditorViewModel
     partial void OnMagicWandSampleAllLayersChanged(bool value)
     {
         if (CanvasControl != null) CanvasControl.WandSampleAllLayers = value;
+    }
+
+    // ── Object Selection & Quick Selection Tool Options ─────────────────────
+    [ObservableProperty] private string _objectSelectionMode = "Rectangle"; // Rectangle | Lasso
+    [ObservableProperty] private bool _objectSelectionSampleAllLayers = true;
+    [ObservableProperty] private bool _objectSelectionAutoEnhance = true;
+
+    [ObservableProperty] private double _quickSelectionBrushSize = 30;
+    [ObservableProperty] private double _quickSelectionHardness = 100;
+    [ObservableProperty] private string _quickSelectionMode = "New"; // New | Add | Subtract
+
+    [RelayCommand] public void SetObjectSelectionMode(string mode) => ObjectSelectionMode = mode;
+    [RelayCommand] public void SetQuickSelectionMode(string mode) => QuickSelectionMode = mode;
+
+    // ── Selection Combine Modes (New, Add, Subtract, Intersect) ──────────────
+    [ObservableProperty] private string _selectionCombineMode = "New"; // New | Add | Subtract | Intersect
+    [RelayCommand] public void SetSelectionCombineMode(string mode) => SelectionCombineMode = mode;
+
+    // ── Marquee & Lasso Extended Style Options ──────────────────────────────
+    [ObservableProperty] private string _marqueeStyle = "Normal"; // Normal | FixedRatio | FixedSize
+    [ObservableProperty] private double _marqueeRatioW = 1.0;
+    [ObservableProperty] private double _marqueeRatioH = 1.0;
+    [ObservableProperty] private double _marqueeFixedW = 100.0;
+    [ObservableProperty] private double _marqueeFixedH = 100.0;
+
+    // ── Crop Tool Extended Options ──────────────────────────────────────────
+    [ObservableProperty] private string _cropOverlayGrid = "RuleOfThirds"; // RuleOfThirds | Grid | GoldenRatio
+    [ObservableProperty] private bool _cropDeleteCroppedPixels = true;
+
+    [RelayCommand]
+    public void StraightenCanvas()
+    {
+        StatusMessage = "Straighten: Click and drag a line across the horizon to level.";
+    }
+
+    // ── Move & Transform Extended Options ────────────────────────────────────
+    [ObservableProperty] private string _transformAnchor = "Center"; // TopLeft | TopCenter | TopRight | MidLeft | Center | MidRight | BotLeft | BotCenter | BotRight
+
+    [RelayCommand] public void SetTransformAnchor(string anchor) => TransformAnchor = anchor;
+
+    // ── Modern Photoshop Contextual Task Bar State ──────────────────────────
+    [ObservableProperty] private bool _isContextualTaskBarVisible = true;
+
+    [RelayCommand]
+    public void ToggleContextualTaskBar() => IsContextualTaskBarVisible = !IsContextualTaskBarVisible;
+
+    [RelayCommand]
+    public void HideContextualTaskBar() => IsContextualTaskBarVisible = false;
+
+    // ── Keyboard Sub-Tool Cycling (Shift + Key) ─────────────────────────────
+    public void CycleSubToolInSlot(string slotKey)
+    {
+        switch (slotKey.ToLowerInvariant())
+        {
+            case "wand":
+            case "w":
+                if (ActiveToolMode == "objectselection") ActivateSubTool("quickselection");
+                else if (ActiveToolMode == "quickselection") ActivateSubTool("wand");
+                else ActivateSubTool("objectselection");
+                break;
+            case "marquee":
+            case "m":
+                if (ActiveToolMode is "marquee" or "rectmarquee") ActivateSubTool("ellipsemarquee");
+                else if (ActiveToolMode == "ellipsemarquee") ActivateSubTool("rowmarquee");
+                else if (ActiveToolMode == "rowmarquee") ActivateSubTool("colmarquee");
+                else ActivateSubTool("marquee");
+                break;
+            case "lasso":
+            case "l":
+                if (LassoSubMode == "standard") ActivateLassoSubMode("polygonal");
+                else if (LassoSubMode == "polygonal") ActivateLassoSubMode("magnetic");
+                else ActivateLassoSubMode("standard");
+                break;
+            case "brush":
+            case "b":
+                if (ActiveToolMode == "brush") ActivateSubTool("pencil");
+                else if (ActiveToolMode == "pencil") ActivateSubTool("colorreplace");
+                else ActivateSubTool("brush");
+                break;
+            case "eraser":
+            case "e":
+                if (ActiveToolMode == "eraser") ActivateSubTool("bgeraser");
+                else if (ActiveToolMode == "bgeraser") ActivateSubTool("magiceraser");
+                else ActivateSubTool("eraser");
+                break;
+            case "gradient":
+            case "g":
+                if (ActiveToolMode == "gradient") ActivateSubTool("bucket");
+                else ActivateSubTool("gradient");
+                break;
+            case "crop":
+            case "c":
+                if (ActiveToolMode == "crop") ActivateSubTool("perspectivecrop");
+                else if (ActiveToolMode == "perspectivecrop") ActivateSubTool("slice");
+                else ActivateSubTool("crop");
+                break;
+            case "eyedropper":
+            case "i":
+                if (ActiveToolMode == "eyedropper") ActivateSubTool("ruler");
+                else if (ActiveToolMode == "ruler") ActivateSubTool("note");
+                else ActivateSubTool("eyedropper");
+                break;
+            case "shape":
+            case "u":
+                if (ActiveShapeSubTool == "rect") ActivateSubTool("roundedrect");
+                else if (ActiveShapeSubTool == "roundedrect") ActivateSubTool("ellipse");
+                else if (ActiveShapeSubTool == "ellipse") ActivateSubTool("polygon");
+                else if (ActiveShapeSubTool == "polygon") ActivateSubTool("line");
+                else ActivateSubTool("rect");
+                break;
+            case "pen":
+            case "p":
+                if (ActiveToolMode == "pen") ActivateSubTool("freepen");
+                else ActivateSubTool("pen");
+                break;
+            case "toning":
+            case "o":
+                if (ActiveToolMode == "dodge") ActivateSubTool("burn");
+                else if (ActiveToolMode == "burn") ActivateSubTool("sponge");
+                else ActivateSubTool("dodge");
+                break;
+            case "focus":
+            case "r":
+                if (ActiveToolMode == "blur") ActivateSubTool("sharpen");
+                else if (ActiveToolMode == "sharpen") ActivateSubTool("smudge");
+                else ActivateSubTool("blur");
+                break;
+            case "move":
+            case "v":
+                if (ActiveToolMode is "select" or "move") ActivateSubTool("artboard");
+                else ActivateSubTool("select");
+                break;
+        }
     }
 }

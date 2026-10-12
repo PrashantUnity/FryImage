@@ -34,6 +34,18 @@ public static class DockSnapshotSuite
         vm.SelectRightDockTabCommand.Execute("History");
         ctx.Capture("dock_history_tab.png");
 
+        // 6. Properties Dock Panel (Document Mode)
+        vm.SelectRightDockTabCommand.Execute("Properties");
+        ctx.Capture("dock_properties_document_tab.png");
+
+        // 7. Navigator Dock Panel (Canvas thumbnail & Zoom slider)
+        vm.SelectRightDockTabCommand.Execute("Navigator");
+        ctx.Capture("dock_navigator_tab.png");
+
+        // 8. Info Dock Panel (Document specs & Cursor readouts)
+        vm.SelectRightDockTabCommand.Execute("Info");
+        ctx.Capture("dock_info_tab.png");
+
         // Reset to Layers dock panel
         vm.SelectRightDockTabCommand.Execute("Layers");
         ctx.FlushUi();

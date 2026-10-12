@@ -46,6 +46,11 @@ public static class CanvasElementMapper
         dto.Name = el.Name; dto.GroupId = el.GroupId; dto.AspectLocked = el.AspectLocked;
         dto.FillOpacity = el.FillOpacity;
         dto.BlendMode = el.BlendMode.ToString();
+        dto.IsClippingMask = el.IsClippingMask;
+        dto.BlendIfThisMin = el.BlendIfThisMin;
+        dto.BlendIfThisMax = el.BlendIfThisMax;
+        dto.BlendIfUnderMin = el.BlendIfUnderMin;
+        dto.BlendIfUnderMax = el.BlendIfUnderMax;
         dto.Effects = ToEffectsDto(el.Effects);
     }
 
@@ -58,6 +63,11 @@ public static class CanvasElementMapper
         el.Name = dto.Name; el.GroupId = dto.GroupId; el.AspectLocked = dto.AspectLocked;
         el.FillOpacity = dto.FillOpacity;
         el.BlendMode = Enum.TryParse<LayerBlendMode>(dto.BlendMode, true, out var bm) ? bm : LayerBlendMode.Normal;
+        el.IsClippingMask = dto.IsClippingMask;
+        el.BlendIfThisMin = dto.BlendIfThisMin;
+        el.BlendIfThisMax = dto.BlendIfThisMax;
+        el.BlendIfUnderMin = dto.BlendIfUnderMin;
+        el.BlendIfUnderMax = dto.BlendIfUnderMax;
         el.Effects = FromEffectsDto(dto.Effects);
     }
 
@@ -96,12 +106,68 @@ public static class CanvasElementMapper
                 Size = effects.InnerShadow.Size,
                 BlendMode = effects.InnerShadow.BlendMode.ToString()
             },
+            InnerGlow = effects.InnerGlow == null ? null : new InnerGlowStyleDto
+            {
+                IsEnabled = effects.InnerGlow.IsEnabled,
+                Color = effects.InnerGlow.Color.ToString(),
+                Opacity = effects.InnerGlow.Opacity,
+                Size = effects.InnerGlow.Size,
+                Spread = effects.InnerGlow.Spread,
+                BlendMode = effects.InnerGlow.BlendMode.ToString(),
+                CenterSource = effects.InnerGlow.CenterSource
+            },
+            BevelEmboss = effects.BevelEmboss == null ? null : new BevelEmbossStyleDto
+            {
+                IsEnabled = effects.BevelEmboss.IsEnabled,
+                Style = effects.BevelEmboss.Style.ToString(),
+                Depth = effects.BevelEmboss.Depth,
+                Size = effects.BevelEmboss.Size,
+                Soften = effects.BevelEmboss.Soften,
+                Angle = effects.BevelEmboss.Angle,
+                Altitude = effects.BevelEmboss.Altitude,
+                HighlightColor = effects.BevelEmboss.HighlightColor.ToString(),
+                HighlightOpacity = effects.BevelEmboss.HighlightOpacity,
+                HighlightMode = effects.BevelEmboss.HighlightMode.ToString(),
+                ShadowColor = effects.BevelEmboss.ShadowColor.ToString(),
+                ShadowOpacity = effects.BevelEmboss.ShadowOpacity,
+                ShadowMode = effects.BevelEmboss.ShadowMode.ToString()
+            },
+            Satin = effects.Satin == null ? null : new SatinStyleDto
+            {
+                IsEnabled = effects.Satin.IsEnabled,
+                Color = effects.Satin.Color.ToString(),
+                Opacity = effects.Satin.Opacity,
+                BlendMode = effects.Satin.BlendMode.ToString(),
+                Angle = effects.Satin.Angle,
+                Distance = effects.Satin.Distance,
+                Size = effects.Satin.Size,
+                Invert = effects.Satin.Invert
+            },
             ColorOverlay = effects.ColorOverlay == null ? null : new ColorOverlayStyleDto
             {
                 IsEnabled = effects.ColorOverlay.IsEnabled,
                 Color = effects.ColorOverlay.Color.ToString(),
                 Opacity = effects.ColorOverlay.Opacity,
                 BlendMode = effects.ColorOverlay.BlendMode.ToString()
+            },
+            GradientOverlay = effects.GradientOverlay == null ? null : new GradientOverlayStyleDto
+            {
+                IsEnabled = effects.GradientOverlay.IsEnabled,
+                BlendMode = effects.GradientOverlay.BlendMode.ToString(),
+                Opacity = effects.GradientOverlay.Opacity,
+                StartColor = effects.GradientOverlay.StartColor.ToString(),
+                EndColor = effects.GradientOverlay.EndColor.ToString(),
+                Angle = effects.GradientOverlay.Angle,
+                Scale = effects.GradientOverlay.Scale,
+                Reverse = effects.GradientOverlay.Reverse
+            },
+            PatternOverlay = effects.PatternOverlay == null ? null : new PatternOverlayStyleDto
+            {
+                IsEnabled = effects.PatternOverlay.IsEnabled,
+                BlendMode = effects.PatternOverlay.BlendMode.ToString(),
+                Opacity = effects.PatternOverlay.Opacity,
+                Scale = effects.PatternOverlay.Scale,
+                PatternName = effects.PatternOverlay.PatternName
             },
             Stroke = effects.Stroke == null ? null : new LayerStrokeStyleDto
             {
@@ -167,6 +233,55 @@ public static class CanvasElementMapper
             };
         }
 
+        if (dto.InnerGlow != null)
+        {
+            fx.InnerGlow = new InnerGlowStyle
+            {
+                IsEnabled = dto.InnerGlow.IsEnabled,
+                Color = SafeParseColor(dto.InnerGlow.Color, Color.FromRgb(255, 255, 190)),
+                Opacity = dto.InnerGlow.Opacity,
+                Size = dto.InnerGlow.Size,
+                Spread = dto.InnerGlow.Spread,
+                BlendMode = Enum.TryParse<LayerBlendMode>(dto.InnerGlow.BlendMode, true, out var bm) ? bm : LayerBlendMode.Screen,
+                CenterSource = dto.InnerGlow.CenterSource
+            };
+        }
+
+        if (dto.BevelEmboss != null)
+        {
+            fx.BevelEmboss = new BevelEmbossStyle
+            {
+                IsEnabled = dto.BevelEmboss.IsEnabled,
+                Style = Enum.TryParse<BevelEmbossType>(dto.BevelEmboss.Style, true, out var bs) ? bs : BevelEmbossType.InnerBevel,
+                Depth = dto.BevelEmboss.Depth,
+                Size = dto.BevelEmboss.Size,
+                Soften = dto.BevelEmboss.Soften,
+                Angle = dto.BevelEmboss.Angle,
+                Altitude = dto.BevelEmboss.Altitude,
+                HighlightColor = SafeParseColor(dto.BevelEmboss.HighlightColor, Colors.White),
+                HighlightOpacity = dto.BevelEmboss.HighlightOpacity,
+                HighlightMode = Enum.TryParse<LayerBlendMode>(dto.BevelEmboss.HighlightMode, true, out var hm) ? hm : LayerBlendMode.Screen,
+                ShadowColor = SafeParseColor(dto.BevelEmboss.ShadowColor, Colors.Black),
+                ShadowOpacity = dto.BevelEmboss.ShadowOpacity,
+                ShadowMode = Enum.TryParse<LayerBlendMode>(dto.BevelEmboss.ShadowMode, true, out var sm) ? sm : LayerBlendMode.Multiply
+            };
+        }
+
+        if (dto.Satin != null)
+        {
+            fx.Satin = new SatinStyle
+            {
+                IsEnabled = dto.Satin.IsEnabled,
+                Color = SafeParseColor(dto.Satin.Color, Colors.Black),
+                Opacity = dto.Satin.Opacity,
+                BlendMode = Enum.TryParse<LayerBlendMode>(dto.Satin.BlendMode, true, out var bm) ? bm : LayerBlendMode.Multiply,
+                Angle = dto.Satin.Angle,
+                Distance = dto.Satin.Distance,
+                Size = dto.Satin.Size,
+                Invert = dto.Satin.Invert
+            };
+        }
+
         if (dto.ColorOverlay != null)
         {
             fx.ColorOverlay = new ColorOverlayStyle
@@ -175,6 +290,33 @@ public static class CanvasElementMapper
                 Color = SafeParseColor(dto.ColorOverlay.Color, Color.FromRgb(99, 102, 241)),
                 Opacity = dto.ColorOverlay.Opacity,
                 BlendMode = Enum.TryParse<LayerBlendMode>(dto.ColorOverlay.BlendMode, true, out var bm) ? bm : LayerBlendMode.Normal
+            };
+        }
+
+        if (dto.GradientOverlay != null)
+        {
+            fx.GradientOverlay = new GradientOverlayStyle
+            {
+                IsEnabled = dto.GradientOverlay.IsEnabled,
+                BlendMode = Enum.TryParse<LayerBlendMode>(dto.GradientOverlay.BlendMode, true, out var bm) ? bm : LayerBlendMode.Normal,
+                Opacity = dto.GradientOverlay.Opacity,
+                StartColor = SafeParseColor(dto.GradientOverlay.StartColor, Colors.Black),
+                EndColor = SafeParseColor(dto.GradientOverlay.EndColor, Colors.White),
+                Angle = dto.GradientOverlay.Angle,
+                Scale = dto.GradientOverlay.Scale,
+                Reverse = dto.GradientOverlay.Reverse
+            };
+        }
+
+        if (dto.PatternOverlay != null)
+        {
+            fx.PatternOverlay = new PatternOverlayStyle
+            {
+                IsEnabled = dto.PatternOverlay.IsEnabled,
+                BlendMode = Enum.TryParse<LayerBlendMode>(dto.PatternOverlay.BlendMode, true, out var bm) ? bm : LayerBlendMode.Normal,
+                Opacity = dto.PatternOverlay.Opacity,
+                Scale = dto.PatternOverlay.Scale,
+                PatternName = dto.PatternOverlay.PatternName ?? "Grid"
             };
         }
 

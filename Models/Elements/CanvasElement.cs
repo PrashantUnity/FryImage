@@ -65,6 +65,17 @@ public abstract class CanvasElement
     /// modifier is held during the drag. Defaults false for shapes; ImageElement defaults true.</summary>
     public bool AspectLocked { get; set; }
 
+    /// <summary>When true, this layer acts as a Photoshop clipping mask, clipped to the layer directly below it.</summary>
+    public bool IsClippingMask { get; set; }
+
+    /// <summary>Photoshop Blend If: This Layer luminance range (0..255).</summary>
+    public byte BlendIfThisMin { get; set; } = 0;
+    public byte BlendIfThisMax { get; set; } = 255;
+
+    /// <summary>Photoshop Blend If: Underlying Layer luminance range (0..255).</summary>
+    public byte BlendIfUnderMin { get; set; } = 0;
+    public byte BlendIfUnderMax { get; set; } = 255;
+
     /// <summary>Copies common base properties to a newly cloned element.</summary>
     protected void CopyBasePropertiesTo(CanvasElement target)
     {
@@ -85,6 +96,11 @@ public abstract class CanvasElement
         target.Name = Name;
         target.GroupId = GroupId;
         target.AspectLocked = AspectLocked;
+        target.IsClippingMask = IsClippingMask;
+        target.BlendIfThisMin = BlendIfThisMin;
+        target.BlendIfThisMax = BlendIfThisMax;
+        target.BlendIfUnderMin = BlendIfUnderMin;
+        target.BlendIfUnderMax = BlendIfUnderMax;
     }
 
     /// <summary>Display name shown in the layer panel.</summary>

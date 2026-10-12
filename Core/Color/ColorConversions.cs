@@ -166,4 +166,44 @@ public static class ColorConversions
 
         return false;
     }
+
+    public static (double C, double M, double Y, double K) RgbToCmyk(Color c)
+    {
+        double r = c.R / 255.0;
+        double g = c.G / 255.0;
+        double b = c.B / 255.0;
+        double k = 1.0 - Math.Max(r, Math.Max(g, b));
+        if (k >= 0.9999) return (0.0, 0.0, 0.0, 1.0);
+        double cmykC = (1.0 - r - k) / (1.0 - k);
+        double cmykM = (1.0 - g - k) / (1.0 - k);
+        double cmykY = (1.0 - b - k) / (1.0 - k);
+        return (Math.Clamp(cmykC, 0.0, 1.0), Math.Clamp(cmykM, 0.0, 1.0), Math.Clamp(cmykY, 0.0, 1.0), Math.Clamp(k, 0.0, 1.0));
+    }
+
+    public static Color CmykToRgb(double c, double m, double y, double k, byte alpha = 255)
+    {
+        c = Math.Clamp(c, 0.0, 1.0);
+        m = Math.Clamp(m, 0.0, 1.0);
+        y = Math.Clamp(y, 0.0, 1.0);
+        k = Math.Clamp(k, 0.0, 1.0);
+
+        double r = 255.0 * (1.0 - c) * (1.0 - k);
+        double g = 255.0 * (1.0 - m) * (1.0 - k);
+        double b = 255.0 * (1.0 - y) * (1.0 - k);
+
+        return Color.FromArgb(
+            alpha,
+            (byte)Math.Round(Math.Clamp(r, 0, 255)),
+            (byte)Math.Round(Math.Clamp(g, 0, 255)),
+            (byte)Math.Round(Math.Clamp(b, 0, 255)));
+    }
+
+    public static Color SnapToWebSafe(Color c)
+    {
+        // Web-safe colors only use RGB multiples of 51 (0x00, 0x33, 0x66, 0x99, 0xCC, 0xFF)
+        byte r = (byte)(Math.Round(c.R / 51.0) * 51);
+        byte g = (byte)(Math.Round(c.G / 51.0) * 51);
+        byte b = (byte)(Math.Round(c.B / 51.0) * 51);
+        return Color.FromArgb(c.A, r, g, b);
+    }
 }

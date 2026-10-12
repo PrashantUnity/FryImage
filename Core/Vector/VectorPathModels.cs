@@ -189,6 +189,12 @@ public class VectorDocumentPath
         Name = name;
     }
 
+    public VectorDocumentPath(string name, List<VectorSubpath> subpaths)
+    {
+        Name = name;
+        Subpaths = subpaths;
+    }
+
     public bool IsEmpty => Subpaths.Count == 0 || Subpaths.All(s => s.Knots.Count == 0);
 
     public SKPath ToSkPath()

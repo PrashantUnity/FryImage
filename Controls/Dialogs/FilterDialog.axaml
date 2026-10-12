@@ -7,6 +7,7 @@
 
     <UserControl.Resources>
         <local:StringEqualsConverter x:Key="StringEqualsConverter" />
+        <local:ColorToBrushConverter x:Key="ColorToBrushConverter" />
     </UserControl.Resources>
 
     <!-- Modal Backdrop -->
@@ -573,6 +574,227 @@
                         <StackPanel Spacing="8" IsVisible="{Binding ActiveFilterMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='DifferenceClouds'}">
                             <TextBlock Text="Generates organic fractal turbulence clouds and inverts existing layer pixels with difference mode."
                                        TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" />
+                        </StackPanel>
+
+                        <!-- 26. Wind -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ActiveFilterMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Wind'}">
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Strength" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterWindStrength, StringFormat='{}{0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="1" Maximum="50" Value="{Binding FilterWindStrength, Mode=TwoWay}" />
+                            </StackPanel>
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Direction" Classes="ps-label" />
+                                <ComboBox SelectedIndex="{Binding FilterWindDirection, Mode=TwoWay}" HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="From the Left" />
+                                    <ComboBoxItem Content="From the Right" />
+                                </ComboBox>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- 27. Diffuse -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ActiveFilterMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Diffuse'}">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Mode" Classes="ps-label" />
+                                <ComboBox SelectedIndex="{Binding FilterDiffuseMode, Mode=TwoWay}" HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="Normal" />
+                                    <ComboBoxItem Content="Darken Only" />
+                                    <ComboBoxItem Content="Lighten Only" />
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Radius" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterDiffuseRadius, StringFormat='{}{0} px'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="1" Maximum="20" Value="{Binding FilterDiffuseRadius, Mode=TwoWay}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- 28. Extrude -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ActiveFilterMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Extrude'}">
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Block Size" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterExtrudeBlockSize, StringFormat='{}{0} px'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="4" Maximum="100" Value="{Binding FilterExtrudeBlockSize, Mode=TwoWay}" />
+                            </StackPanel>
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Depth" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterExtrudeDepth, StringFormat='{}{0} px'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="1" Maximum="100" Value="{Binding FilterExtrudeDepth, Mode=TwoWay}" />
+                            </StackPanel>
+                            <CheckBox Content="Random Depth" IsChecked="{Binding FilterExtrudeRandom, Mode=TwoWay}" />
+                        </StackPanel>
+
+                        <!-- 29. Tiles -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ActiveFilterMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Tiles'}">
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Number of Tiles" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterTilesNumTiles, StringFormat='{}{0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="2" Maximum="100" Value="{Binding FilterTilesNumTiles, Mode=TwoWay}" />
+                            </StackPanel>
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Maximum Offset" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterTilesMaximumOffset, StringFormat='{}{0}%'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="1" Maximum="50" Value="{Binding FilterTilesMaximumOffset, Mode=TwoWay}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- 30. Fibers -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ActiveFilterMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Fibers'}">
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Variance" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterFibersVariance, StringFormat='{}{0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="1" Maximum="64" Value="{Binding FilterFibersVariance, Mode=TwoWay}" />
+                            </StackPanel>
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Strength" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterFibersStrength, StringFormat='{}{0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="1" Maximum="50" Value="{Binding FilterFibersStrength, Mode=TwoWay}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- 31. ZigZag -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ActiveFilterMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='ZigZag'}">
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Amount" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterZigZagAmount, StringFormat='{}{0:0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="-100" Maximum="100" Value="{Binding FilterZigZagAmount, Mode=TwoWay}" />
+                            </StackPanel>
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Ridges" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterZigZagRidges, StringFormat='{}{0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="1" Maximum="20" Value="{Binding FilterZigZagRidges, Mode=TwoWay}" />
+                            </StackPanel>
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Style" Classes="ps-label" />
+                                <ComboBox SelectedIndex="{Binding FilterZigZagStyle, Mode=TwoWay}" HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="Around Center" />
+                                    <ComboBoxItem Content="Out From Center" />
+                                    <ComboBoxItem Content="Pond Ripples" />
+                                </ComboBox>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- 32. Shear -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ActiveFilterMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Shear'}">
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Offset" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterShearOffset, StringFormat='{}{0:0} px'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="-100" Maximum="100" Value="{Binding FilterShearOffset, Mode=TwoWay}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- 33. Mezzotint -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ActiveFilterMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Mezzotint'}">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Type" Classes="ps-label" />
+                                <ComboBox SelectedIndex="{Binding FilterMezzotintType, Mode=TwoWay}" HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="Fine Dots" />
+                                    <ComboBoxItem Content="Medium Dots" />
+                                    <ComboBoxItem Content="Grainy Dots" />
+                                    <ComboBoxItem Content="Short Lines" />
+                                    <ComboBoxItem Content="Medium Lines" />
+                                    <ComboBoxItem Content="Long Lines" />
+                                </ComboBox>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- 34. Trace Contour -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ActiveFilterMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='TraceContour'}">
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Level" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterTraceContourLevel, StringFormat='{}{0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="0" Maximum="255" Value="{Binding FilterTraceContourLevel, Mode=TwoWay}" />
+                            </StackPanel>
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Edge" Classes="ps-label" />
+                                <ComboBox SelectedIndex="{Binding FilterTraceContourEdge, Mode=TwoWay}" HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="Lower" />
+                                    <ComboBoxItem Content="Upper" />
+                                </ComboBox>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- 35. Water Paper -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ActiveFilterMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='WaterPaper'}">
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Fiber Length" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterWaterPaperFiberLength, StringFormat='{}{0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="1" Maximum="50" Value="{Binding FilterWaterPaperFiberLength, Mode=TwoWay}" />
+                            </StackPanel>
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Brightness" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterWaterPaperBrightness, StringFormat='{}{0}%'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="0" Maximum="100" Value="{Binding FilterWaterPaperBrightness, Mode=TwoWay}" />
+                            </StackPanel>
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Contrast" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterWaterPaperContrast, StringFormat='{}{0}%'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="0" Maximum="100" Value="{Binding FilterWaterPaperContrast, Mode=TwoWay}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- 36. Color to Alpha -->
+                        <StackPanel Spacing="12" IsVisible="{Binding ActiveFilterMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='ColorToAlpha'}">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="Key Color to Remove" Classes="ps-label" />
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" VerticalAlignment="Center">
+                                    <Border Grid.Column="0" Width="36" Height="24"
+                                            Background="{Binding FilterColorToAlphaKeyColor, Converter={StaticResource ColorToBrushConverter}}"
+                                            BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" CornerRadius="2" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterColorToAlphaKeyColor}" VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" />
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
+                                        <Button Classes="ps-btn" Content="White" Padding="6,2" Command="{Binding SetColorToAlphaKeyColorCommand}" CommandParameter="#FFFFFF" />
+                                        <Button Classes="ps-btn" Content="Black" Padding="6,2" Command="{Binding SetColorToAlphaKeyColorCommand}" CommandParameter="#000000" />
+                                        <Button Classes="ps-btn" Content="Foreground" Padding="6,2" Command="{Binding SetColorToAlphaKeyColorCommand}" CommandParameter="Primary" />
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Transparency Threshold" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterColorToAlphaTransparency, StringFormat='{}{0:P0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="0.0" Maximum="1.0" Value="{Binding FilterColorToAlphaTransparency, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Opacity Threshold" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterColorToAlphaOpacity, StringFormat='{}{0:P0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="0.0" Maximum="1.0" Value="{Binding FilterColorToAlphaOpacity, Mode=TwoWay}" />
+                            </StackPanel>
                         </StackPanel>
 
                         <!-- Live Preview Toggle -->

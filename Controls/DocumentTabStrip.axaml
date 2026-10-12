@@ -7,30 +7,49 @@
              Height="26"
              Background="{DynamicResource PsChromeBrush}">
 
-    <Border BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="6,0,0,0">
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom">
-            <!-- Active Document Tab (FryImage Parity: ✕ Untitled-1 @ 102.4% (RGB/8)*) -->
-            <Border Background="{DynamicResource PsOptionsBrush}"
-                    BorderBrush="{DynamicResource PsBorderBrush}"
-                    BorderThickness="1,1,1,0"
-                    CornerRadius="3,3,0,0"
-                    Padding="8,3"
-                    Margin="0,0,2,0">
-                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                    <TextBlock FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center">
-                        <TextBlock.Text>
-                            <MultiBinding StringFormat="{}{0} @ {1:0.#}% (RGB/8)*">
-                                <Binding Path="DocumentTitle" />
-                                <Binding Path="ZoomPercent" />
-                            </MultiBinding>
-                        </TextBlock.Text>
-                    </TextBlock>
-                    <Button Classes="ps-opt-btn" Width="14" Height="14" Padding="0"
-                            Command="{Binding CloseOverlayCommand}" ToolTip.Tip="Close Document">
-                        <materialIcons:MaterialIcon Kind="Close" Width="10" Height="10" Foreground="{DynamicResource PsTextDimBrush}" />
-                    </Button>
-                </StackPanel>
-            </Border>
-        </StackPanel>
+    <Border BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="4,0,4,0">
+        <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Bottom">
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Bottom">
+                <!-- Active Document Tab (Photoshop Parity: ✕ Untitled-1 @ 102.4% (RGB/8)*) -->
+                <Border Background="{DynamicResource PsOptionsBrush}"
+                        BorderBrush="{DynamicResource PsBorderBrush}"
+                        BorderThickness="1,1,1,0"
+                        CornerRadius="3,3,0,0"
+                        Padding="8,4"
+                        Margin="0,0,2,0">
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <!-- Tab Close ✕ Button on the LEFT -->
+                        <Button Classes="ps-opt-btn" Width="14" Height="14" Padding="0"
+                                Command="{Binding CloseOverlayCommand}" ToolTip.Tip="Close Document (Ctrl+W)">
+                            <materialIcons:MaterialIcon Kind="Close" Width="10" Height="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                        </Button>
+
+                        <!-- Document Title Readout -->
+                        <TextBlock FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center">
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="{}{0} @ {1:0.#}% (RGB/8)*">
+                                    <Binding Path="DocumentTitle" />
+                                    <Binding Path="ZoomPercent" />
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
+                <!-- New Document Tab Button (+) -->
+                <Button Classes="ps-opt-btn" Width="18" Height="18" Padding="0" Margin="2,0,0,3"
+                        Command="{Binding OpenNewDocumentDialogCommand}" ToolTip.Tip="New Document (Ctrl+N)">
+                    <materialIcons:MaterialIcon Kind="Plus" Width="11" Height="11" Foreground="{DynamicResource PsTextDimBrush}" />
+                </Button>
+            </StackPanel>
+
+            <!-- Right Spacer / Search Action -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <Button Classes="ps-opt-btn" Width="18" Height="18" Padding="0"
+                        Command="{Binding ToggleCommandPaletteCommand}" ToolTip.Tip="Search / Command Palette (Ctrl+K)">
+                    <materialIcons:MaterialIcon Kind="Magnify" Width="11" Height="11" Foreground="{DynamicResource PsTextDimBrush}" />
+                </Button>
+            </StackPanel>
+        </Grid>
     </Border>
 </UserControl>

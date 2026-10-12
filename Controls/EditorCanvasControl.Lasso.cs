@@ -221,6 +221,7 @@ public partial class EditorCanvasControl
             FillPolygonIntoQuickMask(polygon);
         }
 
+        _lastCompletedLassoPolygon = polygon.ToList();
         LassoSelectionCompleted?.Invoke(polygon);
 
         _isLassoActive = false;
@@ -229,6 +230,9 @@ public partial class EditorCanvasControl
         _magneticCostMap = null;
         InvalidateVisual();
     }
+
+    private List<Point>? _lastCompletedLassoPolygon;
+    public IReadOnlyList<Point>? GetActiveSelectionPolygon() => _lastCompletedLassoPolygon;
 
     private void EnsureMagneticCostMap(Point startPt)
     {

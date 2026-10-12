@@ -1844,4 +1844,527 @@ public static partial class ImageAdjustmentEngine
     }
 
     #endregion
+
+    #region Stylize & Optical Filters: Wind, Diffuse, Extrude, Tiles, Fibers, ZigZag, Shear, Mezzotint, TraceContour, WaterPaper
+
+    /// <summary>
+    /// Applies Photoshop-comparable Wind filter (Wind, Blast, Stagger from Left/Right).
+    /// </summary>
+    public static byte[] ApplyWind(byte[] bgra, int width, int height, int direction, int method, int strength = 20)
+    {
+        byte[] result = (byte[])bgra.Clone();
+        int str = Math.Clamp(strength, 1, 100);
+        bool fromRight = direction == 1;
+
+        Parallel.For(0, height, y =>
+        {
+            int row = y * width * 4;
+            uint randState = (uint)(y * 19349663 + 1);
+
+            int startX = fromRight ? width - 2 : 1;
+            int endX = fromRight ? 0 : width - 1;
+            int step = fromRight ? -1 : 1;
+
+            int activeStreak = 0;
+            byte streakB = 0, streakG = 0, streakR = 0;
+
+            for (int x = startX; fromRight ? x >= endX : x <= endX; x += step)
+            {
+                int currIdx = row + x * 4;
+                int prevIdx = row + (x - step) * 4;
+
+                int lumCurr = (bgra[currIdx] + bgra[currIdx + 1] * 2 + bgra[currIdx + 2]) / 4;
+                int lumPrev = (bgra[prevIdx] + bgra[prevIdx + 1] * 2 + bgra[prevIdx + 2]) / 4;
+                int diff = Math.Abs(lumCurr - lumPrev);
+
+                randState = randState * 1664525u + 1013904223u;
+                int rVal = (int)(randState >> 24) % 100;
+
+                if (diff > 18 && rVal < 45)
+                {
+                    // Trigger a wind streak
+                    activeStreak = method switch
+                    {
+                        1 => (int)(str * 1.8 + (rVal % 15)), // Blast
+                        2 => (int)(str * 0.9 + ((x % 3 == 0) ? str : 0)), // Stagger
+                        _ => (int)(str + (rVal % 10)) // Standard Wind
+                    };
+                    streakB = bgra[currIdx];
+                    streakG = bgra[currIdx + 1];
+                    streakR = bgra[currIdx + 2];
+                }
+
+                if (activeStreak > 0)
+                {
+                    float decay = activeStreak / (float)(str * 2.0);
+                    decay = Math.Clamp(decay, 0.0f, 1.0f);
+                    result[currIdx] = (byte)Math.Clamp(result[currIdx] * (1.0f - decay) + streakB * decay, 0, 255);
+                    result[currIdx + 1] = (byte)Math.Clamp(result[currIdx + 1] * (1.0f - decay) + streakG * decay, 0, 255);
+                    result[currIdx + 2] = (byte)Math.Clamp(result[currIdx + 2] * (1.0f - decay) + streakR * decay, 0, 255);
+                    activeStreak--;
+                }
+            }
+        });
+
+        return result;
+    }
+
+    /// <summary>
+    /// Applies Photoshop-comparable Diffuse filter (Normal, Darken Only, Lighten Only, Anisotropic).
+    /// </summary>
+    public static byte[] ApplyDiffuse(byte[] bgra, int width, int height, int mode, int radius = 3)
+    {
+        byte[] result = new byte[bgra.Length];
+        int rad = Math.Clamp(radius, 1, 15);
+
+        Parallel.For(0, height, y =>
+        {
+            uint seed = (uint)(y * 2654435761u);
+            for (int x = 0; x < width; x++)
+            {
+                int dstIdx = (y * width + x) * 4;
+                int origB = bgra[dstIdx];
+                int origG = bgra[dstIdx + 1];
+                int origR = bgra[dstIdx + 2];
+                int origLum = (origB + origG * 2 + origR) / 4;
+
+                int bestIdx = dstIdx;
+                int bestLum = origLum;
+
+                // Examine neighbor candidates
+                for (int attempt = 0; attempt < (mode == 0 ? 1 : 6); attempt++)
+                {
+                    seed = seed * 1664525u + 1013904223u;
+                    int ox = (int)((seed >> 16) % (uint)(rad * 2 + 1)) - rad;
+                    seed = seed * 1664525u + 1013904223u;
+                    int oy = (int)((seed >> 16) % (uint)(rad * 2 + 1)) - rad;
+
+                    int nx = Math.Clamp(x + ox, 0, width - 1);
+                    int ny = Math.Clamp(y + oy, 0, height - 1);
+                    int nIdx = (ny * width + nx) * 4;
+                    int nLum = (bgra[nIdx] + bgra[nIdx + 1] * 2 + bgra[nIdx + 2]) / 4;
+
+                    if (mode == 0) // Normal
+                    {
+                        bestIdx = nIdx;
+                        break;
+                    }
+                    else if (mode == 1) // Darken Only
+                    {
+                        if (nLum < bestLum)
+                        {
+                            bestLum = nLum;
+                            bestIdx = nIdx;
+                        }
+                    }
+                    else if (mode == 2) // Lighten Only
+                    {
+                        if (nLum > bestLum)
+                        {
+                            bestLum = nLum;
+                            bestIdx = nIdx;
+                        }
+                    }
+                    else if (mode == 3) // Anisotropic
+                    {
+                        bestIdx = nIdx;
+                    }
+                }
+
+                result[dstIdx] = bgra[bestIdx];
+                result[dstIdx + 1] = bgra[bestIdx + 1];
+                result[dstIdx + 2] = bgra[bestIdx + 2];
+                result[dstIdx + 3] = bgra[dstIdx + 3];
+            }
+        });
+
+        return result;
+    }
+
+    /// <summary>
+    /// Applies Photoshop-comparable Extrude filter (3D Blocks / Pyramids).
+    /// </summary>
+    public static byte[] ApplyExtrude(byte[] bgra, int width, int height, int type, int size = 16, int depth = 30)
+    {
+        byte[] result = new byte[bgra.Length];
+        int s = Math.Clamp(size, 4, 128);
+        int maxD = Math.Clamp(depth, 1, 100);
+
+        // Precompute tile average colors
+        int tilesX = (width + s - 1) / s;
+        int tilesY = (height + s - 1) / s;
+
+        Parallel.For(0, tilesY, ty =>
+        {
+            for (int tx = 0; tx < tilesX; tx++)
+            {
+                int startX = tx * s;
+                int startY = ty * s;
+                int endX = Math.Min(startX + s, width);
+                int endY = Math.Min(startY + s, height);
+
+                long sumB = 0, sumG = 0, sumR = 0, count = 0;
+                for (int y = startY; y < endY; y++)
+                {
+                    int row = y * width * 4;
+                    for (int x = startX; x < endX; x++)
+                    {
+                        int idx = row + x * 4;
+                        sumB += bgra[idx];
+                        sumG += bgra[idx + 1];
+                        sumR += bgra[idx + 2];
+                        count++;
+                    }
+                }
+                if (count == 0) continue;
+
+                byte avgB = (byte)(sumB / count);
+                byte avgG = (byte)(sumG / count);
+                byte avgR = (byte)(sumR / count);
+                int avgLum = (avgB + avgG * 2 + avgR) / 4;
+                int extrudeAmount = (int)((avgLum / 255.0) * maxD * 0.4);
+
+                // Render block face and 3D bevel shading
+                for (int y = startY; y < endY; y++)
+                {
+                    int row = y * width * 4;
+                    for (int x = startX; x < endX; x++)
+                    {
+                        int idx = row + x * 4;
+                        int lx = x - startX;
+                        int ly = y - startY;
+
+                        float shade = 1.0f;
+                        if (type == 0) // Blocks: Top-left light, bottom-right shadow
+                        {
+                            if (lx < 2 || ly < 2) shade = 1.25f; // Highlight
+                            else if (lx >= (endX - startX - 2) || ly >= (endY - startY - 2)) shade = 0.75f; // Shadow
+                        }
+                        else // Pyramids
+                        {
+                            int distToEdge = Math.Min(Math.Min(lx, endX - startX - lx), Math.Min(ly, endY - startY - ly));
+                            shade = 0.6f + (distToEdge / (float)(s / 2)) * 0.6f;
+                            if (lx < ly) shade *= 0.85f;
+                        }
+
+                        result[idx] = (byte)Math.Clamp(avgB * shade, 0, 255);
+                        result[idx + 1] = (byte)Math.Clamp(avgG * shade, 0, 255);
+                        result[idx + 2] = (byte)Math.Clamp(avgR * shade, 0, 255);
+                        result[idx + 3] = 255;
+                    }
+                }
+            }
+        });
+
+        return result;
+    }
+
+    /// <summary>
+    /// Applies Photoshop-comparable Tiles filter (regular grid displacement).
+    /// </summary>
+    public static byte[] ApplyTiles(byte[] bgra, int width, int height, int numberOfTiles = 10, int maxOffset = 20, int fillMode = 0)
+    {
+        byte[] result = new byte[bgra.Length];
+        int num = Math.Clamp(numberOfTiles, 2, 80);
+        int tileW = Math.Max(2, width / num);
+        int tileH = Math.Max(2, height / num);
+        int maxOff = Math.Clamp(maxOffset, 1, 100);
+
+        // Precompute tile offsets
+        int nx = (width + tileW - 1) / tileW;
+        int ny = (height + tileH - 1) / tileH;
+        var offsets = new (int Ox, int Oy)[nx, ny];
+
+        for (int ty = 0; ty < ny; ty++)
+        {
+            for (int tx = 0; tx < nx; tx++)
+            {
+                uint seed = (uint)(tx * 73856093 ^ ty * 19349663);
+                int ox = (int)(((seed >> 16) % (uint)(maxOff * 2 + 1)) - maxOff);
+                seed = seed * 1664525u + 1013904223u;
+                int oy = (int)(((seed >> 16) % (uint)(maxOff * 2 + 1)) - maxOff);
+                offsets[tx, ty] = (ox, oy);
+            }
+        }
+
+        Parallel.For(0, height, y =>
+        {
+            int ty = Math.Clamp(y / tileH, 0, ny - 1);
+            int row = y * width * 4;
+
+            for (int x = 0; x < width; x++)
+            {
+                int tx = Math.Clamp(x / tileW, 0, nx - 1);
+                var (ox, oy) = offsets[tx, ty];
+
+                int srcX = x + ox;
+                int srcY = y + oy;
+                int dstIdx = row + x * 4;
+
+                if (srcX >= 0 && srcX < width && srcY >= 0 && srcY < height)
+                {
+                    int srcIdx = (srcY * width + srcX) * 4;
+                    result[dstIdx] = bgra[srcIdx];
+                    result[dstIdx + 1] = bgra[srcIdx + 1];
+                    result[dstIdx + 2] = bgra[srcIdx + 2];
+                    result[dstIdx + 3] = bgra[srcIdx + 3];
+                }
+                else
+                {
+                    // Fill grout area
+                    if (fillMode == 0) // Inverse Image
+                    {
+                        result[dstIdx] = (byte)(255 - bgra[dstIdx]);
+                        result[dstIdx + 1] = (byte)(255 - bgra[dstIdx + 1]);
+                        result[dstIdx + 2] = (byte)(255 - bgra[dstIdx + 2]);
+                    }
+                    else if (fillMode == 1) // Background Color (White)
+                    {
+                        result[dstIdx] = 255;
+                        result[dstIdx + 1] = 255;
+                        result[dstIdx + 2] = 255;
+                    }
+                    else // Foreground Color (Black)
+                    {
+                        result[dstIdx] = 0;
+                        result[dstIdx + 1] = 0;
+                        result[dstIdx + 2] = 0;
+                    }
+                    result[dstIdx + 3] = 255;
+                }
+            }
+        });
+
+        return result;
+    }
+
+    /// <summary>
+    /// Applies Photoshop-comparable Fibers filter (procedural organic directional texture generator).
+    /// </summary>
+    public static byte[] ApplyFibers(int width, int height, int variance = 16, int strength = 4, uint seed = 12345)
+    {
+        byte[] result = new byte[width * height * 4];
+        double varFactor = Math.Clamp(variance, 1, 64) * 0.15;
+        double strFactor = Math.Clamp(strength, 1, 64) * 0.08;
+
+        Parallel.For(0, height, y =>
+        {
+            int row = y * width * 4;
+            for (int x = 0; x < width; x++)
+            {
+                // Directional 1D turbulence with high vertical stretch
+                double noise = FractalTurbulence(x * 0.05 * varFactor, y * 0.003 * strFactor, 4, seed);
+                byte val = (byte)Math.Clamp(Math.Round(noise * 255.0), 0, 255);
+
+                int idx = row + x * 4;
+                result[idx] = val;
+                result[idx + 1] = val;
+                result[idx + 2] = val;
+                result[idx + 3] = 255;
+            }
+        });
+
+        return result;
+    }
+
+    /// <summary>
+    /// Applies Photoshop-comparable ZigZag filter (concentric radial sine water ripples).
+    /// </summary>
+    public static byte[] ApplyZigZag(byte[] bgra, int width, int height, int amount = 25, int ridges = 5, int style = 0)
+    {
+        byte[] result = new byte[bgra.Length];
+        double cx = width / 2.0;
+        double cy = height / 2.0;
+        double maxRadius = Math.Sqrt(cx * cx + cy * cy);
+        double amt = amount * 0.5;
+        double numRidges = Math.Clamp(ridges, 1, 20);
+
+        Parallel.For(0, height, y =>
+        {
+            int row = y * width * 4;
+            double dy = y - cy;
+
+            for (int x = 0; x < width; x++)
+            {
+                double dx = x - cx;
+                double r = Math.Sqrt(dx * dx + dy * dy);
+                double theta = Math.Atan2(dy, dx);
+
+                double factor = r / maxRadius;
+                double wave = Math.Sin(factor * numRidges * Math.PI * 2.0) * amt * (1.0 - factor * 0.5);
+
+                double sampleX, sampleY;
+                if (style == 0) // Pond Ripples (radial)
+                {
+                    double newR = r + wave;
+                    sampleX = cx + newR * Math.Cos(theta);
+                    sampleY = cy + newR * Math.Sin(theta);
+                }
+                else if (style == 1) // Out From Center
+                {
+                    double newR = r + Math.Abs(wave);
+                    sampleX = cx + newR * Math.Cos(theta);
+                    sampleY = cy + newR * Math.Sin(theta);
+                }
+                else // Around Center (rotational twist)
+                {
+                    double newTheta = theta + (wave / Math.Max(1.0, r)) * 0.2;
+                    sampleX = cx + r * Math.Cos(newTheta);
+                    sampleY = cy + r * Math.Sin(newTheta);
+                }
+
+                SampleBgraBilinear(bgra, width, height, sampleX, sampleY, out double b, out double g, out double rC, out double a);
+
+                int idx = row + x * 4;
+                result[idx] = (byte)Math.Clamp(b, 0, 255);
+                result[idx + 1] = (byte)Math.Clamp(g, 0, 255);
+                result[idx + 2] = (byte)Math.Clamp(rC, 0, 255);
+                result[idx + 3] = (byte)Math.Clamp(a, 0, 255);
+            }
+        });
+
+        return result;
+    }
+
+    /// <summary>
+    /// Applies Photoshop-comparable Shear filter (curved horizontal coordinate warp).
+    /// </summary>
+    public static byte[] ApplyShear(byte[] bgra, int width, int height, double amplitude = 30.0)
+    {
+        byte[] result = new byte[bgra.Length];
+
+        Parallel.For(0, height, y =>
+        {
+            int row = y * width * 4;
+            double ny = y / (double)height;
+            // Cubic sinusoidal shear wave across vertical axis
+            double shiftX = Math.Sin(ny * Math.PI * 2.0) * amplitude;
+
+            for (int x = 0; x < width; x++)
+            {
+                double sampleX = x - shiftX;
+                SampleBgraBilinear(bgra, width, height, sampleX, y, out double b, out double g, out double r, out double a);
+
+                int idx = row + x * 4;
+                result[idx] = (byte)Math.Clamp(b, 0, 255);
+                result[idx + 1] = (byte)Math.Clamp(g, 0, 255);
+                result[idx + 2] = (byte)Math.Clamp(r, 0, 255);
+                result[idx + 3] = (byte)Math.Clamp(a, 0, 255);
+            }
+        });
+
+        return result;
+    }
+
+    /// <summary>
+    /// Applies Photoshop-comparable Mezzotint filter (grain/dot engraving simulation).
+    /// </summary>
+    public static byte[] ApplyMezzotint(byte[] bgra, int width, int height, int type = 0)
+    {
+        byte[] result = new byte[bgra.Length];
+
+        Parallel.For(0, height, y =>
+        {
+            int row = y * width * 4;
+            uint seed = (uint)(y * 73856093 + 1);
+
+            for (int x = 0; x < width; x++)
+            {
+                int idx = row + x * 4;
+                int lum = (bgra[idx] + bgra[idx + 1] * 2 + bgra[idx + 2]) / 4;
+
+                seed = seed * 1664525u + 1013904223u;
+                int rVal = (int)(seed >> 24) % 256;
+
+                // Thresholding based on pattern type
+                bool isLight = type switch
+                {
+                    0 => lum > (rVal * 0.85 + 20), // Fine Dots
+                    1 => lum > (rVal * 0.70 + 40), // Medium Dots
+                    2 => lum > (rVal * 0.50 + 60), // Grainy Dots
+                    3 => lum > (rVal * 0.90 + 10), // Coarse Dots
+                    4 => ((x / 3) % 2 == 0) ? lum > 110 : lum > 140, // Short Lines
+                    5 => ((x / 6) % 2 == 0) ? lum > 100 : lum > 150, // Medium Lines
+                    _ => ((x / 10) % 2 == 0) ? lum > 90 : lum > 160  // Long Lines
+                };
+
+                byte c = isLight ? (byte)255 : (byte)0;
+                result[idx] = c;
+                result[idx + 1] = c;
+                result[idx + 2] = c;
+                result[idx + 3] = bgra[idx + 3];
+            }
+        });
+
+        return result;
+    }
+
+    /// <summary>
+    /// Applies Photoshop-comparable Trace Contour filter (ISO threshold luminance isoline tracking).
+    /// </summary>
+    public static byte[] ApplyTraceContour(byte[] bgra, int width, int height, int level = 128, bool upperEdge = true)
+    {
+        byte[] result = new byte[bgra.Length];
+        Array.Fill(result, (byte)255); // White background
+        int lvl = Math.Clamp(level, 0, 255);
+
+        Parallel.For(0, height - 1, y =>
+        {
+            int row = y * width * 4;
+            int nextRow = (y + 1) * width * 4;
+
+            for (int x = 0; x < width - 1; x++)
+            {
+                int idx = row + x * 4;
+                int lum = (bgra[idx] + bgra[idx + 1] * 2 + bgra[idx + 2]) / 4;
+                int lumRight = (bgra[idx + 4] + bgra[idx + 5] * 2 + bgra[idx + 6]) / 4;
+                int lumDown = (bgra[nextRow + x * 4] + bgra[nextRow + x * 4 + 1] * 2 + bgra[nextRow + x * 4 + 2]) / 4;
+
+                bool isEdge = upperEdge
+                    ? ((lum >= lvl && lumRight < lvl) || (lum >= lvl && lumDown < lvl))
+                    : ((lum <= lvl && lumRight > lvl) || (lum <= lvl && lumDown > lvl));
+
+                if (isEdge)
+                {
+                    result[idx] = 0;
+                    result[idx + 1] = 0;
+                    result[idx + 2] = 0;
+                }
+            }
+        });
+
+        return result;
+    }
+
+    /// <summary>
+    /// Applies Photoshop-comparable Water Paper filter (watercolor bleeding along fibers).
+    /// </summary>
+    public static byte[] ApplyWaterPaper(byte[] bgra, int width, int height, int fiberLength = 15, int brightness = 50, int contrast = 50)
+    {
+        // 1. First apply horizontal/vertical fiber diffusion
+        byte[] diffused = ApplyWind(bgra, width, height, 0, 0, fiberLength);
+
+        // 2. Adjust brightness and contrast
+        int bAdj = (brightness - 50) * 2;
+        int cAdj = (contrast - 50) * 2;
+        byte[] adjusted = ApplyBrightnessContrast(diffused, bAdj, cAdj);
+
+        // 3. Modulate with subtle paper fiber texture
+        byte[] fibers = ApplyFibers(width, height, 12, 6, 8888);
+        byte[] result = new byte[bgra.Length];
+
+        Parallel.For(0, bgra.Length / 4, p =>
+        {
+            int idx = p * 4;
+            float f = (fibers[idx] / 255.0f) * 0.25f + 0.85f;
+            result[idx] = (byte)Math.Clamp(adjusted[idx] * f, 0, 255);
+            result[idx + 1] = (byte)Math.Clamp(adjusted[idx + 1] * f, 0, 255);
+            result[idx + 2] = (byte)Math.Clamp(adjusted[idx + 2] * f, 0, 255);
+            result[idx + 3] = bgra[idx + 3];
+        });
+
+        return result;
+    }
+
+    #endregion
 }

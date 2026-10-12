@@ -155,6 +155,38 @@ public static class PsdCodec
                     int pad = (4 - (nameTotal % 4)) % 4;
                     if (pad > 0) reader.ReadBytes(pad);
 
+                    // Read tagged blocks if any in remaining extra data
+                    while (stream.Position + 12 <= extraStart + extraLen)
+                    {
+                        byte[] tagSig = reader.ReadBytes(4);
+                        if (!SpanEquals(tagSig, Signature8Bim) && !SpanEquals(tagSig, "8B64"u8.ToArray()))
+                        {
+                            stream.Position -= 3;
+                            continue;
+                        }
+
+                        byte[] tagKeyBytes = reader.ReadBytes(4);
+                        string tagKey = Encoding.ASCII.GetString(tagKeyBytes);
+                        uint tagLen = reader.ReadUInt32();
+                        long tagDataStart = stream.Position;
+
+                        if (tagKey == "luni" && tagLen >= 4)
+                        {
+                            uint uCharCount = reader.ReadUInt32();
+                            int byteCount = (int)Math.Min(uCharCount * 2, tagLen - 4);
+                            if (byteCount > 0)
+                            {
+                                byte[] uBytes = reader.ReadBytes(byteCount);
+                                string uName = Encoding.BigEndianUnicode.GetString(uBytes).TrimEnd('\0');
+                                if (!string.IsNullOrWhiteSpace(uName)) layer.Name = uName;
+                            }
+                        }
+
+                        long readSoFar = stream.Position - tagDataStart;
+                        if (readSoFar < tagLen) reader.ReadBytes((int)(tagLen - readSoFar));
+                        if ((tagLen % 2) != 0 && stream.Position < extraStart + extraLen) reader.ReadByte();
+                    }
+
                     // Skip any remaining extra data
                     long extraRead = stream.Position - extraStart;
                     if (extraRead < extraLen)
@@ -439,6 +471,22 @@ public static class PsdCodec
                 int pad = (4 - (nTotal % 4)) % 4;
                 if (pad > 0) extraWriter.Write(new byte[pad]);
 
+                // Tagged Block: luni (Unicode Layer Name for Photoshop exchange)
+                extraWriter.Write(Signature8Bim);
+                extraWriter.Write("luni"u8.ToArray());
+                byte[] uniBytes = Encoding.BigEndianUnicode.GetBytes(layer.Name + "\0");
+                uint uniBlockLen = (uint)(4 + uniBytes.Length);
+                extraWriter.Write(uniBlockLen);
+                extraWriter.Write((uint)(layer.Name.Length + 1));
+                extraWriter.Write(uniBytes);
+                if ((uniBlockLen % 2) != 0) extraWriter.Write((byte)0);
+
+                // Tagged Block: lyid (Layer ID)
+                extraWriter.Write(Signature8Bim);
+                extraWriter.Write("lyid"u8.ToArray());
+                extraWriter.Write((uint)4);
+                extraWriter.Write((uint)(layers.IndexOf(layer) + 1));
+
                 byte[] extraBytes = extraMs.ToArray();
                 layerWriter.Write((uint)extraBytes.Length);
                 layerWriter.Write(extraBytes);
@@ -595,7 +643,7 @@ public static class PsdCodec
         return written;
     }
 
-    private static bool SpanEquals(byte[] a, byte[] b)
+    internal static bool SpanEquals(byte[] a, byte[] b)
     {
         if (a.Length != b.Length) return false;
         for (int i = 0; i < a.Length; i++)

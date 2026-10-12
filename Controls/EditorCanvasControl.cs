@@ -105,6 +105,18 @@ public partial class EditorCanvasControl : Control
     public event Action? CommandPaletteRequested;
     public event Action? BrushSettingsRequested;
 
+    public event Action<double>? ViewportRotationAngleChanged;
+    public event Action<Point, Point>? RulerMeasurementChanged;
+    public event Action<Point, Point>? RulerMeasurementCompleted;
+
+    private bool _isRotatingView;
+    private Point _rotateViewStartPointer;
+    private double _rotateViewStartAngle;
+
+    private bool _isRulerMeasuring;
+    private Point _rulerStart;
+    private Point _rulerEnd;
+
     // Crop mode
     private bool _isCropModeActive;
     private Rect _cropPreviewRect;
@@ -311,10 +323,32 @@ public partial class EditorCanvasControl : Control
             "eyedropper" => new Cursor(StandardCursorType.Cross),
             "marquee" or "lasso" or "wand" => new Cursor(StandardCursorType.Cross),
             "zoom" => new Cursor(StandardCursorType.Cross),
-            "hand" => new Cursor(StandardCursorType.Hand),
+            "hand" or "rotateview" => new Cursor(StandardCursorType.Hand),
+            "ruler" => new Cursor(StandardCursorType.Cross),
+            "redeye" or "patch" => new Cursor(StandardCursorType.Cross),
             "rect" or "ellipse" or "arrow" or "triangle" or "star" or "polygon" or "line" => new Cursor(StandardCursorType.Cross),
             _ => new Cursor(StandardCursorType.Arrow)
         };
+    }
+
+    public static readonly DirectProperty<EditorCanvasControl, double> ViewportRotationAngleProperty =
+        AvaloniaProperty.RegisterDirect<EditorCanvasControl, double>(
+            nameof(ViewportRotationAngle),
+            o => o.ViewportRotationAngle,
+            (o, v) => o.ViewportRotationAngle = v);
+
+    private double _viewportRotationAngle = 0.0;
+    public double ViewportRotationAngle
+    {
+        get => _viewportRotationAngle;
+        set
+        {
+            if (SetAndRaise(ViewportRotationAngleProperty, ref _viewportRotationAngle, value))
+            {
+                ViewportRotationAngleChanged?.Invoke(value);
+                InvalidateVisual();
+            }
+        }
     }
 
     // ── Multi-select ───────────────────────────────────────────────────────
@@ -521,7 +555,17 @@ public partial class EditorCanvasControl : Control
     {
         double offsetX = (Bounds.Width - _logicalWidth * _zoom) / 2 + _panOffset.X;
         double offsetY = (Bounds.Height - _logicalHeight * _zoom) / 2 + _panOffset.Y;
-        return new Matrix(_zoom, 0, 0, _zoom, offsetX, offsetY);
+        var scaleAndTranslate = new Matrix(_zoom, 0, 0, _zoom, offsetX, offsetY);
+        if (_viewportRotationAngle != 0.0)
+        {
+            Point screenCenter = new Point(Bounds.Width / 2 + _panOffset.X, Bounds.Height / 2 + _panOffset.Y);
+            double rad = _viewportRotationAngle * Math.PI / 180.0;
+            var rot = Matrix.CreateTranslation(-screenCenter.X, -screenCenter.Y)
+                    * Matrix.CreateRotation(rad)
+                    * Matrix.CreateTranslation(screenCenter.X, screenCenter.Y);
+            return scaleAndTranslate * rot;
+        }
+        return scaleAndTranslate;
     }
 
     private Point ScreenToCanvas(Point screenPt)
@@ -606,7 +650,7 @@ public partial class EditorCanvasControl : Control
             }
             else if (_selection.Count == 1)
             {
-                if (ShowTransformControls)
+                if (ShowTransformControls && ActiveToolMode == "select")
                 {
                     DrawSelectionHandles(dc, _selection[0], _zoom);
                     DrawRotationHandle(dc, _selection[0].Bounds, _selection[0].RotationDegrees, _zoom);
@@ -614,7 +658,7 @@ public partial class EditorCanvasControl : Control
             }
             else if (_selection.Count > 1)
             {
-                if (ShowTransformControls)
+                if (ShowTransformControls && ActiveToolMode == "select")
                 {
                     DrawMultiSelectionOutline(dc, _selection, _zoom);
                     var groupBounds = ComputeGroupBounds(_selection);
@@ -724,7 +768,7 @@ public partial class EditorCanvasControl : Control
 
             // Draw brush tip cursor outline under mouse pointer
             if (_cursorCanvasPos is { } cursorPt
-                && (ActiveToolMode is "brush" or "pencil" or "eraser" or "clonestamp" or "healing" or "historybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" or "bgeraser" or "colorreplacement")
+                && (ActiveToolMode is "brush" or "pencil" or "eraser" or "clonestamp" or "healing" or "historybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" or "bgeraser" or "colorreplacement" or "redeye" or "patch")
                 && !_isPanning && !_spaceHeld)
             {
                 DrawBrushCursor(dc, cursorPt, BrushThickness, BrushRoundness, BrushAngle, _zoom);
@@ -752,11 +796,22 @@ public partial class EditorCanvasControl : Control
             {
                 DrawAlignmentGuides(dc, _activeGuides, _zoom);
             }
+
+            if (ActiveToolMode == "ruler" && (_isRulerMeasuring || _rulerStart != _rulerEnd))
+            {
+                DrawRulerOverlay(dc, _rulerStart, _rulerEnd, _zoom);
+            }
         }
 
         // Active Guide & Transform Floating HUD Pill Badges (Screen space)
         DrawActiveGuideHudBadge(dc);
         DrawTransformHudBadge(dc);
+
+        // Rotate View On-Canvas Compass HUD (Screen space, top-right)
+        if (_viewportRotationAngle != 0.0 || ActiveToolMode == "rotateview")
+        {
+            DrawRotateViewCompass(dc);
+        }
 
         // Eyedropper Magnifier Loupe (Screen-space floating HUD)
         if (ActiveToolMode == "eyedropper" && _cursorCanvasPos is { } eyeCursor && !_isPanning && !_spaceHeld)
@@ -787,8 +842,35 @@ public partial class EditorCanvasControl : Control
         {
             dc.DrawRectangle(new SolidColorBrush(background), null, canvasRect);
         }
-        foreach (var el in elements.OrderBy(e => e.ZIndex))
+        var orderedElements = elements.OrderBy(e => e.ZIndex).ToList();
+        for (int i = 0; i < orderedElements.Count; i++)
         {
+            var el = orderedElements[i];
+            if (!el.IsVisible) continue;
+
+            if (el.IsClippingMask && i > 0)
+            {
+                // Find base layer below
+                CanvasElement? baseEl = null;
+                for (int b = i - 1; b >= 0; b--)
+                {
+                    if (!orderedElements[b].IsClippingMask)
+                    {
+                        baseEl = orderedElements[b];
+                        break;
+                    }
+                }
+
+                if (baseEl != null)
+                {
+                    using (dc.PushClip(baseEl.Bounds))
+                    {
+                        DrawElement(dc, el);
+                    }
+                    continue;
+                }
+            }
+
             DrawElement(dc, el);
         }
     }
@@ -831,6 +913,9 @@ public partial class EditorCanvasControl : Control
 
     private static void DrawElementWithEffects(DrawingContext dc, CanvasElement el)
     {
+        var bodyRect = new Rect(el.X, el.Y, el.Width, el.Height);
+        double cornerRadius = (el is RectangleElement r) ? r.CornerRadius : (el is EllipseElement ? Math.Min(el.Width, el.Height) / 2 : 0);
+
         // 1. Drop Shadow Effect (Rendered under the element)
         if (el.Effects.DropShadow is { IsEnabled: true } shadow)
         {
@@ -839,7 +924,6 @@ public partial class EditorCanvasControl : Control
             double dy = shadow.Distance * Math.Sin(rad);
             byte sa = (byte)Math.Clamp((int)(shadow.Opacity * shadow.Color.A), 0, 255);
 
-            // Multi-pass soft tent blur for the drop shadow
             int passes = Math.Max(1, (int)(shadow.Size / 3));
             double spreadRadius = shadow.Spread;
             for (int p = 1; p <= passes; p++)
@@ -853,7 +937,7 @@ public partial class EditorCanvasControl : Control
                     el.Width + blurStep + spreadRadius * 2,
                     el.Height + blurStep + spreadRadius * 2);
 
-                double radius = (el is RectangleElement r) ? r.CornerRadius : (el is EllipseElement ? Math.Min(shadowRect.Width, shadowRect.Height) / 2 : 4);
+                double radius = (el is RectangleElement rect) ? rect.CornerRadius : (el is EllipseElement ? Math.Min(shadowRect.Width, shadowRect.Height) / 2 : 4);
                 dc.DrawRectangle(new SolidColorBrush(passColor), null, shadowRect, radius, radius);
             }
         }
@@ -874,7 +958,7 @@ public partial class EditorCanvasControl : Control
                     el.Width + blurStep,
                     el.Height + blurStep);
 
-                double radius = (el is RectangleElement r) ? r.CornerRadius + blurStep / 2 : (el is EllipseElement ? Math.Min(glowRect.Width, glowRect.Height) / 2 : 4);
+                double radius = (el is RectangleElement rect) ? rect.CornerRadius + blurStep / 2 : (el is EllipseElement ? Math.Min(glowRect.Width, glowRect.Height) / 2 : 4);
                 dc.DrawRectangle(new SolidColorBrush(glowColor), null, glowRect, radius, radius);
             }
         }
@@ -892,17 +976,119 @@ public partial class EditorCanvasControl : Control
             el.Draw(dc);
         }
 
-        // 4. Color Overlay Effect
+        // 4. Bevel & Emboss Effect (Highlight & Shadow 3D relief)
+        if (el.Effects.BevelEmboss is { IsEnabled: true } bevel)
+        {
+            double rad = bevel.Angle * Math.PI / 180.0;
+            double dx = bevel.Size * Math.Cos(rad) * 0.5;
+            double dy = bevel.Size * Math.Sin(rad) * 0.5;
+
+            byte ha = (byte)Math.Clamp((int)(bevel.HighlightOpacity * 255), 0, 255);
+            var hColor = Color.FromArgb(ha, bevel.HighlightColor.R, bevel.HighlightColor.G, bevel.HighlightColor.B);
+            var hRect = new Rect(el.X - dx, el.Y - dy, el.Width, 2 + bevel.Size * 0.5);
+            dc.DrawRectangle(new SolidColorBrush(hColor), null, hRect, cornerRadius, cornerRadius);
+
+            byte sha = (byte)Math.Clamp((int)(bevel.ShadowOpacity * 255), 0, 255);
+            var sColor = Color.FromArgb(sha, bevel.ShadowColor.R, bevel.ShadowColor.G, bevel.ShadowColor.B);
+            var sRect = new Rect(el.X + dx, el.Y + el.Height - 2 - bevel.Size * 0.5 + dy, el.Width, 2 + bevel.Size * 0.5);
+            dc.DrawRectangle(new SolidColorBrush(sColor), null, sRect, cornerRadius, cornerRadius);
+        }
+
+        // 5. Color Overlay Effect
         if (el.Effects.ColorOverlay is { IsEnabled: true } overlay)
         {
             byte oa = (byte)Math.Clamp((int)(overlay.Opacity * overlay.Color.A), 0, 255);
             var overlayColor = Color.FromArgb(oa, overlay.Color.R, overlay.Color.G, overlay.Color.B);
-            var bodyRect = new Rect(el.X, el.Y, el.Width, el.Height);
-            double radius = (el is RectangleElement r) ? r.CornerRadius : (el is EllipseElement ? Math.Min(el.Width, el.Height) / 2 : 0);
-            dc.DrawRectangle(new SolidColorBrush(overlayColor), null, bodyRect, radius, radius);
+            dc.DrawRectangle(new SolidColorBrush(overlayColor), null, bodyRect, cornerRadius, cornerRadius);
         }
 
-        // 5. Layer Stroke Effect
+        // 6. Gradient Overlay Effect
+        if (el.Effects.GradientOverlay is { IsEnabled: true } gradOverlay)
+        {
+            byte startA = (byte)Math.Clamp((int)(gradOverlay.Opacity * gradOverlay.StartColor.A), 0, 255);
+            byte endA = (byte)Math.Clamp((int)(gradOverlay.Opacity * gradOverlay.EndColor.A), 0, 255);
+            var c1 = Color.FromArgb(startA, gradOverlay.StartColor.R, gradOverlay.StartColor.G, gradOverlay.StartColor.B);
+            var c2 = Color.FromArgb(endA, gradOverlay.EndColor.R, gradOverlay.EndColor.G, gradOverlay.EndColor.B);
+
+            var gradBrush = new LinearGradientBrush
+            {
+                StartPoint = new RelativePoint(0.5, 0.0, RelativeUnit.Relative),
+                EndPoint = new RelativePoint(0.5, 1.0, RelativeUnit.Relative),
+                GradientStops = new GradientStops
+                {
+                    new GradientStop(gradOverlay.Reverse ? c2 : c1, 0.0),
+                    new GradientStop(gradOverlay.Reverse ? c1 : c2, 1.0)
+                }
+            };
+            dc.DrawRectangle(gradBrush, null, bodyRect, cornerRadius, cornerRadius);
+        }
+
+        // 7. Pattern Overlay Effect
+        if (el.Effects.PatternOverlay is { IsEnabled: true } patOverlay)
+        {
+            byte pa = (byte)Math.Clamp((int)(patOverlay.Opacity * 40), 0, 255);
+            var patPen = new Pen(new SolidColorBrush(Color.FromArgb(pa, 255, 255, 255)), 1.0);
+            double step = Math.Max(4, 16 * (patOverlay.Scale / 100.0));
+            for (double px = el.X; px < el.X + el.Width; px += step)
+            {
+                dc.DrawLine(patPen, new Point(px, el.Y), new Point(px, el.Y + el.Height));
+            }
+            for (double py = el.Y; py < el.Y + el.Height; py += step)
+            {
+                dc.DrawLine(patPen, new Point(el.X, py), new Point(el.X + el.Width, py));
+            }
+        }
+
+        // 8. Satin Effect (Interior Sheen)
+        if (el.Effects.Satin is { IsEnabled: true } satin)
+        {
+            byte sa = (byte)Math.Clamp((int)(satin.Opacity * 120), 0, 255);
+            var satinBrush = new RadialGradientBrush
+            {
+                Center = new RelativePoint(0.5, 0.5, RelativeUnit.Relative),
+                GradientOrigin = new RelativePoint(0.5, 0.5, RelativeUnit.Relative),
+                RadiusX = new RelativeScalar(0.7, RelativeUnit.Relative),
+                RadiusY = new RelativeScalar(0.7, RelativeUnit.Relative),
+                GradientStops = new GradientStops
+                {
+                    new GradientStop(Color.FromArgb(0, satin.Color.R, satin.Color.G, satin.Color.B), 0.0),
+                    new GradientStop(Color.FromArgb(sa, satin.Color.R, satin.Color.G, satin.Color.B), 0.6),
+                    new GradientStop(Color.FromArgb(0, satin.Color.R, satin.Color.G, satin.Color.B), 1.0)
+                }
+            };
+            dc.DrawRectangle(satinBrush, null, bodyRect, cornerRadius, cornerRadius);
+        }
+
+        // 9. Inner Glow Effect
+        if (el.Effects.InnerGlow is { IsEnabled: true } innerGlow)
+        {
+            byte iga = (byte)Math.Clamp((int)(innerGlow.Opacity * innerGlow.Color.A), 0, 255);
+            int igPasses = Math.Max(2, (int)(innerGlow.Size / 2));
+            for (int p = 1; p <= igPasses; p++)
+            {
+                double inset = p * (innerGlow.Size / igPasses);
+                byte passAlpha = (byte)Math.Max(1, iga / (igPasses * 1.5));
+                var igColor = Color.FromArgb(passAlpha, innerGlow.Color.R, innerGlow.Color.G, innerGlow.Color.B);
+                var igRect = new Rect(el.X + inset / 2, el.Y + inset / 2, Math.Max(0, el.Width - inset), Math.Max(0, el.Height - inset));
+                var igPen = new Pen(new SolidColorBrush(igColor), 1.5);
+                dc.DrawRectangle(null, igPen, igRect, cornerRadius, cornerRadius);
+            }
+        }
+
+        // 10. Inner Shadow Effect
+        if (el.Effects.InnerShadow is { IsEnabled: true } innerShadow)
+        {
+            double rad = innerShadow.Angle * Math.PI / 180.0;
+            double dx = innerShadow.Distance * Math.Cos(rad);
+            double dy = innerShadow.Distance * Math.Sin(rad);
+            byte isa = (byte)Math.Clamp((int)(innerShadow.Opacity * innerShadow.Color.A), 0, 255);
+
+            var isColor = Color.FromArgb(isa, innerShadow.Color.R, innerShadow.Color.G, innerShadow.Color.B);
+            var isRect = new Rect(el.X + Math.Max(0, dx), el.Y + Math.Max(0, dy), Math.Max(0, el.Width - Math.Abs(dx)), 2 + innerShadow.Size);
+            dc.DrawRectangle(new SolidColorBrush(isColor), null, isRect, cornerRadius, cornerRadius);
+        }
+
+        // 11. Layer Stroke Effect
         if (el.Effects.Stroke is { IsEnabled: true, Size: > 0 } stroke)
         {
             byte sta = (byte)Math.Clamp((int)(stroke.Opacity * stroke.Color.A), 0, 255);
@@ -914,7 +1100,7 @@ public partial class EditorCanvasControl : Control
                 LayerStrokePosition.Outside => new Rect(el.X - stroke.Size / 2, el.Y - stroke.Size / 2, el.Width + stroke.Size, el.Height + stroke.Size),
                 _ => new Rect(el.X, el.Y, el.Width, el.Height)
             };
-            double radius = (el is RectangleElement r) ? r.CornerRadius : (el is EllipseElement ? Math.Min(strokeRect.Width, strokeRect.Height) / 2 : 0);
+            double radius = (el is RectangleElement rect) ? rect.CornerRadius : (el is EllipseElement ? Math.Min(strokeRect.Width, strokeRect.Height) / 2 : 0);
             dc.DrawRectangle(null, pen, strokeRect, radius, radius);
         }
     }
@@ -1344,6 +1530,37 @@ public partial class EditorCanvasControl : Control
             return;
         }
 
+        // Rotate View tool
+        if (ActiveToolMode == "rotateview")
+        {
+            if (e.ClickCount == 2)
+            {
+                ViewportRotationAngle = 0.0;
+                e.Handled = true;
+                InvalidateVisual();
+                return;
+            }
+            _isRotatingView = true;
+            _rotateViewStartPointer = e.GetPosition(this);
+            _rotateViewStartAngle = ViewportRotationAngle;
+            e.Pointer.Capture(this);
+            e.Handled = true;
+            return;
+        }
+
+        // Ruler tool
+        if (ActiveToolMode == "ruler")
+        {
+            _isRulerMeasuring = true;
+            _rulerStart = canvasPt;
+            _rulerEnd = canvasPt;
+            RulerMeasurementChanged?.Invoke(_rulerStart, _rulerEnd);
+            e.Pointer.Capture(this);
+            e.Handled = true;
+            InvalidateVisual();
+            return;
+        }
+
         // 3. Tool-placement mode.
         if (ActiveToolMode != "select")
         {
@@ -1375,7 +1592,7 @@ public partial class EditorCanvasControl : Control
                 InvalidateVisual();
                 return;
             }
-            if (ActiveToolMode is "clonestamp" or "healing" or "historybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" or "bgeraser" or "colorreplacement")
+            if (ActiveToolMode is "clonestamp" or "healing" or "historybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" or "bgeraser" or "colorreplacement" or "redeye" or "patch")
             {
                 if ((ActiveToolMode is "clonestamp" or "healing") && e.KeyModifiers.HasFlag(KeyModifiers.Alt))
                 {
@@ -1741,9 +1958,47 @@ public partial class EditorCanvasControl : Control
             }
         }
 
-        if ((ActiveToolMode is "brush" or "pencil" or "eraser" or "clonestamp" or "healing" or "historybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" or "bgeraser" or "colorreplacement" or "eyedropper") && !_isDrawingDoodle && !_isDrawingRetouch)
+        if ((ActiveToolMode is "brush" or "pencil" or "eraser" or "clonestamp" or "healing" or "historybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" or "bgeraser" or "colorreplacement" or "redeye" or "patch" or "eyedropper") && !_isDrawingDoodle && !_isDrawingRetouch)
         {
             InvalidateVisual();
+        }
+
+        if (_isRotatingView)
+        {
+            Point pivot = new Point(Bounds.Width / 2 + _panOffset.X, Bounds.Height / 2 + _panOffset.Y);
+            Point curr = e.GetPosition(this);
+            double startAngle = Math.Atan2(_rotateViewStartPointer.Y - pivot.Y, _rotateViewStartPointer.X - pivot.X) * 180.0 / Math.PI;
+            double currAngle = Math.Atan2(curr.Y - pivot.Y, curr.X - pivot.X) * 180.0 / Math.PI;
+            double delta = currAngle - startAngle;
+            double newAngle = _rotateViewStartAngle + delta;
+            if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+            {
+                newAngle = Math.Round(newAngle / 15.0) * 15.0;
+            }
+            while (newAngle > 180.0) newAngle -= 360.0;
+            while (newAngle <= -180.0) newAngle += 360.0;
+            ViewportRotationAngle = Math.Round(newAngle, 1);
+            e.Handled = true;
+            InvalidateVisual();
+            return;
+        }
+
+        if (_isRulerMeasuring)
+        {
+            _rulerEnd = pos;
+            if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+            {
+                double rDx = _rulerEnd.X - _rulerStart.X;
+                double rDy = _rulerEnd.Y - _rulerStart.Y;
+                double angle = Math.Atan2(rDy, rDx) * 180.0 / Math.PI;
+                double snapped = Math.Round(angle / 45.0) * 45.0 * Math.PI / 180.0;
+                double dist = Math.Sqrt(rDx * rDx + rDy * rDy);
+                _rulerEnd = new Point(_rulerStart.X + dist * Math.Cos(snapped), _rulerStart.Y + dist * Math.Sin(snapped));
+            }
+            RulerMeasurementChanged?.Invoke(_rulerStart, _rulerEnd);
+            e.Handled = true;
+            InvalidateVisual();
+            return;
         }
 
         if (ActiveToolMode == "eyedropper" && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
@@ -2031,6 +2286,21 @@ public partial class EditorCanvasControl : Control
             _isCropDragging = false;
             _cropResizeHandle = -1;
         }
+        else if (_isRotatingView)
+        {
+            _isRotatingView = false;
+            e.Pointer.Capture(null);
+            e.Handled = true;
+            InvalidateVisual();
+        }
+        else if (_isRulerMeasuring)
+        {
+            _isRulerMeasuring = false;
+            e.Pointer.Capture(null);
+            RulerMeasurementCompleted?.Invoke(_rulerStart, _rulerEnd);
+            e.Handled = true;
+            InvalidateVisual();
+        }
         else if (_isDrawingQuickMask)
         {
             _isDrawingQuickMask = false;
@@ -2313,6 +2583,8 @@ public partial class EditorCanvasControl : Control
         {
             if (_isCropModeActive) { CancelCrop(); e.Handled = true; return; }
             if (_isPlacingShape) { _isPlacingShape = false; InvalidateVisual(); e.Handled = true; return; }
+            if (ActiveToolMode == "rotateview" || _viewportRotationAngle != 0.0) { ViewportRotationAngle = 0.0; InvalidateVisual(); e.Handled = true; return; }
+            if (ActiveToolMode == "ruler" && _isRulerMeasuring) { _isRulerMeasuring = false; _rulerStart = _rulerEnd = default; InvalidateVisual(); e.Handled = true; return; }
         }
 
         if (e.Key is Key.OemOpenBrackets or Key.Oem4) // '['
@@ -3033,5 +3305,75 @@ public partial class EditorCanvasControl : Control
                 dc.DrawRectangle(anchorFill, anchorPen, anchorRect);
             }
         }
+    }
+
+    private void DrawRulerOverlay(DrawingContext dc, Point start, Point end, double zoom)
+    {
+        var pen = new Pen(new SolidColorBrush(Color.FromArgb(240, 0, 160, 255)), 1.5 / zoom);
+        var dashPen = new Pen(new SolidColorBrush(Color.FromArgb(140, 255, 255, 255)), 1.0 / zoom);
+
+        dc.DrawLine(pen, start, end);
+
+        double dx = end.X - start.X;
+        double dy = end.Y - start.Y;
+        double dist = Math.Sqrt(dx * dx + dy * dy);
+        double angle = Math.Atan2(-dy, dx) * 180.0 / Math.PI;
+
+        double markerSize = 6.0 / zoom;
+        // Start crosshair
+        dc.DrawLine(pen, new Point(start.X - markerSize, start.Y), new Point(start.X + markerSize, start.Y));
+        dc.DrawLine(pen, new Point(start.X, start.Y - markerSize), new Point(start.X, start.Y + markerSize));
+        // End crosshair
+        dc.DrawLine(pen, new Point(end.X - markerSize, end.Y), new Point(end.X + markerSize, end.Y));
+        dc.DrawLine(pen, new Point(end.X, end.Y - markerSize), new Point(end.X, end.Y + markerSize));
+
+        // Bounding box delta guides if dx and dy are significant
+        if (Math.Abs(dx) > 10 / zoom && Math.Abs(dy) > 10 / zoom)
+        {
+            dc.DrawLine(dashPen, start, new Point(end.X, start.Y));
+            dc.DrawLine(dashPen, new Point(end.X, start.Y), end);
+        }
+
+        // Midpoint HUD readout
+        Point mid = new Point((start.X + end.X) / 2, (start.Y + end.Y) / 2);
+        string text = $"D: {dist:F1} px  ∠: {angle:F1}°  ΔX: {dx:F0}  ΔY: {dy:F0}";
+        var ft = new FormattedText(
+            text,
+            System.Globalization.CultureInfo.InvariantCulture,
+            FlowDirection.LeftToRight,
+            new Typeface("Inter,Segoe UI,Arial"),
+            11.0 / zoom,
+            new SolidColorBrush(Colors.White));
+
+        var bgRect = new Rect(mid.X + 8 / zoom, mid.Y - 18 / zoom, ft.Width + 10 / zoom, ft.Height + 6 / zoom);
+        dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(220, 24, 24, 26)), null, bgRect);
+        dc.DrawRectangle(null, new Pen(new SolidColorBrush(Color.FromArgb(120, 255, 255, 255)), 1.0 / zoom), bgRect);
+        dc.DrawText(ft, new Point(bgRect.Left + 5 / zoom, bgRect.Top + 3 / zoom));
+    }
+
+    private void DrawRotateViewCompass(DrawingContext dc)
+    {
+        double cx = Bounds.Width - 45;
+        double cy = 45;
+        double r = 20;
+
+        dc.DrawEllipse(new SolidColorBrush(Color.FromArgb(210, 28, 28, 30)), new Pen(new SolidColorBrush(Color.FromArgb(180, 255, 255, 255)), 1.5), new Point(cx, cy), r, r);
+
+        double rad = (_viewportRotationAngle - 90.0) * Math.PI / 180.0;
+        Point northTip = new Point(cx + Math.Cos(rad) * (r - 4), cy + Math.Sin(rad) * (r - 4));
+        Point southTip = new Point(cx - Math.Cos(rad) * (r - 4), cy - Math.Sin(rad) * (r - 4));
+
+        dc.DrawLine(new Pen(new SolidColorBrush(Color.FromRgb(255, 60, 60)), 2.5, lineCap: PenLineCap.Round), new Point(cx, cy), northTip);
+        dc.DrawLine(new Pen(new SolidColorBrush(Color.FromRgb(180, 180, 180)), 2.0, lineCap: PenLineCap.Round), new Point(cx, cy), southTip);
+
+        string angleText = $"{_viewportRotationAngle:0}°";
+        var ft = new FormattedText(
+            angleText,
+            System.Globalization.CultureInfo.InvariantCulture,
+            FlowDirection.LeftToRight,
+            new Typeface("Inter,Segoe UI,Arial"),
+            10.0,
+            new SolidColorBrush(Colors.White));
+        dc.DrawText(ft, new Point(cx - ft.Width / 2, cy + r + 3));
     }
 }

@@ -17,11 +17,10 @@
     <!-- Master Grid Layout (FryImage Studio Architecture)
          Row 0: Top Menu Bar (Height 28)
          Row 1: Tool Options Bar (Height 34)
-         Row 2: Document Tab Strip (Height 26)
-         Row 3: Main Studio Workspace (Left Tool Palette + Canvas Area + Right Dock Panels) (Height *)
-         Row 4: Bottom Status Bar (Height 24)
+         Row 2: Main Studio Workspace (Left Tool Palette + Canvas Area + Right Dock Panels) (Height *)
+         Row 3: Bottom Status Bar (Height 24)
     -->
-    <Grid RowDefinitions="28,34,26,*,24">
+    <Grid RowDefinitions="28,34,*,24">
 
         <!-- Row 0: Top Menu Bar -->
         <controls:StudioMenuBar Grid.Row="0" />
@@ -29,25 +28,27 @@
         <!-- Row 1: Tool Options Bar -->
         <controls:ToolOptionsBar Grid.Row="1" />
 
-        <!-- Row 2: Document Tab Strip -->
-        <controls:DocumentTabStrip Grid.Row="2" />
-
-        <!-- Row 3: Main Studio Workspace -->
-        <Grid Grid.Row="3" ColumnDefinitions="36,*,3,290">
-            <!-- Left Tool Palette (36px) -->
+        <!-- Row 2: Main Studio Workspace -->
+        <Grid Grid.Row="2" ColumnDefinitions="Auto,*,3,290">
+            <!-- Left Tool Palette (36px or 68px depending on 1-column / 2-column mode) -->
             <controls:ToolPaletteControl Grid.Column="0" />
 
-            <!-- Main Canvas Work Area (Rulers + Viewport + Adorners) -->
-            <Grid Grid.Column="1" Background="{DynamicResource PsCanvasBrush}">
-                <Grid RowDefinitions="20,*" ColumnDefinitions="20,*">
-                    <!-- Top-Left Corner Origin -->
-                    <Border Grid.Row="0" Grid.Column="0" Background="{DynamicResource PsChromeBrush}"
-                            BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,1,1"
-                            IsVisible="{Binding ShowRulers}" />
+            <!-- Main Canvas Column (Tab Strip + Rulers & Viewport) -->
+            <Grid Grid.Column="1" RowDefinitions="26,*" Background="{DynamicResource PsCanvasBrush}">
+                <!-- Row 0: Document Tab Strip (Photoshop Parity: ✕ Untitled-1 @ 102.4% (RGB/8)*) -->
+                <controls:DocumentTabStrip Grid.Row="0" />
 
-                    <!-- Top Horizontal Ruler -->
-                    <controls:CanvasRulerControl x:Name="TopRuler"
-                                                 Grid.Row="0" Grid.Column="1"
+                <!-- Row 1: Canvas Work Area (Rulers + Viewport + Adorners) -->
+                <Grid Grid.Row="1">
+                    <Grid RowDefinitions="20,*" ColumnDefinitions="20,*">
+                        <!-- Top-Left Corner Origin -->
+                        <Border Grid.Row="0" Grid.Column="0" Background="{DynamicResource PsChromeBrush}"
+                                BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,1,1"
+                                IsVisible="{Binding ShowRulers}" />
+
+                        <!-- Top Horizontal Ruler -->
+                        <controls:CanvasRulerControl x:Name="TopRuler"
+                                                     Grid.Row="0" Grid.Column="1"
                                                  TargetCanvas="{Binding #CanvasControl}"
                                                  Orientation="Horizontal"
                                                  PageOffset="{Binding CanvasOriginScreenX}"
@@ -136,11 +137,18 @@
                                  BorderBrush="{DynamicResource PsAccentBrush}"
                                  Background="Transparent"
                                  KeyDown="InlineTextEditBox_KeyDown"
-                                 LostFocus="InlineTextEditBox_LostFocus"
-                                 ZIndex="200" />
+                                  LostFocus="InlineTextEditBox_LostFocus"
+                                  ZIndex="200" />
+
+                        <!-- Adorner: Floating Modern Photoshop Contextual Task Bar -->
+                        <controls:ContextualTaskBarControl HorizontalAlignment="Center"
+                                                           VerticalAlignment="Bottom"
+                                                           Margin="0,0,0,16"
+                                                           ZIndex="150" />
                     </Grid>
                 </Grid>
             </Grid>
+        </Grid>
 
             <!-- Column 2: Vertical Splitter -->
             <GridSplitter Grid.Column="2" Classes="ps-splitter" Width="3" VerticalAlignment="Stretch" />
@@ -165,22 +173,23 @@
             </Border>
         </Grid>
 
-        <!-- Row 4: Bottom Status Bar -->
-        <controls:StatusBarControl Grid.Row="4" />
+        <!-- Row 3: Bottom Status Bar -->
+        <controls:StatusBarControl Grid.Row="3" />
 
         <!-- Modal Dialogs -->
-        <dialogs:LayerStyleDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsLayerStyleDialogOpen}" />
-        <dialogs:ExportAsDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsExportDialogOpen}" />
-        <dialogs:NewDocumentDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsNewDocumentDialogOpen}" />
-        <dialogs:AdjustmentDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsAdjustmentDialogOpen}" />
-        <dialogs:FilterDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsFilterDialogOpen}" />
-        <dialogs:SelectAndMaskDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsSelectAndMaskDialogOpen}" />
-        <dialogs:ColorRangeDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsColorRangeDialogOpen}" />
-        <dialogs:LiquifyDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsLiquifyDialogOpen}" />
-        <dialogs:ContentAwareScaleDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsContentAwareScaleDialogOpen}" />
-        <dialogs:NewGuideDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsNewGuideDialogOpen}" />
-        <dialogs:NewGuideLayoutDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsNewGuideLayoutDialogOpen}" />
-        <dialogs:WarpTextDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsWarpTextDialogOpen}" />
+        <dialogs:LayerStyleDialog Grid.Row="0" Grid.RowSpan="4" ZIndex="500" IsVisible="{Binding IsLayerStyleDialogOpen}" />
+        <dialogs:ExportAsDialog Grid.Row="0" Grid.RowSpan="4" ZIndex="500" IsVisible="{Binding IsExportDialogOpen}" />
+        <dialogs:NewDocumentDialog Grid.Row="0" Grid.RowSpan="4" ZIndex="500" IsVisible="{Binding IsNewDocumentDialogOpen}" />
+        <dialogs:AdjustmentDialog Grid.Row="0" Grid.RowSpan="4" ZIndex="500" IsVisible="{Binding IsAdjustmentDialogOpen}" />
+        <dialogs:FilterDialog Grid.Row="0" Grid.RowSpan="4" ZIndex="500" IsVisible="{Binding IsFilterDialogOpen}" />
+        <dialogs:SelectAndMaskDialog Grid.Row="0" Grid.RowSpan="4" ZIndex="500" IsVisible="{Binding IsSelectAndMaskDialogOpen}" />
+        <dialogs:ColorRangeDialog Grid.Row="0" Grid.RowSpan="4" ZIndex="500" IsVisible="{Binding IsColorRangeDialogOpen}" />
+        <dialogs:LiquifyDialog Grid.Row="0" Grid.RowSpan="4" ZIndex="500" IsVisible="{Binding IsLiquifyDialogOpen}" />
+        <dialogs:ContentAwareScaleDialog Grid.Row="0" Grid.RowSpan="4" ZIndex="500" IsVisible="{Binding IsContentAwareScaleDialogOpen}" />
+        <dialogs:NewGuideDialog Grid.Row="0" Grid.RowSpan="4" ZIndex="500" IsVisible="{Binding IsNewGuideDialogOpen}" />
+        <dialogs:NewGuideLayoutDialog Grid.Row="0" Grid.RowSpan="4" ZIndex="500" IsVisible="{Binding IsNewGuideLayoutDialogOpen}" />
+        <dialogs:WarpTextDialog Grid.Row="0" Grid.RowSpan="4" ZIndex="500" IsVisible="{Binding IsWarpTextDialogOpen}" />
+        <dialogs:ColorPickerDialog Grid.Row="0" Grid.RowSpan="4" ZIndex="500" IsVisible="{Binding IsColorPickerVisible}" />
         <dialogs:ConfirmDiscardDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="600" IsVisible="{Binding IsConfirmingDiscard}" />
         <dialogs:CommandPaletteDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="600" IsVisible="{Binding IsCommandPaletteOpen}" />
 

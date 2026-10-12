@@ -4,7 +4,7 @@
              xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.ToolPaletteControl"
              x:DataType="local:ImageEditorViewModel"
-             Width="36"
+             Width="{Binding ToolPaletteWidth}"
              Background="{DynamicResource PsPanelBrush}">
 
     <UserControl.Resources>
@@ -14,194 +14,894 @@
     <Border BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,1,0">
         <Grid RowDefinitions="Auto,*,Auto">
 
-            <!-- Top: Collapse Chevron Header (FryImage « button) -->
+            <!-- Top: Collapse/Expand Chevron Header (Photoshop « / » 1-Col / 2-Col Toggle) -->
             <Border Grid.Row="0" Height="22" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1">
-                <Button Classes="ps-opt-btn" HorizontalAlignment="Center" ToolTip.Tip="Collapse Toolbar">
-                    <TextBlock Text="«" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                <Button Classes="ps-opt-btn" HorizontalAlignment="Center"
+                        Command="{Binding ToggleToolPaletteColumnsCommand}"
+                        ToolTip.Tip="Toggle 1-Column / 2-Column Toolbar">
+                    <TextBlock Text="{Binding ToolPaletteChevron}" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
                 </Button>
             </Border>
 
-            <!-- Center: Vertical Stack of FryImage Studio Tools in Order -->
+            <!-- Center: Dual-Column Responsive Grid of All Studio Tools with Corner Triangles & Sub-Tool Flyout Menus -->
             <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                <StackPanel Spacing="1" HorizontalAlignment="Center" Margin="0,3">
+                <WrapPanel Orientation="Horizontal" ItemWidth="31" ItemHeight="31" Margin="2,3" HorizontalAlignment="Center">
 
-                    <!-- 1. Move Tool (V) -->
+                    <!-- 1. Move & Artboard Group (V) -->
                     <Button Classes="ps-tool-btn"
-                            Classes.active="{Binding IsSelectToolActive}"
-                            Command="{Binding SetToolCommand}" CommandParameter="select"
+                            Classes.active="{Binding IsMoveSlotActive}"
+                            Command="{Binding SelectMoveSlotCommand}"
                             ToolTip.Tip="Move Tool (V)">
-                        <materialIcons:MaterialIcon Kind="CursorDefaultOutline" Width="15" Height="15" />
+                        <Button.ContextMenu>
+                            <ContextMenu Classes="ps-tool-menu" Placement="RightEdgeAlignedTop">
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="select">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubMoveActive}" />
+                                            <materialIcons:MaterialIcon Grid.Column="1" Kind="CursorDefaultOutline" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Move Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="V" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="artboard">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubArtboardActive}" />
+                                            <materialIcons:MaterialIcon Grid.Column="1" Kind="CropFree" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Artboard Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="V" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                        <Grid Width="30" Height="30">
+                            <materialIcons:MaterialIcon Kind="CursorDefaultOutline" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        IsVisible="{Binding !IsSubArtboardActive}" />
+                            <materialIcons:MaterialIcon Kind="CropFree" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        IsVisible="{Binding IsSubArtboardActive}" />
+                            <Border Width="10" Height="10" Background="Transparent" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                    PointerPressed="OnCornerTrianglePointerPressed">
+                                <Polygon Points="0,5 5,0 5,5" Fill="{DynamicResource PsTextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1" />
+                            </Border>
+                        </Grid>
                     </Button>
 
-                    <!-- 2. Rectangular Marquee (M) -->
+                    <!-- 2. Marquee Group (M) -->
                     <Button Classes="ps-tool-btn"
-                            Classes.active="{Binding IsMarqueeToolActive}"
-                            Command="{Binding SetToolCommand}" CommandParameter="marquee"
+                            Classes.active="{Binding IsMarqueeSlotActive}"
+                            Command="{Binding SelectMarqueeSlotCommand}"
                             ToolTip.Tip="Rectangular Marquee Tool (M)">
-                        <materialIcons:MaterialIcon Kind="SelectionDrag" Width="15" Height="15" />
+                        <Button.ContextMenu>
+                            <ContextMenu Classes="ps-tool-menu" Placement="RightEdgeAlignedTop">
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="marquee">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubRectMarqueeActive}" />
+                                            <materialIcons:MaterialIcon Grid.Column="1" Kind="SelectionDrag" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Rectangular Marquee Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="M" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="ellipsemarquee">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubEllipseMarqueeActive}" />
+                                            <materialIcons:MaterialIcon Grid.Column="1" Kind="SelectionEllipse" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Elliptical Marquee Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="M" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="rowmarquee">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubRowMarqueeActive}" />
+                                            <materialIcons:MaterialIcon Grid.Column="1" Kind="BorderHorizontal" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Single Row Marquee Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="M" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="colmarquee">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubColMarqueeActive}" />
+                                            <materialIcons:MaterialIcon Grid.Column="1" Kind="BorderVertical" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Single Column Marquee Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="M" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                        <Grid Width="30" Height="30">
+                            <materialIcons:MaterialIcon Kind="SelectionDrag" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        IsVisible="{Binding !IsSubEllipseMarqueeActive}" />
+                            <materialIcons:MaterialIcon Kind="SelectionEllipse" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        IsVisible="{Binding IsSubEllipseMarqueeActive}" />
+                            <Border Width="10" Height="10" Background="Transparent" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                    PointerPressed="OnCornerTrianglePointerPressed">
+                                <Polygon Points="0,5 5,0 5,5" Fill="{DynamicResource PsTextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1" />
+                            </Border>
+                        </Grid>
                     </Button>
 
-                    <!-- 3. Lasso Tool (L) -->
+                    <!-- 3. Lasso Group (L) -->
                     <Button Classes="ps-tool-btn"
-                            Classes.active="{Binding IsLassoToolActive}"
-                            Command="{Binding SetToolCommand}" CommandParameter="lasso"
+                            Classes.active="{Binding IsLassoSlotActive}"
+                            Command="{Binding SelectLassoSlotCommand}"
                             ToolTip.Tip="Lasso Tool (L)">
-                        <materialIcons:MaterialIcon Kind="Lasso" Width="15" Height="15" />
+                        <Button.ContextMenu>
+                            <ContextMenu Classes="ps-tool-menu" Placement="RightEdgeAlignedTop">
+                                <MenuItem Command="{Binding ActivateLassoSubModeCommand}" CommandParameter="standard">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubLassoActive}" />
+                                            <materialIcons:MaterialIcon Grid.Column="1" Kind="Lasso" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Lasso Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="L" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ActivateLassoSubModeCommand}" CommandParameter="polygonal">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubPolygonalLassoActive}" />
+                                            <materialIcons:MaterialIcon Grid.Column="1" Kind="VectorPolygon" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Polygonal Lasso Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="L" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ActivateLassoSubModeCommand}" CommandParameter="magnetic">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubMagneticLassoActive}" />
+                                            <materialIcons:MaterialIcon Grid.Column="1" Kind="Magnet" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Magnetic Lasso Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="L" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                        <Grid Width="30" Height="30">
+                            <materialIcons:MaterialIcon Kind="Lasso" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        IsVisible="{Binding IsStandardLassoMode}" />
+                            <materialIcons:MaterialIcon Kind="VectorPolygon" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        IsVisible="{Binding IsPolygonalLassoMode}" />
+                            <materialIcons:MaterialIcon Kind="Magnet" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        IsVisible="{Binding IsMagneticLassoMode}" />
+                            <Border Width="10" Height="10" Background="Transparent" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                    PointerPressed="OnCornerTrianglePointerPressed">
+                                <Polygon Points="0,5 5,0 5,5" Fill="{DynamicResource PsTextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1" />
+                            </Border>
+                        </Grid>
                     </Button>
 
-                    <!-- 4. Magic Wand / Object Selection (W) -->
+                    <!-- 4. Object Selection / Quick Selection / Magic Wand Group (W) (Photoshop Reference Slot!) -->
                     <Button Classes="ps-tool-btn"
-                            Classes.active="{Binding IsWandToolActive}"
-                            Command="{Binding SetToolCommand}" CommandParameter="wand"
-                            ToolTip.Tip="Magic Wand Tool (W)">
-                        <materialIcons:MaterialIcon Kind="MagicStaff" Width="15" Height="15" />
+                            Classes.active="{Binding IsWandSlotActive}"
+                            Command="{Binding SelectWandSlotCommand}"
+                            ToolTip.Tip="Object / Quick Selection / Magic Wand Tool (W)">
+                        <Button.ContextMenu>
+                            <ContextMenu Classes="ps-tool-menu" Placement="RightEdgeAlignedTop">
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="objectselection">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubObjectSelectionActive}" />
+                                            <materialIcons:MaterialIcon Grid.Column="1" Kind="SelectionDrag" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Object Selection Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="W" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="quickselection">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubQuickSelectionActive}" />
+                                            <materialIcons:MaterialIcon Grid.Column="1" Kind="SelectionEllipse" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Quick Selection Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="W" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="wand">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubMagicWandActive}" />
+                                            <materialIcons:MaterialIcon Grid.Column="1" Kind="MagicStaff" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Magic Wand Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="W" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                        <Grid Width="30" Height="30">
+                            <materialIcons:MaterialIcon Kind="SelectionDrag" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        IsVisible="{Binding IsSubObjectSelectionActive}" />
+                            <materialIcons:MaterialIcon Kind="SelectionEllipse" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        IsVisible="{Binding IsSubQuickSelectionActive}" />
+                            <materialIcons:MaterialIcon Kind="AutoFix" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        IsVisible="{Binding IsSubMagicWandActive}" />
+                            <Border Width="10" Height="10" Background="Transparent" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                    PointerPressed="OnCornerTrianglePointerPressed">
+                                <Polygon Points="0,5 5,0 5,5" Fill="{DynamicResource PsTextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1" />
+                            </Border>
+                        </Grid>
                     </Button>
 
-                    <!-- 5. Crop Tool (C) -->
+                    <!-- 5. Crop & Slice Group (C) -->
                     <Button Classes="ps-tool-btn"
-                            Classes.active="{Binding IsCropToolActive}"
-                            Command="{Binding SetToolCommand}" CommandParameter="crop"
+                            Classes.active="{Binding IsCropSlotActive}"
+                            Command="{Binding SelectCropSlotCommand}"
                             ToolTip.Tip="Crop Tool (C)">
-                        <materialIcons:MaterialIcon Kind="Crop" Width="15" Height="15" />
+                        <Button.ContextMenu>
+                            <ContextMenu Classes="ps-tool-menu" Placement="RightEdgeAlignedTop">
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="crop">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubCropActive}" />
+                                            <materialIcons:MaterialIcon Grid.Column="1" Kind="Crop" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Crop Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="C" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="perspectivecrop">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubPerspectiveCropActive}" />
+                                            <materialIcons:MaterialIcon Grid.Column="1" Kind="CropRotate" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Perspective Crop Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="C" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="slice">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubSliceActive}" />
+                                            <materialIcons:MaterialIcon Grid.Column="1" Kind="ContentCut" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Slice Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="C" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                        <Grid Width="30" Height="30">
+                            <materialIcons:MaterialIcon Kind="Crop" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <Border Width="10" Height="10" Background="Transparent" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                    PointerPressed="OnCornerTrianglePointerPressed">
+                                <Polygon Points="0,5 5,0 5,5" Fill="{DynamicResource PsTextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1" />
+                            </Border>
+                        </Grid>
                     </Button>
 
-                    <!-- 6. Eyedropper Tool (I) -->
+                    <!-- 6. Frame Tool (K) -->
                     <Button Classes="ps-tool-btn"
-                            Classes.active="{Binding IsEyedropperToolActive}"
-                            Command="{Binding SetToolCommand}" CommandParameter="eyedropper"
+                            Classes.active="{Binding IsFrameSlotActive}"
+                            Command="{Binding SelectFrameSlotCommand}"
+                            ToolTip.Tip="Frame Tool (K)">
+                        <Grid Width="30" Height="30">
+                            <materialIcons:MaterialIcon Kind="WindowClose" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <Border Width="10" Height="10" Background="Transparent" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                    PointerPressed="OnCornerTrianglePointerPressed">
+                                <Polygon Points="0,5 5,0 5,5" Fill="{DynamicResource PsTextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1" />
+                            </Border>
+                        </Grid>
+                    </Button>
+
+                    <!-- 7. Eyedropper & Measure Group (I) -->
+                    <Button Classes="ps-tool-btn"
+                            Classes.active="{Binding IsEyedropperSlotActive}"
+                            Command="{Binding SelectEyedropperSlotCommand}"
                             ToolTip.Tip="Eyedropper Tool (I)">
-                        <materialIcons:MaterialIcon Kind="Eyedropper" Width="15" Height="15" />
+                        <Button.ContextMenu>
+                            <ContextMenu Classes="ps-tool-menu" Placement="RightEdgeAlignedTop">
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="eyedropper">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubEyedropperActive}" />
+                                            <materialIcons:MaterialIcon Grid.Column="1" Kind="Eyedropper" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Eyedropper Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="I" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="colorsampler">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubColorSamplerActive}" />
+                                            <materialIcons:MaterialIcon Grid.Column="1" Kind="Crosshairs" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Color Sampler Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="I" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="ruler">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubRulerActive}" />
+                                            <materialIcons:MaterialIcon Grid.Column="1" Kind="Ruler" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Ruler Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="I" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                        <Grid Width="30" Height="30">
+                            <materialIcons:MaterialIcon Kind="Eyedropper" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        IsVisible="{Binding !IsSubRulerActive}" />
+                            <materialIcons:MaterialIcon Kind="Ruler" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        IsVisible="{Binding IsSubRulerActive}" />
+                            <Border Width="10" Height="10" Background="Transparent" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                    PointerPressed="OnCornerTrianglePointerPressed">
+                                <Polygon Points="0,5 5,0 5,5" Fill="{DynamicResource PsTextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1" />
+                            </Border>
+                        </Grid>
                     </Button>
 
-                    <!-- 7. Spot Healing Brush (J) -->
+                    <!-- 8. Spot Healing Brush Group (J) -->
                     <Button Classes="ps-tool-btn"
-                            Classes.active="{Binding IsHealingToolActive}"
-                            Command="{Binding SetToolCommand}" CommandParameter="healing"
+                            Classes.active="{Binding IsHealingSlotActive}"
+                            Command="{Binding SelectHealingSlotCommand}"
                             ToolTip.Tip="Spot Healing Brush Tool (J)">
-                        <materialIcons:MaterialIcon Kind="Bandage" Width="15" Height="15" />
+                        <Button.ContextMenu>
+                            <ContextMenu Classes="ps-tool-menu" Placement="RightEdgeAlignedTop">
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="healing">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubSpotHealingActive}" />
+                                            <materialIcons:MaterialIcon Grid.Column="1" Kind="Bandage" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Spot Healing Brush Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="J" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="patch">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubPatchActive}" />
+                                            <materialIcons:MaterialIcon Grid.Column="1" Kind="VectorSelection" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Patch Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="J" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="redeye">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubRedEyeActive}" />
+                                            <materialIcons:MaterialIcon Grid.Column="1" Kind="EyeOutline" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Red Eye Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="J" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                        <Grid Width="30" Height="30">
+                            <materialIcons:MaterialIcon Kind="Bandage" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        IsVisible="{Binding !IsSubPatchActive}" />
+                            <materialIcons:MaterialIcon Kind="VectorSelection" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        IsVisible="{Binding IsSubPatchActive}" />
+                            <Border Width="10" Height="10" Background="Transparent" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                    PointerPressed="OnCornerTrianglePointerPressed">
+                                <Polygon Points="0,5 5,0 5,5" Fill="{DynamicResource PsTextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1" />
+                            </Border>
+                        </Grid>
                     </Button>
 
-                    <!-- 8. Brush Tool (B) -->
+                    <!-- 9. Brush & Pencil Group (B) -->
                     <Button Classes="ps-tool-btn"
-                            Classes.active="{Binding IsStandardBrushToolActive}"
-                            Command="{Binding SetToolCommand}" CommandParameter="brush"
+                            Classes.active="{Binding IsBrushSlotActive}"
+                            Command="{Binding SelectBrushSlotCommand}"
                             ToolTip.Tip="Brush Tool (B)">
-                        <materialIcons:MaterialIcon Kind="Brush" Width="15" Height="15" />
+                        <Button.ContextMenu>
+                            <ContextMenu Classes="ps-tool-menu" Placement="RightEdgeAlignedTop">
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="brush">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubBrushActive}" />
+                                            <materialIcons:MaterialIcon Grid.Column="1" Kind="Brush" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Brush Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="B" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="pencil">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubPencilActive}" />
+                                            <materialIcons:MaterialIcon Grid.Column="1" Kind="Pencil" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Pencil Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="B" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                        <Grid Width="30" Height="30">
+                            <materialIcons:MaterialIcon Kind="Brush" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        IsVisible="{Binding !IsPencilToolActive}" />
+                            <materialIcons:MaterialIcon Kind="Pencil" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        IsVisible="{Binding IsPencilToolActive}" />
+                            <Border Width="10" Height="10" Background="Transparent" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                    PointerPressed="OnCornerTrianglePointerPressed">
+                                <Polygon Points="0,5 5,0 5,5" Fill="{DynamicResource PsTextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1" />
+                            </Border>
+                        </Grid>
                     </Button>
 
-                    <!-- 8b. Pencil Tool (1-bit Crisp Pixel) -->
+                    <!-- 10. Clone Stamp Group (S) -->
                     <Button Classes="ps-tool-btn"
-                            Classes.active="{Binding IsPencilToolActive}"
-                            Command="{Binding SetToolCommand}" CommandParameter="pencil"
-                            ToolTip.Tip="Pencil Tool (1-bit Crisp Pixel) (B)">
-                        <materialIcons:MaterialIcon Kind="Pencil" Width="15" Height="15" />
-                    </Button>
-
-                    <!-- 9. Clone Stamp (S) -->
-                    <Button Classes="ps-tool-btn"
-                            Classes.active="{Binding IsCloneStampToolActive}"
-                            Command="{Binding SetToolCommand}" CommandParameter="clonestamp"
+                            Classes.active="{Binding IsStampSlotActive}"
+                            Command="{Binding SelectStampSlotCommand}"
                             ToolTip.Tip="Clone Stamp Tool (Option-click to sample source) (S)">
-                        <materialIcons:MaterialIcon Kind="Stamper" Width="15" Height="15" />
+                        <Button.ContextMenu>
+                            <ContextMenu Classes="ps-tool-menu" Placement="RightEdgeAlignedTop">
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="clonestamp">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubCloneStampActive}" />
+                                            <materialIcons:MaterialIcon Grid.Column="1" Kind="Stamper" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Clone Stamp Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="S" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                        <Grid Width="30" Height="30">
+                            <materialIcons:MaterialIcon Kind="Stamper" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <Border Width="10" Height="10" Background="Transparent" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                    PointerPressed="OnCornerTrianglePointerPressed">
+                                <Polygon Points="0,5 5,0 5,5" Fill="{DynamicResource PsTextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1" />
+                            </Border>
+                        </Grid>
                     </Button>
 
-                    <!-- 10. History Brush (Y) -->
+                    <!-- 11. History Brush Group (Y) -->
                     <Button Classes="ps-tool-btn"
-                            Classes.active="{Binding IsHistoryBrushToolActive}"
-                            Command="{Binding SetToolCommand}" CommandParameter="historybrush"
+                            Classes.active="{Binding IsHistorySlotActive}"
+                            Command="{Binding SelectHistorySlotCommand}"
                             ToolTip.Tip="History Brush Tool (Y)">
-                        <materialIcons:MaterialIcon Kind="History" Width="15" Height="15" />
+                        <Button.ContextMenu>
+                            <ContextMenu Classes="ps-tool-menu" Placement="RightEdgeAlignedTop">
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="historybrush">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubHistoryBrushActive}" />
+                                            <materialIcons:MaterialIcon Grid.Column="1" Kind="History" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="History Brush Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="Y" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                        <Grid Width="30" Height="30">
+                            <materialIcons:MaterialIcon Kind="History" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <Border Width="10" Height="10" Background="Transparent" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                    PointerPressed="OnCornerTrianglePointerPressed">
+                                <Polygon Points="0,5 5,0 5,5" Fill="{DynamicResource PsTextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1" />
+                            </Border>
+                        </Grid>
                     </Button>
 
-                    <!-- 11. Eraser Tool (E) -->
+                    <!-- 12. Eraser Group (E) -->
                     <Button Classes="ps-tool-btn"
-                            Classes.active="{Binding IsEraserToolActive}"
-                            Command="{Binding SetToolCommand}" CommandParameter="eraser"
+                            Classes.active="{Binding IsEraserSlotActive}"
+                            Command="{Binding SelectEraserSlotCommand}"
                             ToolTip.Tip="Eraser Tool (E)">
-                        <materialIcons:MaterialIcon Kind="Eraser" Width="15" Height="15" />
+                        <Button.ContextMenu>
+                            <ContextMenu Classes="ps-tool-menu" Placement="RightEdgeAlignedTop">
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="eraser">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubEraserActive}" />
+                                            <materialIcons:MaterialIcon Grid.Column="1" Kind="Eraser" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Eraser Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="E" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                        <Grid Width="30" Height="30">
+                            <materialIcons:MaterialIcon Kind="Eraser" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <Border Width="10" Height="10" Background="Transparent" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                    PointerPressed="OnCornerTrianglePointerPressed">
+                                <Polygon Points="0,5 5,0 5,5" Fill="{DynamicResource PsTextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1" />
+                            </Border>
+                        </Grid>
                     </Button>
 
-                    <!-- 12. Gradient / Bucket Tool (G) -->
+                    <!-- 13. Gradient & Paint Bucket Group (G) -->
                     <Button Classes="ps-tool-btn"
-                            Classes.active="{Binding IsGradientToolActive}"
-                            Command="{Binding SetToolCommand}" CommandParameter="gradient"
+                            Classes.active="{Binding IsGradientSlotActive}"
+                            Command="{Binding SelectGradientSlotCommand}"
                             ToolTip.Tip="Gradient / Paint Bucket Tool (G)">
-                        <materialIcons:MaterialIcon Kind="FormatColorFill" Width="15" Height="15" />
+                        <Button.ContextMenu>
+                            <ContextMenu Classes="ps-tool-menu" Placement="RightEdgeAlignedTop">
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="gradient">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubGradientActive}" />
+                                            <materialIcons:MaterialIcon Kind="FormatColorFill" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Gradient Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="G" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="bucket">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubBucketActive}" />
+                                            <materialIcons:MaterialIcon Kind="FormatColorFill" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Paint Bucket Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="G" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                        <Grid Width="30" Height="30">
+                            <materialIcons:MaterialIcon Kind="FormatColorFill" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <Border Width="10" Height="10" Background="Transparent" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                    PointerPressed="OnCornerTrianglePointerPressed">
+                                <Polygon Points="0,5 5,0 5,5" Fill="{DynamicResource PsTextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1" />
+                            </Border>
+                        </Grid>
                     </Button>
 
-                    <!-- 13. Blur / Sharpen / Smudge Tool (R) -->
+                    <!-- 14. Blur / Sharpen / Smudge Group (R) -->
                     <Button Classes="ps-tool-btn"
-                            Classes.active="{Binding IsBlurSharpenSmudgeActive}"
-                            Command="{Binding SetToolCommand}" CommandParameter="blur"
-                            ToolTip.Tip="Blur Tool (Hold Option/Alt for Sharpen) (R)">
-                        <materialIcons:MaterialIcon Kind="Water" Width="15" Height="15" />
+                            Classes.active="{Binding IsFocusSlotActive}"
+                            Command="{Binding SelectFocusSlotCommand}"
+                            ToolTip.Tip="Blur Tool (Hold Option for Sharpen) (R)">
+                        <Button.ContextMenu>
+                            <ContextMenu Classes="ps-tool-menu" Placement="RightEdgeAlignedTop">
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="blur">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubBlurActive}" />
+                                            <materialIcons:MaterialIcon Kind="Water" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Blur Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="R" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="sharpen">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubSharpenActive}" />
+                                            <materialIcons:MaterialIcon Kind="TriangleOutline" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Sharpen Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="R" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="smudge">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubSmudgeActive}" />
+                                            <materialIcons:MaterialIcon Kind="HandBackRightOutline" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Smudge Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="R" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                        <Grid Width="30" Height="30">
+                            <materialIcons:MaterialIcon Kind="Water" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <Border Width="10" Height="10" Background="Transparent" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                    PointerPressed="OnCornerTrianglePointerPressed">
+                                <Polygon Points="0,5 5,0 5,5" Fill="{DynamicResource PsTextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1" />
+                            </Border>
+                        </Grid>
                     </Button>
 
-                    <!-- 14. Dodge / Burn / Sponge Tool (O) -->
+                    <!-- 15. Dodge / Burn / Sponge Group (O) -->
                     <Button Classes="ps-tool-btn"
-                            Classes.active="{Binding IsDodgeBurnSpongeActive}"
-                            Command="{Binding SetToolCommand}" CommandParameter="dodge"
-                            ToolTip.Tip="Dodge Tool (Hold Option/Alt for Burn) (O)">
-                        <materialIcons:MaterialIcon Kind="WhiteBalanceSunny" Width="15" Height="15" />
+                            Classes.active="{Binding IsToningSlotActive}"
+                            Command="{Binding SelectToningSlotCommand}"
+                            ToolTip.Tip="Dodge Tool (Hold Option for Burn) (O)">
+                        <Button.ContextMenu>
+                            <ContextMenu Classes="ps-tool-menu" Placement="RightEdgeAlignedTop">
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="dodge">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubDodgeActive}" />
+                                            <materialIcons:MaterialIcon Kind="WhiteBalanceSunny" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Dodge Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="O" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="burn">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubBurnActive}" />
+                                            <materialIcons:MaterialIcon Kind="WhiteBalanceSunny" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Burn Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="O" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="sponge">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubSpongeActive}" />
+                                            <materialIcons:MaterialIcon Kind="CircleOutline" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Sponge Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="O" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                        <Grid Width="30" Height="30">
+                            <materialIcons:MaterialIcon Kind="WhiteBalanceSunny" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <Border Width="10" Height="10" Background="Transparent" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                    PointerPressed="OnCornerTrianglePointerPressed">
+                                <Polygon Points="0,5 5,0 5,5" Fill="{DynamicResource PsTextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1" />
+                            </Border>
+                        </Grid>
                     </Button>
 
-                    <!-- 15. Pen Tool (P) -->
+                    <!-- 16. Pen Group (P) -->
                     <Button Classes="ps-tool-btn"
-                            Classes.active="{Binding IsPenToolActive}"
-                            Command="{Binding SetToolCommand}" CommandParameter="pen"
+                            Classes.active="{Binding IsPenSlotActive}"
+                            Command="{Binding SelectPenSlotCommand}"
                             ToolTip.Tip="Pen Tool (P)">
-                        <materialIcons:MaterialIcon Kind="Pen" Width="15" Height="15" />
+                        <Button.ContextMenu>
+                            <ContextMenu Classes="ps-tool-menu" Placement="RightEdgeAlignedTop">
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="pen">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubPenActive}" />
+                                            <materialIcons:MaterialIcon Kind="Pen" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Pen Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="P" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="freepen">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubFreePenActive}" />
+                                            <materialIcons:MaterialIcon Kind="Pen" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Freeform Pen Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="P" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                        <Grid Width="30" Height="30">
+                            <materialIcons:MaterialIcon Kind="Pen" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <Border Width="10" Height="10" Background="Transparent" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                    PointerPressed="OnCornerTrianglePointerPressed">
+                                <Polygon Points="0,5 5,0 5,5" Fill="{DynamicResource PsTextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1" />
+                            </Border>
+                        </Grid>
                     </Button>
 
-                    <!-- 16. Horizontal Type Tool (T) -->
+                    <!-- 17. Horizontal Type Group (T) -->
                     <Button Classes="ps-tool-btn"
-                            Classes.active="{Binding IsTextToolActive}"
-                            Command="{Binding SetToolCommand}" CommandParameter="text"
+                            Classes.active="{Binding IsTypeSlotActive}"
+                            Command="{Binding SelectTypeSlotCommand}"
                             ToolTip.Tip="Horizontal Type Tool (T)">
-                        <materialIcons:MaterialIcon Kind="FormatText" Width="15" Height="15" />
+                        <Button.ContextMenu>
+                            <ContextMenu Classes="ps-tool-menu" Placement="RightEdgeAlignedTop">
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="text">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubTextActive}" />
+                                            <materialIcons:MaterialIcon Kind="FormatText" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Horizontal Type Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="T" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                        <Grid Width="30" Height="30">
+                            <materialIcons:MaterialIcon Kind="FormatText" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <Border Width="10" Height="10" Background="Transparent" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                    PointerPressed="OnCornerTrianglePointerPressed">
+                                <Polygon Points="0,5 5,0 5,5" Fill="{DynamicResource PsTextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1" />
+                            </Border>
+                        </Grid>
                     </Button>
 
-                    <!-- 17. Path Selection (A) -->
+                    <!-- 18. Path Selection Group (A) -->
                     <Button Classes="ps-tool-btn"
-                            Classes.active="{Binding IsPathSelectionToolActive}"
-                            Command="{Binding SetToolCommand}" CommandParameter="pathselection"
+                            Classes.active="{Binding IsPathSlotActive}"
+                            Command="{Binding SelectPathSlotCommand}"
                             ToolTip.Tip="Path Selection Tool (A)">
-                        <materialIcons:MaterialIcon Kind="NearMe" Width="15" Height="15" />
+                        <Button.ContextMenu>
+                            <ContextMenu Classes="ps-tool-menu" Placement="RightEdgeAlignedTop">
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="pathselection">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubPathSelectionActive}" />
+                                            <materialIcons:MaterialIcon Kind="NearMe" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Path Selection Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="A" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                        <Grid Width="30" Height="30">
+                            <materialIcons:MaterialIcon Kind="NearMe" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <Border Width="10" Height="10" Background="Transparent" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                    PointerPressed="OnCornerTrianglePointerPressed">
+                                <Polygon Points="0,5 5,0 5,5" Fill="{DynamicResource PsTextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1" />
+                            </Border>
+                        </Grid>
                     </Button>
 
-                    <!-- 18. Shape Tool (U) -->
+                    <!-- 19. Shape Group (U) -->
                     <Button Classes="ps-tool-btn"
-                            Classes.active="{Binding IsShapeToolActive}"
-                            Command="{Binding SelectShapeToolCommand}" CommandParameter="rect"
+                            Classes.active="{Binding IsShapeSlotActive}"
+                            Command="{Binding SelectShapeSlotCommand}"
                             ToolTip.Tip="Rectangle Tool (U)">
-                        <materialIcons:MaterialIcon Kind="SquareOutline" Width="15" Height="15" />
+                        <Button.ContextMenu>
+                            <ContextMenu Classes="ps-tool-menu" Placement="RightEdgeAlignedTop">
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="rect">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubRectActive}" />
+                                            <materialIcons:MaterialIcon Kind="SquareOutline" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Rectangle Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="U" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="ellipse">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubEllipseActive}" />
+                                            <materialIcons:MaterialIcon Kind="CircleOutline" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Ellipse Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="U" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="triangle">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubTriangleActive}" />
+                                            <materialIcons:MaterialIcon Kind="TriangleOutline" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Triangle Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="U" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="polygon">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubPolygonActive}" />
+                                            <materialIcons:MaterialIcon Kind="HexagonOutline" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Polygon Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="U" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="line">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubLineActive}" />
+                                            <materialIcons:MaterialIcon Kind="Minus" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Line Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="U" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="star">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubStarActive}" />
+                                            <materialIcons:MaterialIcon Kind="StarOutline" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Custom Shape Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="U" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                        <Grid Width="30" Height="30">
+                            <materialIcons:MaterialIcon Kind="SquareOutline" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        IsVisible="{Binding IsSubRectActive}" />
+                            <materialIcons:MaterialIcon Kind="CircleOutline" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        IsVisible="{Binding IsSubEllipseActive}" />
+                            <materialIcons:MaterialIcon Kind="TriangleOutline" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        IsVisible="{Binding IsSubTriangleActive}" />
+                            <materialIcons:MaterialIcon Kind="HexagonOutline" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        IsVisible="{Binding IsSubPolygonActive}" />
+                            <materialIcons:MaterialIcon Kind="Minus" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        IsVisible="{Binding IsSubLineActive}" />
+                            <materialIcons:MaterialIcon Kind="StarOutline" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        IsVisible="{Binding IsSubStarActive}" />
+                            <Border Width="10" Height="10" Background="Transparent" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                    PointerPressed="OnCornerTrianglePointerPressed">
+                                <Polygon Points="0,5 5,0 5,5" Fill="{DynamicResource PsTextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1" />
+                            </Border>
+                        </Grid>
                     </Button>
 
-                    <!-- 19. Hand Tool (H) -->
+                    <!-- 20. Hand & Rotate View Group (H / R) -->
                     <Button Classes="ps-tool-btn"
-                            Classes.active="{Binding IsHandToolActive}"
-                            Command="{Binding SetToolCommand}" CommandParameter="hand"
+                            Classes.active="{Binding IsHandSlotActive}"
+                            Command="{Binding SelectHandSlotCommand}"
                             ToolTip.Tip="Hand Tool (H / Space+Drag)">
-                        <materialIcons:MaterialIcon Kind="HandBackRightOutline" Width="15" Height="15" />
+                        <Button.ContextMenu>
+                            <ContextMenu Classes="ps-tool-menu" Placement="RightEdgeAlignedTop">
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="hand">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubHandActive}" />
+                                            <materialIcons:MaterialIcon Kind="HandBackRightOutline" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Hand Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="H" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Command="{Binding ActivateSubToolCommand}" CommandParameter="rotateview">
+                                    <MenuItem.Header>
+                                        <Grid ColumnDefinitions="14,18,*,Auto" Width="195">
+                                            <Rectangle Grid.Column="0" Width="4" Height="4" Fill="#FFFFFF" VerticalAlignment="Center" IsVisible="{Binding IsSubRotateViewActive}" />
+                                            <materialIcons:MaterialIcon Kind="CompassOutline" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="Rotate View Tool" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="R" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                        </Grid>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                        <Grid Width="30" Height="30">
+                            <materialIcons:MaterialIcon Kind="HandBackRightOutline" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        IsVisible="{Binding !IsSubRotateViewActive}" />
+                            <materialIcons:MaterialIcon Kind="CompassOutline" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        IsVisible="{Binding IsSubRotateViewActive}" />
+                            <Border Width="10" Height="10" Background="Transparent" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                    PointerPressed="OnCornerTrianglePointerPressed">
+                                <Polygon Points="0,5 5,0 5,5" Fill="{DynamicResource PsTextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1" />
+                            </Border>
+                        </Grid>
                     </Button>
 
-                    <!-- 20. Zoom Tool (Z) -->
+                    <!-- 21. Zoom Tool (Z) (No Corner Triangle) -->
                     <Button Classes="ps-tool-btn"
-                            Classes.active="{Binding IsZoomToolActive}"
-                            Command="{Binding SetToolCommand}" CommandParameter="zoom"
+                            Classes.active="{Binding IsZoomSlotActive}"
+                            Command="{Binding SelectZoomSlotCommand}"
                             ToolTip.Tip="Zoom Tool (Z)">
                         <materialIcons:MaterialIcon Kind="Magnify" Width="15" Height="15" />
                     </Button>
 
-                    <!-- 21. Edit Toolbar (...) -->
-                    <Button Classes="ps-tool-btn" ToolTip.Tip="Edit Toolbar">
+                    <!-- 22. Edit Toolbar (...) (No Corner Triangle) -->
+                    <Button Classes="ps-tool-btn"
+                            Command="{Binding ToggleCommandPaletteCommand}"
+                            ToolTip.Tip="Edit Toolbar / Command Palette (...)">
                         <materialIcons:MaterialIcon Kind="DotsHorizontal" Width="15" Height="15" />
                     </Button>
-                </StackPanel>
+
+                </WrapPanel>
             </ScrollViewer>
 
-            <!-- Bottom: Foreground / Background Overlapping Color Swatches & D/X & QuickMask Controls -->
-            <Border Grid.Row="2" Padding="3,6" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0">
+            <!-- Bottom: Foreground / Background Overlapping Color Swatches & D/X & QuickMask & Screen Mode -->
+            <Border Grid.Row="2" Padding="2,6" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0">
                 <StackPanel Spacing="4" HorizontalAlignment="Center">
                     <Grid Width="28" Height="34">
                         <!-- Default D button (mini B/W squares top-left) -->
@@ -224,32 +924,47 @@
                         </Button>
 
                         <!-- Background Color Square (Bottom-Right, 16x16) -->
-                        <Border Width="16" Height="16"
+                        <Button Classes="ps-opt-btn" Padding="0"
+                                Width="16" Height="16"
                                 HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                Background="{Binding SecondaryColor, Converter={StaticResource ColorToBrushConverter}}"
-                                BorderBrush="#FFFFFF" BorderThickness="1"
-                                BoxShadow="0 1 3 #60000000" />
+                                Command="{Binding OpenColorPickerCommand}" CommandParameter="Background"
+                                ToolTip.Tip="Set Background Color">
+                            <Border Width="16" Height="16"
+                                    Background="{Binding SecondaryColor, Converter={StaticResource ColorToBrushConverter}}"
+                                    BorderBrush="#FFFFFF" BorderThickness="1"
+                                    BoxShadow="0 1 3 #60000000" />
+                        </Button>
 
                         <!-- Foreground Color Square (Top-Left, 16x16) -->
-                        <Border Width="16" Height="16"
+                        <Button Classes="ps-opt-btn" Padding="0"
+                                Width="16" Height="16"
                                 HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,4,0,0"
-                                Background="{Binding PrimaryColor, Converter={StaticResource ColorToBrushConverter}}"
-                                BorderBrush="#FFFFFF" BorderThickness="1"
-                                BoxShadow="0 1 3 #60000000" />
+                                Command="{Binding OpenColorPickerCommand}" CommandParameter="Foreground"
+                                ToolTip.Tip="Set Foreground Color">
+                            <Border Width="16" Height="16"
+                                    Background="{Binding PrimaryColor, Converter={StaticResource ColorToBrushConverter}}"
+                                    BorderBrush="#FFFFFF" BorderThickness="1"
+                                    BoxShadow="0 1 3 #60000000" />
+                        </Button>
                     </Grid>
 
-                    <!-- Quick Mask Toggle (Q) -->
-                    <ToggleButton Classes="ps-tool-btn" Width="24" Height="20"
-                                  IsChecked="{Binding IsQuickMaskMode}"
-                                  Command="{Binding ToggleQuickMaskCommand}"
-                                  ToolTip.Tip="Edit in Quick Mask Mode (Q)">
-                        <materialIcons:MaterialIcon Kind="CircleHalfFull" Width="12" Height="12" />
-                    </ToggleButton>
+                    <!-- Bottom Tool Buttons: Quick Mask (Q) & Screen Mode (F) -->
+                    <WrapPanel Orientation="Horizontal" ItemWidth="28" ItemHeight="24" HorizontalAlignment="Center">
+                        <!-- Quick Mask Toggle (Q) -->
+                        <ToggleButton Classes="ps-tool-btn" Width="26" Height="22" Margin="1"
+                                      IsChecked="{Binding IsQuickMaskMode}"
+                                      Command="{Binding ToggleQuickMaskCommand}"
+                                      ToolTip.Tip="Edit in Quick Mask Mode (Q)">
+                            <materialIcons:MaterialIcon Kind="CircleHalfFull" Width="12" Height="12" />
+                        </ToggleButton>
 
-                    <!-- Screen Mode (F) -->
-                    <Button Classes="ps-tool-btn" Width="24" Height="20" Command="{Binding FitToWindowCommand}" ToolTip.Tip="Standard Screen Mode (F)">
-                        <materialIcons:MaterialIcon Kind="Fullscreen" Width="12" Height="12" />
-                    </Button>
+                        <!-- Screen Mode (F) -->
+                        <Button Classes="ps-tool-btn" Width="26" Height="22" Margin="1"
+                                Command="{Binding FitToWindowCommand}"
+                                ToolTip.Tip="Standard Screen Mode (F)">
+                            <materialIcons:MaterialIcon Kind="Fullscreen" Width="12" Height="12" />
+                        </Button>
+                    </WrapPanel>
                 </StackPanel>
             </Border>
         </Grid>

@@ -84,12 +84,63 @@
                                     <TextBlock Text="Stroke" FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
                                 </StackPanel>
                             </Button>
+
+                            <!-- Inner Glow -->
+                            <Button Classes="ps-opt-btn" HorizontalAlignment="Stretch" Padding="6,4"
+                                    Command="{Binding SelectLayerStyleSectionCommand}" CommandParameter="InnerGlow"
+                                    Classes.active="{Binding ActiveLayerStyleSection, Converter={StaticResource StringEqualsConverter}, ConverterParameter='InnerGlow'}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <CheckBox IsChecked="{Binding FxInnerGlowEnabled, Mode=TwoWay}" Margin="0" />
+                                    <TextBlock Text="Inner Glow" FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Bevel & Emboss -->
+                            <Button Classes="ps-opt-btn" HorizontalAlignment="Stretch" Padding="6,4"
+                                    Command="{Binding SelectLayerStyleSectionCommand}" CommandParameter="BevelEmboss"
+                                    Classes.active="{Binding ActiveLayerStyleSection, Converter={StaticResource StringEqualsConverter}, ConverterParameter='BevelEmboss'}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <CheckBox IsChecked="{Binding FxBevelEmbossEnabled, Mode=TwoWay}" Margin="0" />
+                                    <TextBlock Text="Bevel &amp; Emboss" FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Satin -->
+                            <Button Classes="ps-opt-btn" HorizontalAlignment="Stretch" Padding="6,4"
+                                    Command="{Binding SelectLayerStyleSectionCommand}" CommandParameter="Satin"
+                                    Classes.active="{Binding ActiveLayerStyleSection, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Satin'}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <CheckBox IsChecked="{Binding FxSatinEnabled, Mode=TwoWay}" Margin="0" />
+                                    <TextBlock Text="Satin" FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Gradient Overlay -->
+                            <Button Classes="ps-opt-btn" HorizontalAlignment="Stretch" Padding="6,4"
+                                    Command="{Binding SelectLayerStyleSectionCommand}" CommandParameter="GradientOverlay"
+                                    Classes.active="{Binding ActiveLayerStyleSection, Converter={StaticResource StringEqualsConverter}, ConverterParameter='GradientOverlay'}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <CheckBox IsChecked="{Binding FxGradientOverlayEnabled, Mode=TwoWay}" Margin="0" />
+                                    <TextBlock Text="Gradient Overlay" FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Pattern Overlay -->
+                            <Button Classes="ps-opt-btn" HorizontalAlignment="Stretch" Padding="6,4"
+                                    Command="{Binding SelectLayerStyleSectionCommand}" CommandParameter="PatternOverlay"
+                                    Classes.active="{Binding ActiveLayerStyleSection, Converter={StaticResource StringEqualsConverter}, ConverterParameter='PatternOverlay'}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <CheckBox IsChecked="{Binding FxPatternOverlayEnabled, Mode=TwoWay}" Margin="0" />
+                                    <TextBlock Text="Pattern Overlay" FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
                         </StackPanel>
                     </Border>
 
                     <!-- Right: Effect Controls -->
                     <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Margin="14,10,6,10" Padding="0,0,12,0">
-                        <!-- Drop Shadow Settings -->
+                        <Panel>
+                            <!-- Drop Shadow Settings -->
                         <StackPanel Spacing="10" IsVisible="{Binding ActiveLayerStyleSection, Converter={StaticResource StringEqualsConverter}, ConverterParameter='DropShadow'}">
                             <TextBlock Text="Drop Shadow" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource PsTextBrush}" />
 
@@ -153,6 +204,125 @@
                                 <Slider Minimum="0" Maximum="100" Value="{Binding FxDropShadowSpread, Mode=TwoWay}" />
                             </StackPanel>
                         </StackPanel>
+
+                        <!-- Inner Glow Settings -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ActiveLayerStyleSection, Converter={StaticResource StringEqualsConverter}, ConverterParameter='InnerGlow'}">
+                            <TextBlock Text="Inner Glow" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource PsTextBrush}" />
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Spacing="2">
+                                    <TextBlock Text="Blend Mode" Classes="ps-label" />
+                                    <ComboBox Classes="ps-combo" Width="140" ItemsSource="{Binding AvailableBlendModes}" SelectedItem="{Binding FxInnerGlowBlendMode, Mode=TwoWay}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Spacing="2">
+                                    <TextBlock Text="Color" Classes="ps-label" />
+                                    <Border Width="28" Height="20" Background="{Binding FxInnerGlowColor, Converter={StaticResource ColorToBrushConverter}}" BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1" CornerRadius="1" />
+                                </StackPanel>
+                            </Grid>
+                            <StackPanel Spacing="2">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Opacity" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FxInnerGlowOpacity, StringFormat='{}{0:P0}'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                                </Grid>
+                                <Slider Minimum="0" Maximum="1" Value="{Binding FxInnerGlowOpacity, Mode=TwoWay}" />
+                            </StackPanel>
+                            <StackPanel Spacing="2">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Size" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FxInnerGlowSize, StringFormat='{}{0:0} px'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                                </Grid>
+                                <Slider Minimum="0" Maximum="100" Value="{Binding FxInnerGlowSize, Mode=TwoWay}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Bevel & Emboss Settings -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ActiveLayerStyleSection, Converter={StaticResource StringEqualsConverter}, ConverterParameter='BevelEmboss'}">
+                            <TextBlock Text="Bevel &amp; Emboss" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource PsTextBrush}" />
+                            <Grid ColumnDefinitions="*,*">
+                                <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,6,0">
+                                    <TextBlock Text="Style" Classes="ps-label" />
+                                    <ComboBox Classes="ps-combo" HorizontalAlignment="Stretch" ItemsSource="{Binding AvailableBevelTypes}" SelectedItem="{Binding FxBevelEmbossStyle, Mode=TwoWay}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Spacing="2" Margin="6,0,0,0">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="Depth" Classes="ps-label" />
+                                        <TextBlock Grid.Column="1" Text="{Binding FxBevelEmbossDepth, StringFormat='{}{0:0}%'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                                    </Grid>
+                                    <Slider Minimum="1" Maximum="1000" Value="{Binding FxBevelEmbossDepth, Mode=TwoWay}" />
+                                </StackPanel>
+                            </Grid>
+                            <Grid ColumnDefinitions="*,*">
+                                <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,6,0">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="Size" Classes="ps-label" />
+                                        <TextBlock Grid.Column="1" Text="{Binding FxBevelEmbossSize, StringFormat='{}{0:0} px'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                                    </Grid>
+                                    <Slider Minimum="0" Maximum="100" Value="{Binding FxBevelEmbossSize, Mode=TwoWay}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Spacing="2" Margin="6,0,0,0">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="Soften" Classes="ps-label" />
+                                        <TextBlock Grid.Column="1" Text="{Binding FxBevelEmbossSoften, StringFormat='{}{0:0} px'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                                    </Grid>
+                                    <Slider Minimum="0" Maximum="50" Value="{Binding FxBevelEmbossSoften, Mode=TwoWay}" />
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Satin Settings -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ActiveLayerStyleSection, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Satin'}">
+                            <TextBlock Text="Satin" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource PsTextBrush}" />
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Spacing="2">
+                                    <TextBlock Text="Blend Mode" Classes="ps-label" />
+                                    <ComboBox Classes="ps-combo" Width="140" ItemsSource="{Binding AvailableBlendModes}" SelectedItem="{Binding FxSatinBlendMode, Mode=TwoWay}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Spacing="2">
+                                    <TextBlock Text="Color" Classes="ps-label" />
+                                    <Border Width="28" Height="20" Background="{Binding FxSatinColor, Converter={StaticResource ColorToBrushConverter}}" BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1" CornerRadius="1" />
+                                </StackPanel>
+                            </Grid>
+                            <StackPanel Spacing="2">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Opacity" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FxSatinOpacity, StringFormat='{}{0:P0}'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                                </Grid>
+                                <Slider Minimum="0" Maximum="1" Value="{Binding FxSatinOpacity, Mode=TwoWay}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Gradient Overlay Settings -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ActiveLayerStyleSection, Converter={StaticResource StringEqualsConverter}, ConverterParameter='GradientOverlay'}">
+                            <TextBlock Text="Gradient Overlay" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource PsTextBrush}" />
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="Blend Mode" Classes="ps-label" />
+                                <ComboBox Classes="ps-combo" Width="140" ItemsSource="{Binding AvailableBlendModes}" SelectedItem="{Binding FxGradientOverlayBlendMode, Mode=TwoWay}" />
+                            </StackPanel>
+                            <StackPanel Spacing="2">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Opacity" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FxGradientOverlayOpacity, StringFormat='{}{0:P0}'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                                </Grid>
+                                <Slider Minimum="0" Maximum="1" Value="{Binding FxGradientOverlayOpacity, Mode=TwoWay}" />
+                            </StackPanel>
+                            <CheckBox Content="Reverse" IsChecked="{Binding FxGradientOverlayReverse, Mode=TwoWay}" />
+                        </StackPanel>
+
+                        <!-- Pattern Overlay Settings -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ActiveLayerStyleSection, Converter={StaticResource StringEqualsConverter}, ConverterParameter='PatternOverlay'}">
+                            <TextBlock Text="Pattern Overlay" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource PsTextBrush}" />
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="Blend Mode" Classes="ps-label" />
+                                <ComboBox Classes="ps-combo" Width="140" ItemsSource="{Binding AvailableBlendModes}" SelectedItem="{Binding FxPatternOverlayBlendMode, Mode=TwoWay}" />
+                            </StackPanel>
+                            <StackPanel Spacing="2">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Scale" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FxPatternOverlayScale, StringFormat='{}{0:0}%'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                                </Grid>
+                                <Slider Minimum="10" Maximum="500" Value="{Binding FxPatternOverlayScale, Mode=TwoWay}" />
+                            </StackPanel>
+                        </StackPanel>
+                        </Panel>
                     </ScrollViewer>
                 </Grid>
 

@@ -37,6 +37,11 @@ public abstract class CanvasElementDto
     public string? Name { get; set; }
     public Guid? GroupId { get; set; }
     public bool AspectLocked { get; set; }
+    public bool IsClippingMask { get; set; }
+    public byte BlendIfThisMin { get; set; } = 0;
+    public byte BlendIfThisMax { get; set; } = 255;
+    public byte BlendIfUnderMin { get; set; } = 0;
+    public byte BlendIfUnderMax { get; set; } = 255;
 }
 
 public sealed class LayerStyleEffectsDto
@@ -44,7 +49,12 @@ public sealed class LayerStyleEffectsDto
     public DropShadowStyleDto? DropShadow { get; set; }
     public OuterGlowStyleDto? OuterGlow { get; set; }
     public InnerShadowStyleDto? InnerShadow { get; set; }
+    public InnerGlowStyleDto? InnerGlow { get; set; }
+    public BevelEmbossStyleDto? BevelEmboss { get; set; }
+    public SatinStyleDto? Satin { get; set; }
     public ColorOverlayStyleDto? ColorOverlay { get; set; }
+    public GradientOverlayStyleDto? GradientOverlay { get; set; }
+    public PatternOverlayStyleDto? PatternOverlay { get; set; }
     public LayerStrokeStyleDto? Stroke { get; set; }
 }
 
@@ -81,12 +91,73 @@ public sealed class InnerShadowStyleDto
     public string BlendMode { get; set; } = "Multiply";
 }
 
+public sealed class InnerGlowStyleDto
+{
+    public bool IsEnabled { get; set; } = true;
+    public string Color { get; set; } = "#FFFFFFBE";
+    public double Opacity { get; set; } = 0.75;
+    public double Size { get; set; } = 8.0;
+    public double Spread { get; set; }
+    public string BlendMode { get; set; } = "Screen";
+    public bool CenterSource { get; set; }
+}
+
+public sealed class BevelEmbossStyleDto
+{
+    public bool IsEnabled { get; set; } = true;
+    public string Style { get; set; } = "InnerBevel";
+    public double Depth { get; set; } = 100.0;
+    public double Size { get; set; } = 5.0;
+    public double Soften { get; set; }
+    public double Angle { get; set; } = 120.0;
+    public double Altitude { get; set; } = 30.0;
+    public string HighlightColor { get; set; } = "#FFFFFFFF";
+    public double HighlightOpacity { get; set; } = 0.75;
+    public string HighlightMode { get; set; } = "Screen";
+    public string ShadowColor { get; set; } = "#FF000000";
+    public double ShadowOpacity { get; set; } = 0.75;
+    public string ShadowMode { get; set; } = "Multiply";
+}
+
+public sealed class SatinStyleDto
+{
+    public bool IsEnabled { get; set; } = true;
+    public string Color { get; set; } = "#FF000000";
+    public double Opacity { get; set; } = 0.5;
+    public string BlendMode { get; set; } = "Multiply";
+    public double Angle { get; set; } = 19.0;
+    public double Distance { get; set; } = 11.0;
+    public double Size { get; set; } = 14.0;
+    public bool Invert { get; set; } = true;
+}
+
 public sealed class ColorOverlayStyleDto
 {
     public bool IsEnabled { get; set; } = true;
     public string Color { get; set; } = "#FF6366F1";
     public double Opacity { get; set; } = 0.5;
     public string BlendMode { get; set; } = "Normal";
+}
+
+public sealed class GradientOverlayStyleDto
+{
+    public bool IsEnabled { get; set; } = true;
+    public string BlendMode { get; set; } = "Normal";
+    public double Opacity { get; set; } = 1.0;
+    public string StartColor { get; set; } = "#FF000000";
+    public string EndColor { get; set; } = "#FFFFFFFF";
+    public double Angle { get; set; } = 90.0;
+    public double Scale { get; set; } = 100.0;
+    public bool Reverse { get; set; }
+}
+
+public sealed class PatternOverlayStyleDto
+{
+    public bool IsEnabled { get; set; } = true;
+    public string BlendMode { get; set; } = "Normal";
+    public double Opacity { get; set; } = 1.0;
+    public double Scale { get; set; } = 100.0;
+    public string PatternName { get; set; } = "Grid";
 }
 
 public sealed class LayerStrokeStyleDto

@@ -111,8 +111,10 @@ public static partial class ImageAdjustmentEngine
     {
         byte[] result = new byte[bgraPixels.Length];
         double hDelta = hueShift;
-        double sFactor = 1.0 + (satShift / 100.0);
         double lDelta = lightShift / 100.0;
+        double sVal = satShift / 100.0;
+
+        static double Lighten(double v, double l) => l > 0.0 ? v + (1.0 - v) * l : v * (1.0 + l);
 
         Parallel.For(0, bgraPixels.Length / 4, p =>
         {
@@ -122,27 +124,48 @@ public static partial class ImageAdjustmentEngine
             byte r = bgraPixels[idx + 2];
             byte a = bgraPixels[idx + 3];
 
-            RgbToHsl(r, g, b, out double h, out double s, out double l);
-
             if (colorize)
             {
-                h = (hDelta % 360 + 360) % 360;
-                s = Math.Clamp(satShift / 100.0, 0.0, 1.0);
-                l = Math.Clamp(l + lDelta, 0.0, 1.0);
+                // Photoshop Colorize builds at lightened/darkened lightness
+                RgbToHsl(r, g, b, out _, out _, out double ll);
+                double targetL = Lighten(ll, lDelta);
+                double cHue = ((hDelta % 360.0) + 360.0) % 360.0;
+                double cSat = Math.Min(Math.Abs(sVal), 1.0);
+                HslToRgb(cHue, cSat, Math.Clamp(targetL, 0.0, 1.0), out byte outR, out byte outG, out byte outB);
+
+                result[idx] = outB;
+                result[idx + 1] = outG;
+                result[idx + 2] = outR;
+                result[idx + 3] = a;
             }
             else
             {
-                h = (h + hDelta + 360.0) % 360.0;
-                s = Math.Clamp(s * sFactor, 0.0, 1.0);
-                l = Math.Clamp(l + lDelta, 0.0, 1.0);
+                // Photoshop applies Lightness first, then rotates hue and scales saturation
+                double lr = Lighten(r / 255.0, lDelta);
+                double lg = Lighten(g / 255.0, lDelta);
+                double lb = Lighten(b / 255.0, lDelta);
+
+                byte ir = (byte)Math.Clamp((int)Math.Round(lr * 255.0), 0, 255);
+                byte ig = (byte)Math.Clamp((int)Math.Round(lg * 255.0), 0, 255);
+                byte ib = (byte)Math.Clamp((int)Math.Round(lb * 255.0), 0, 255);
+
+                RgbToHsl(ir, ig, ib, out double h, out double s, out double l);
+                h = ((h + hDelta) % 360.0 + 360.0) % 360.0;
+
+                // Raising saturation divides by (1 - s); lowering multiplies by (1 + s)
+                if (sVal > 0.0)
+                    s = s / Math.Max(1.0 - sVal, 1.0 / 512.0);
+                else
+                    s *= (1.0 + sVal);
+
+                s = Math.Clamp(s, 0.0, 1.0);
+                HslToRgb(h, s, l, out byte outR, out byte outG, out byte outB);
+
+                result[idx] = outB;
+                result[idx + 1] = outG;
+                result[idx + 2] = outR;
+                result[idx + 3] = a;
             }
-
-            HslToRgb(h, s, l, out byte outR, out byte outG, out byte outB);
-
-            result[idx] = outB;
-            result[idx + 1] = outG;
-            result[idx + 2] = outR;
-            result[idx + 3] = a;
         });
 
         return result;
@@ -323,30 +346,57 @@ public static partial class ImageAdjustmentEngine
     }
 
     /// <summary>
-    /// Applies Black & White channel mixer weights (default values sum to ~1.0).
+    /// Applies Photoshop Black &amp; White conversion using primary/secondary range decomposition and optional Color blend tint.
     /// </summary>
-    public static byte[] ApplyBlackAndWhite(byte[] bgraPixels, int rW = 40, int yW = 60, int gW = 40, int cW = 60, int bW = 20, int mW = 80)
+    public static byte[] ApplyBlackAndWhite(
+        byte[] bgraPixels,
+        int rW = 40,
+        int yW = 60,
+        int gW = 40,
+        int cW = 60,
+        int bW = 20,
+        int mW = 80,
+        Avalonia.Media.Color? tint = null)
     {
         byte[] result = new byte[bgraPixels.Length];
-        double sum = Math.Max(1, rW + yW + gW + cW + bW + mW);
-        double wr = (rW + yW / 2.0) / sum * 2.0;
-        double wg = (gW + yW / 2.0 + cW / 2.0) / sum * 2.0;
-        double wb = (bW + cW / 2.0 + mW) / sum * 2.0;
+        double[] weights = [rW, yW, gW, cW, bW, mW];
 
         Parallel.For(0, bgraPixels.Length / 4, p =>
         {
             int idx = p * 4;
-            byte b = bgraPixels[idx];
-            byte g = bgraPixels[idx + 1];
-            byte r = bgraPixels[idx + 2];
+            double b = bgraPixels[idx] / 255.0;
+            double g = bgraPixels[idx + 1] / 255.0;
+            double r = bgraPixels[idx + 2] / 255.0;
             byte a = bgraPixels[idx + 3];
 
-            int gray = (int)Math.Round(r * wr + g * wg + b * wb);
-            byte val = (byte)Math.Clamp(gray, 0, 255);
+            double max = Math.Max(r, Math.Max(g, b));
+            double min = Math.Min(r, Math.Min(g, b));
+            double mid = r + g + b - max - min;
 
-            result[idx] = val;
-            result[idx + 1] = val;
-            result[idx + 2] = val;
+            int primary = (r >= g && r >= b) ? 0 : (g >= b ? 2 : 4);
+            int secondary = (b <= r && b <= g) ? 1 : (r <= g ? 3 : 5);
+
+            double gray = Math.Clamp(min + (mid - min) * weights[secondary] / 100.0 + (max - mid) * weights[primary] / 100.0, 0.0, 1.0);
+
+            if (tint.HasValue)
+            {
+                // Photoshop tints like the Color blend mode: tint hue/saturation at gray luminosity
+                double tR = tint.Value.R / 255.0;
+                double tG = tint.Value.G / 255.0;
+                double tB = tint.Value.B / 255.0;
+
+                var (outR, outG, outB) = PdfEditorApp.Plugins.ImageEditor.Core.Coloring.ColorConversions.SetLum(tR, tG, tB, gray);
+                result[idx] = (byte)Math.Clamp((int)Math.Round(outB * 255.0), 0, 255);
+                result[idx + 1] = (byte)Math.Clamp((int)Math.Round(outG * 255.0), 0, 255);
+                result[idx + 2] = (byte)Math.Clamp((int)Math.Round(outR * 255.0), 0, 255);
+            }
+            else
+            {
+                byte val = (byte)Math.Clamp((int)Math.Round(gray * 255.0), 0, 255);
+                result[idx] = val;
+                result[idx + 1] = val;
+                result[idx + 2] = val;
+            }
             result[idx + 3] = a;
         });
 

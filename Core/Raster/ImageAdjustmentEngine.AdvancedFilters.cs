@@ -1377,9 +1377,23 @@ public static partial class ImageAdjustmentEngine
                 double inkG = 1.0 - g;
                 double inkB = 1.0 - b;
 
-                double dC = relative ? (aC + aK) * inkR : aC + aK;
-                double dM = relative ? (aM + aK) * inkG : aM + aK;
-                double dY = relative ? (aY + aK) * inkB : aY + aK;
+                double dC = aC + aK;
+                double dM = aM + aK;
+                double dY = aY + aK;
+
+                if (relative)
+                {
+                    dC *= inkR;
+                    dM *= inkG;
+                    dY *= inkB;
+                }
+                else
+                {
+                    // Photoshop absolute mode: scaled by the room the ink has (adding: min(1, 2*(1-ink)), removing: min(1, 2*ink))
+                    dC *= dC > 0.0 ? Math.Min(1.0, 2.0 * (1.0 - inkR)) : Math.Min(1.0, 2.0 * inkR);
+                    dM *= dM > 0.0 ? Math.Min(1.0, 2.0 * (1.0 - inkG)) : Math.Min(1.0, 2.0 * inkG);
+                    dY *= dY > 0.0 ? Math.Min(1.0, 2.0 * (1.0 - inkB)) : Math.Min(1.0, 2.0 * inkB);
+                }
 
                 deltaR += dC * weight;
                 deltaG += dM * weight;

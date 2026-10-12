@@ -78,6 +78,16 @@ public static class DialogSnapshotSuite
         ctx.Capture("dialog_adjustment_hue_saturation.png");
         vm.CancelAdjustmentDialogCommand.Execute(null);
 
+        // 5b. Adjustment - Shadows / Highlights (Photoshop 25.4 Algorithmic Model)
+        vm.OpenAdjustmentDialogCommand.Execute("ShadowsHighlights");
+        ctx.Capture("dialog_adjustment_shadows_highlights.png");
+        vm.CancelAdjustmentDialogCommand.Execute(null);
+
+        // 5c. Adjustment - Black & White (Photoshop 6-Range Decomposition & Tint)
+        vm.OpenAdjustmentDialogCommand.Execute("BlackAndWhite");
+        ctx.Capture("dialog_adjustment_black_and_white.png");
+        vm.CancelAdjustmentDialogCommand.Execute(null);
+
         // 6. Layer Style (fx) Workspace (Drop Shadow with rotary AngleDialControl)
         vm.OpenLayerStyleDialogCommand.Execute(null);
         vm.FxDropShadowAngle = 120.0;

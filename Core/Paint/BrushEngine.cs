@@ -233,6 +233,14 @@ public static class BrushEngine
                     }
                 }
 
+                // 5. Texture Combine (Height, Linear Height, Subtract, Dodge/Burn)
+                if (settings.Texture.Enabled)
+                {
+                    double texSample = HashNoise(dabIndex, randomSeed, 15);
+                    double leveled = settings.Texture.Level(texSample);
+                    dabOpacity = BrushTexture.TextureCombine(settings.Texture.Mode, dabOpacity, leveled, settings.Texture.Depth);
+                }
+
                 dabs.Add(new BrushDab(
                     new Point(dabX, dabY),
                     Math.Max(0.5, dabRadiusX),

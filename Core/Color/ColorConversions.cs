@@ -206,4 +206,114 @@ public static class ColorConversions
         byte b = (byte)(Math.Round(c.B / 51.0) * 51);
         return Color.FromArgb(c.A, r, g, b);
     }
+
+    /// <summary>sRGB electro-optical transfer function (linear light to sRGB gamma).</summary>
+    public static double LinearToSrgb(double v)
+    {
+        v = Math.Max(0.0, v);
+        return v <= 0.0031308 ? v * 12.92 : 1.055 * Math.Pow(v, 1.0 / 2.4) - 0.055;
+    }
+
+    /// <summary>sRGB opto-electronic transfer function (sRGB gamma to linear light).</summary>
+    public static double SrgbToLinear(double v)
+    {
+        v = Math.Max(0.0, v);
+        return v <= 0.04045 ? v / 12.92 : Math.Pow((v + 0.055) / 1.055, 2.4);
+    }
+
+    /// <summary>Standard Rec. 601 luma calculation (Photoshop standard for blend modes).</summary>
+    public static double Rec601Luma(double r, double g, double b) => 0.299 * r + 0.587 * g + 0.114 * b;
+
+    /// <summary>
+    /// Clips an RGB triple back into the gamut [0..top] while preserving luminosity.
+    /// </summary>
+    public static (double R, double G, double B) ClipColor(double r, double g, double b, double top = 1.0)
+    {
+        double l = Rec601Luma(r, g, b);
+        double n = Math.Min(r, Math.Min(g, b));
+        double x = Math.Max(r, Math.Max(g, b));
+
+        if (n < 0.0)
+        {
+            double d = l - n;
+            r = l > 0.0 && d > 0.0 ? l + (r - l) * l / d : l;
+            g = l > 0.0 && d > 0.0 ? l + (g - l) * l / d : l;
+            b = l > 0.0 && d > 0.0 ? l + (b - l) * l / d : l;
+        }
+
+        if (x > top)
+        {
+            double d = x - l;
+            r = l < top && d > 0.0 ? l + (r - l) * (top - l) / d : l;
+            g = l < top && d > 0.0 ? l + (g - l) * (top - l) / d : l;
+            b = l < top && d > 0.0 ? l + (b - l) * (top - l) / d : l;
+        }
+
+        return (r, g, b);
+    }
+
+    /// <summary>
+    /// Implements Photoshop Color blend mode luminosity adjustment: SetLum(c, l).
+    /// </summary>
+    public static (double R, double G, double B) SetLum(double r, double g, double b, double l, double top = 1.0)
+    {
+        double d = l - Rec601Luma(r, g, b);
+        return ClipColor(r + d, g + d, b + d, top);
+    }
+
+    /// <summary>
+    /// D50 CIE XYZ to linear sRGB matrix (Photoshop / Photocraft standard).
+    /// </summary>
+    private static readonly double[,] XyzD50ToSrgbMatrix =
+    {
+        {  3.133856, -1.616867, -0.490615 },
+        { -0.978768,  1.916142,  0.033454 },
+        {  0.071945, -0.228991,  1.405243 }
+    };
+
+    /// <summary>
+    /// Converts D50 CIE XYZ color (normalized 0..1) to standard sRGB gamma [0..255].
+    /// </summary>
+    public static Color XyzD50ToSrgb(double x, double y, double z, byte alpha = 255)
+    {
+        double linR = XyzD50ToSrgbMatrix[0, 0] * x + XyzD50ToSrgbMatrix[0, 1] * y + XyzD50ToSrgbMatrix[0, 2] * z;
+        double linG = XyzD50ToSrgbMatrix[1, 0] * x + XyzD50ToSrgbMatrix[1, 1] * y + XyzD50ToSrgbMatrix[1, 2] * z;
+        double linB = XyzD50ToSrgbMatrix[2, 0] * x + XyzD50ToSrgbMatrix[2, 1] * y + XyzD50ToSrgbMatrix[2, 2] * z;
+
+        double sR = LinearToSrgb(Math.Clamp(linR, 0.0, 1.0));
+        double sG = LinearToSrgb(Math.Clamp(linG, 0.0, 1.0));
+        double sB = LinearToSrgb(Math.Clamp(linB, 0.0, 1.0));
+
+        return Color.FromArgb(
+            alpha,
+            (byte)Math.Clamp((int)Math.Round(sR * 255.0), 0, 255),
+            (byte)Math.Clamp((int)Math.Round(sG * 255.0), 0, 255),
+            (byte)Math.Clamp((int)Math.Round(sB * 255.0), 0, 255));
+    }
+
+    /// <summary>
+    /// Converts Adobe RGB (1998) color to sRGB.
+    /// </summary>
+    public static Color AdobeRgbToSrgb(double r, double g, double b, byte alpha = 255)
+    {
+        // Adobe RGB gamma 2.19921875 (~2.2) to linear
+        double linR = Math.Pow(Math.Clamp(r, 0.0, 1.0), 2.19921875);
+        double linG = Math.Pow(Math.Clamp(g, 0.0, 1.0), 2.19921875);
+        double linB = Math.Pow(Math.Clamp(b, 0.0, 1.0), 2.19921875);
+
+        // Adobe RGB to sRGB matrix
+        double sLinR =  1.3983633 * linR - 0.3983633 * linG - 0.0000000 * linB;
+        double sLinG = -0.0000000 * linR + 1.0000000 * linG + 0.0000000 * linB;
+        double sLinB = -0.0429443 * linR - 0.0000000 * linG + 1.0429443 * linB;
+
+        double sR = LinearToSrgb(Math.Clamp(sLinR, 0.0, 1.0));
+        double sG = LinearToSrgb(Math.Clamp(sLinG, 0.0, 1.0));
+        double sB = LinearToSrgb(Math.Clamp(sLinB, 0.0, 1.0));
+
+        return Color.FromArgb(
+            alpha,
+            (byte)Math.Clamp((int)Math.Round(sR * 255.0), 0, 255),
+            (byte)Math.Clamp((int)Math.Round(sG * 255.0), 0, 255),
+            (byte)Math.Clamp((int)Math.Round(sB * 255.0), 0, 255));
+    }
 }

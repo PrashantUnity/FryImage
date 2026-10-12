@@ -163,6 +163,66 @@ public class VectorSubpath
         return streamGeom;
     }
 
+    public static Point EvaluateCubic(Point p0, Point p1, Point p2, Point p3, double t)
+    {
+        double u = 1.0 - t;
+        double tt = t * t;
+        double uu = u * u;
+        double uuu = uu * u;
+        double ttt = tt * t;
+
+        double x = uuu * p0.X + 3.0 * uu * t * p1.X + 3.0 * u * tt * p2.X + ttt * p3.X;
+        double y = uuu * p0.Y + 3.0 * uu * t * p1.Y + 3.0 * u * tt * p2.Y + ttt * p3.Y;
+        return new Point(x, y);
+    }
+
+    private static Point Lerp(Point p1, Point p2, double t) =>
+        new(p1.X + (p2.X - p1.X) * t, p1.Y + (p2.Y - p1.Y) * t);
+
+    /// <summary>
+    /// Inserts an anchor along a subpath segment at parameter t in [0..1].
+    /// If both handles are retracted (straight segment), uses cubic parameter evaluation
+    /// to retain the exact hit position and retracted corner handles (#3856).
+    /// </summary>
+    public PathKnot? AddAnchor(int knotIndex, double t)
+    {
+        if (Knots.Count < 2 || knotIndex < 0 || knotIndex >= Knots.Count) return null;
+        int nextIndex = (knotIndex + 1) % Knots.Count;
+        if (!IsClosed && nextIndex == 0) return null;
+
+        var a = Knots[knotIndex];
+        var b = Knots[nextIndex];
+
+        bool aRetracted = !a.HasHandleOut;
+        bool bRetracted = !b.HasHandleIn;
+
+        PathKnot newKnot;
+        if (aRetracted && bRetracted)
+        {
+            Point pt = EvaluateCubic(a.Anchor, a.HandleOut, b.HandleIn, b.Anchor, t);
+            newKnot = new PathKnot(pt);
+        }
+        else
+        {
+            Point p01 = Lerp(a.Anchor, a.HandleOut, t);
+            Point p12 = Lerp(a.HandleOut, b.HandleIn, t);
+            Point p23 = Lerp(b.HandleIn, b.Anchor, t);
+
+            Point p012 = Lerp(p01, p12, t);
+            Point p123 = Lerp(p12, p23, t);
+
+            Point pt = Lerp(p012, p123, t);
+
+            a.HandleOut = p01;
+            b.HandleIn = p23;
+
+            newKnot = new PathKnot(pt, p012, p123, isSmooth: true);
+        }
+
+        Knots.Insert(knotIndex + 1, newKnot);
+        return newKnot;
+    }
+
     public VectorSubpath Clone()
     {
         return new VectorSubpath(Knots.Select(k => k.Clone()), IsClosed)

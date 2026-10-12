@@ -79,6 +79,40 @@
                 <Button Classes="ps-menu-btn" Content="Image">
                     <Button.Flyout>
                         <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                            <MenuItem Header="Mode">
+                                <MenuItem Header="RGB Color" Command="{Binding SetDocumentColorModeCommand}" CommandParameter="RGB">
+                                    <MenuItem.Icon>
+                                        <materialIcons:MaterialIcon Kind="Check" Width="12" Height="12" IsVisible="{Binding IsDocumentColorModeRgb}" Foreground="{DynamicResource PsAccentBrush}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="CMYK Color" Command="{Binding SetDocumentColorModeCommand}" CommandParameter="CMYK">
+                                    <MenuItem.Icon>
+                                        <materialIcons:MaterialIcon Kind="Check" Width="12" Height="12" IsVisible="{Binding IsDocumentColorModeCmyk}" Foreground="{DynamicResource PsAccentBrush}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Grayscale" Command="{Binding SetDocumentColorModeCommand}" CommandParameter="Grayscale">
+                                    <MenuItem.Icon>
+                                        <materialIcons:MaterialIcon Kind="Check" Width="12" Height="12" IsVisible="{Binding IsDocumentColorModeGrayscale}" Foreground="{DynamicResource PsAccentBrush}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator />
+                                <MenuItem Header="8 Bits/Channel" Command="{Binding SetDocumentBitsPerChannelCommand}" CommandParameter="8">
+                                    <MenuItem.Icon>
+                                        <materialIcons:MaterialIcon Kind="Check" Width="12" Height="12" IsVisible="{Binding IsDocument8Bits}" Foreground="{DynamicResource PsAccentBrush}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="16 Bits/Channel" Command="{Binding SetDocumentBitsPerChannelCommand}" CommandParameter="16">
+                                    <MenuItem.Icon>
+                                        <materialIcons:MaterialIcon Kind="Check" Width="12" Height="12" IsVisible="{Binding IsDocument16Bits}" Foreground="{DynamicResource PsAccentBrush}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="32 Bits/Channel" Command="{Binding SetDocumentBitsPerChannelCommand}" CommandParameter="32">
+                                    <MenuItem.Icon>
+                                        <materialIcons:MaterialIcon Kind="Check" Width="12" Height="12" IsVisible="{Binding IsDocument32Bits}" Foreground="{DynamicResource PsAccentBrush}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </MenuItem>
+                            <Separator />
                             <MenuItem Header="Adjustments">
                                 <MenuItem Header="Brightness / Contrast..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="BrightnessContrast" />
                                 <MenuItem Header="Levels..." InputGesture="Ctrl+L" Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Levels" />
@@ -95,6 +129,8 @@
                                 <Separator />
                                 <MenuItem Header="Threshold..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Threshold" />
                                 <MenuItem Header="Posterize..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Posterize" />
+                                <MenuItem Header="Black &amp; White..." InputGesture="Alt+Shift+Ctrl+B" Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="BlackAndWhite" />
+                                <MenuItem Header="Shadows / Highlights..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="ShadowsHighlights" />
                                 <Separator />
                                 <MenuItem Header="Invert" InputGesture="Ctrl+I" Command="{Binding ApplyInvertCommand}" />
                             </MenuItem>
@@ -148,6 +184,10 @@
                             <MenuItem Header="Send Backward" Command="{Binding SendBackwardCommand}" />
                             <MenuItem Header="Bring to Front" Command="{Binding BringToFrontCommand}" />
                             <MenuItem Header="Send to Back" Command="{Binding SendToBackCommand}" />
+                            <Separator />
+                            <MenuItem Header="Merge Down" InputGesture="Ctrl+E" Command="{Binding MergeDownCommand}" />
+                            <MenuItem Header="Merge Visible" InputGesture="Ctrl+Shift+E" Command="{Binding MergeVisibleCommand}" />
+                            <MenuItem Header="Flatten Image" Command="{Binding FlattenImageCommand}" />
                         </MenuFlyout>
                     </Button.Flyout>
                 </Button>
@@ -163,6 +203,12 @@
                             <MenuItem Header="Underline" InputGesture="Ctrl+U" Command="{Binding ToggleUnderlineCommand}" />
                             <Separator />
                             <MenuItem Header="Warp Text..." Command="{Binding OpenWarpTextDialogCommand}" />
+                            <Separator />
+                            <MenuItem Header="Missing Glyph Protection" Command="{Binding ToggleMissingGlyphProtectionCommand}">
+                                <MenuItem.Icon>
+                                    <materialIcons:MaterialIcon Kind="Check" Width="12" Height="12" IsVisible="{Binding MissingGlyphProtection}" Foreground="{DynamicResource PsAccentBrush}" />
+                                </MenuItem.Icon>
+                            </MenuItem>
                         </MenuFlyout>
                     </Button.Flyout>
                 </Button>
@@ -265,6 +311,17 @@
                             <MenuItem Header="Fit on Screen" Command="{Binding FitToWindowCommand}" />
                             <MenuItem Header="Fit Layer(s) on Screen" Command="{Binding FitLayerToScreenCommand}" />
                             <MenuItem Header="100%" Command="{Binding ResetZoomCommand}" />
+                            <Separator />
+                            <MenuItem Header="Extras" InputGesture="Ctrl+H" Command="{Binding ToggleViewExtrasCommand}">
+                                <MenuItem.Icon>
+                                    <materialIcons:MaterialIcon Kind="Check" Width="12" Height="12" IsVisible="{Binding ViewExtras}" Foreground="{DynamicResource PsAccentBrush}" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Enable Narrow Options Bar" Command="{Binding ToggleNarrowOptionsBarCommand}">
+                                <MenuItem.Icon>
+                                    <materialIcons:MaterialIcon Kind="Check" Width="12" Height="12" IsVisible="{Binding EnableNarrowOptionsBar}" Foreground="{DynamicResource PsAccentBrush}" />
+                                </MenuItem.Icon>
+                            </MenuItem>
                             <MenuItem Header="Zoom In" Command="{Binding ZoomInCommand}" />
                             <MenuItem Header="Zoom Out" Command="{Binding ZoomOutCommand}" />
                             <Separator />

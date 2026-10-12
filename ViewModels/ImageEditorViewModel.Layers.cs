@@ -1,10 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Avalonia;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using PdfEditorApp.Plugins.ImageEditor.Controls;
 using PdfEditorApp.Plugins.ImageEditor.Models;
+using PdfEditorApp.Plugins.ImageEditor.Models.Undo;
+using System.IO;
 
 namespace PdfEditorApp.Plugins.ImageEditor;
 
@@ -486,5 +491,192 @@ public partial class ImageEditorViewModel
         int nextIdx = forward ? (idx + 1) % modes.Count : (idx - 1 + modes.Count) % modes.Count;
         BlendModeField = modes[nextIdx];
         StatusMessage = $"Blend Mode: {BlendModeField}";
+    }
+
+    // ── Layer Merging & Flattening (Photoshop Parity #3855) ─────────────────────
+
+    [RelayCommand]
+    public void FlattenImage()
+    {
+        if (Elements.Count <= 1 && Elements.FirstOrDefault()?.IsBackground == true)
+        {
+            StatusMessage = "Document is already flattened.";
+            return;
+        }
+
+        int w = Math.Max(1, (int)_canvasWidth);
+        int h = Math.Max(1, (int)_canvasHeight);
+        var rtb = new RenderTargetBitmap(new PixelSize(w, h));
+        using (var dc = rtb.CreateDrawingContext())
+        {
+            if (BackgroundColor.A > 0)
+            {
+                dc.DrawRectangle(new SolidColorBrush(BackgroundColor), null, new Rect(0, 0, w, h));
+            }
+            foreach (var el in Elements.OrderBy(e => e.ZIndex))
+            {
+                if (el.IsVisible)
+                {
+                    EditorCanvasControl.DrawElement(dc, el);
+                }
+            }
+        }
+
+        using var ms = new MemoryStream();
+        rtb.Save(ms, new PngBitmapEncoderOptions());
+        ms.Position = 0;
+        var flatBmp = new Bitmap(ms);
+
+        var bgElement = new ImageElement
+        {
+            Name = "Background",
+            Width = w,
+            Height = h,
+            X = 0,
+            Y = 0,
+            ZIndex = 0,
+            Source = flatBmp,
+            NaturalPixelWidth = w,
+            NaturalPixelHeight = h,
+            OriginalImageBytes = ms.ToArray(),
+            IsBackground = true,
+            IsPositionLocked = true,
+            IsTransparencyLocked = true,
+            IsVisible = true
+        };
+
+        var oldElements = Elements.ToList();
+        Elements.Clear();
+        Elements.Add(bgElement);
+        SelectedElement = bgElement;
+
+        History.Push(new RestoreSnapshotCommand(Elements, oldElements, new List<CanvasElement> { bgElement }, "Flatten Image", () => RefreshCanvas()));
+        RefreshCanvas();
+        OnPropertyChanged(nameof(LayersDescendingZ));
+        StatusMessage = "Image flattened to single Background.";
+    }
+
+    [RelayCommand]
+    public void MergeDown()
+    {
+        var target = SelectedElement;
+        if (target == null)
+        {
+            StatusMessage = "No layer selected to merge down.";
+            return;
+        }
+
+        var sorted = Elements.OrderBy(e => e.ZIndex).ToList();
+        int idx = sorted.IndexOf(target);
+        if (idx <= 0)
+        {
+            StatusMessage = "Selected layer cannot be merged down.";
+            return;
+        }
+
+        var lower = sorted[idx - 1];
+
+        double minX = Math.Min(target.X, lower.X);
+        double minY = Math.Min(target.Y, lower.Y);
+        double maxX = Math.Max(target.X + target.Width, lower.X + lower.Width);
+        double maxY = Math.Max(target.Y + target.Height, lower.Y + lower.Height);
+        int w = Math.Max(1, (int)Math.Ceiling(maxX - minX));
+        int h = Math.Max(1, (int)Math.Ceiling(maxY - minY));
+
+        var rtb = new RenderTargetBitmap(new PixelSize(w, h));
+        using (var dc = rtb.CreateDrawingContext())
+        {
+            using (dc.PushTransform(Matrix.CreateTranslation(-minX, -minY)))
+            {
+                EditorCanvasControl.DrawElement(dc, lower);
+                EditorCanvasControl.DrawElement(dc, target);
+            }
+        }
+
+        using var ms = new MemoryStream();
+        rtb.Save(ms, new PngBitmapEncoderOptions());
+        ms.Position = 0;
+        var mergedBmp = new Bitmap(ms);
+
+        var merged = new ImageElement
+        {
+            Name = lower.Name,
+            Width = w,
+            Height = h,
+            X = minX,
+            Y = minY,
+            ZIndex = lower.ZIndex,
+            Source = mergedBmp,
+            NaturalPixelWidth = w,
+            NaturalPixelHeight = h,
+            OriginalImageBytes = ms.ToArray(),
+            IsVisible = true,
+            Opacity = 1.0
+        };
+
+        var oldList = Elements.ToList();
+        Elements.Remove(target);
+        int lowerIdx = Elements.IndexOf(lower);
+        Elements[lowerIdx] = merged;
+        SelectedElement = merged;
+
+        History.Push(new RestoreSnapshotCommand(Elements, oldList, Elements.ToList(), "Merge Down", () => RefreshCanvas()));
+        RefreshCanvas();
+        OnPropertyChanged(nameof(LayersDescendingZ));
+        StatusMessage = $"Merged '{target.DisplayName}' down into '{lower.DisplayName}'.";
+    }
+
+    [RelayCommand]
+    public void MergeVisible()
+    {
+        var visible = Elements.Where(e => e.IsVisible).OrderBy(e => e.ZIndex).ToList();
+        if (visible.Count <= 1)
+        {
+            StatusMessage = "Not enough visible layers to merge.";
+            return;
+        }
+
+        int w = Math.Max(1, (int)_canvasWidth);
+        int h = Math.Max(1, (int)_canvasHeight);
+        var rtb = new RenderTargetBitmap(new PixelSize(w, h));
+        using (var dc = rtb.CreateDrawingContext())
+        {
+            foreach (var el in visible)
+            {
+                EditorCanvasControl.DrawElement(dc, el);
+            }
+        }
+
+        using var ms = new MemoryStream();
+        rtb.Save(ms, new PngBitmapEncoderOptions());
+        ms.Position = 0;
+        var mergedBmp = new Bitmap(ms);
+
+        int minZ = visible.Min(e => e.ZIndex);
+        var merged = new ImageElement
+        {
+            Name = "Merged Layers",
+            Width = w,
+            Height = h,
+            X = 0,
+            Y = 0,
+            ZIndex = minZ,
+            Source = mergedBmp,
+            NaturalPixelWidth = w,
+            NaturalPixelHeight = h,
+            OriginalImageBytes = ms.ToArray(),
+            IsVisible = true,
+            Opacity = 1.0
+        };
+
+        var oldList = Elements.ToList();
+        foreach (var el in visible) Elements.Remove(el);
+        Elements.Add(merged);
+        SelectedElement = merged;
+
+        History.Push(new RestoreSnapshotCommand(Elements, oldList, Elements.ToList(), "Merge Visible", () => RefreshCanvas()));
+        RefreshCanvas();
+        OnPropertyChanged(nameof(LayersDescendingZ));
+        StatusMessage = $"Merged {visible.Count} visible layers.";
     }
 }

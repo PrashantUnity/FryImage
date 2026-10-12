@@ -27,9 +27,11 @@
                         <!-- Document Title Readout -->
                         <TextBlock FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center">
                             <TextBlock.Text>
-                                <MultiBinding StringFormat="{}{0} @ {1:0.#}% (RGB/8)*">
+                                <MultiBinding StringFormat="{}{0} @ {1:0.#}% ({2}/{3})*">
                                     <Binding Path="DocumentTitle" />
                                     <Binding Path="ZoomPercent" />
+                                    <Binding Path="DocumentColorMode" />
+                                    <Binding Path="DocumentBitsPerChannel" />
                                 </MultiBinding>
                             </TextBlock.Text>
                         </TextBlock>

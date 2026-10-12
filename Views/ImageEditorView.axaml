@@ -20,7 +20,7 @@
          Row 2: Main Studio Workspace (Left Tool Palette + Canvas Area + Right Dock Panels) (Height *)
          Row 3: Bottom Status Bar (Height 24)
     -->
-    <Grid RowDefinitions="28,34,*,24">
+    <Grid RowDefinitions="28,Auto,*,24">
 
         <!-- Row 0: Top Menu Bar -->
         <controls:StudioMenuBar Grid.Row="0" />

@@ -524,6 +524,28 @@ public partial class ImageEditorViewModel
     [ObservableProperty] private int _adjPhotoFilterDensity = 25;
     [ObservableProperty] private bool _adjPhotoFilterPreserveLuminosity = true;
 
+    // Shadows / Highlights parameters (Photoshop 25.4 measured)
+    [ObservableProperty] private double _adjShadowAmount = 35.0;
+    [ObservableProperty] private double _adjShadowTone = 50.0;
+    [ObservableProperty] private double _adjShadowRadius = 30.0;
+    [ObservableProperty] private double _adjHighlightAmount = 0.0;
+    [ObservableProperty] private double _adjHighlightTone = 50.0;
+    [ObservableProperty] private double _adjHighlightRadius = 30.0;
+    [ObservableProperty] private double _adjMidtone = 0.0;
+    [ObservableProperty] private double _adjColor = 0.0;
+    [ObservableProperty] private double _adjBlackClip = 0.01;
+    [ObservableProperty] private double _adjWhiteClip = 0.01;
+
+    // Black & White parameters
+    [ObservableProperty] private int _adjBwR = 40;
+    [ObservableProperty] private int _adjBwY = 60;
+    [ObservableProperty] private int _adjBwG = 40;
+    [ObservableProperty] private int _adjBwC = 60;
+    [ObservableProperty] private int _adjBwB = 20;
+    [ObservableProperty] private int _adjBwM = 80;
+    [ObservableProperty] private bool _adjBwTintEnabled = false;
+    [ObservableProperty] private Color _adjBwTintColor = Color.FromRgb(0xE1, 0xD3, 0xB3);
+
     [ObservableProperty] private bool _adjPreviewEnabled = true;
 
     private byte[]? _adjOriginalImageBytes;
@@ -548,6 +570,8 @@ public partial class ImageEditorViewModel
             "ColorLookup" => "Color Lookup (3D LUT)",
             "GradientMap" => "Gradient Map",
             "PhotoFilter" => "Photo Filter",
+            "ShadowsHighlights" => "Shadows / Highlights",
+            "BlackAndWhite" => "Black & White",
             _ => "Adjustment"
         };
 
@@ -824,6 +848,8 @@ public partial class ImageEditorViewModel
             "ColorLookup" => ExecuteColorLookup(bgra),
             "GradientMap" => ExecuteGradientMap(bgra),
             "PhotoFilter" => ImageAdjustmentEngine.ApplyPhotoFilter(bgra, AdjPhotoFilterColor, AdjPhotoFilterDensity, AdjPhotoFilterPreserveLuminosity),
+            "ShadowsHighlights" => Core.Raster.ShadowsHighlightsEngine.ApplyShadowsHighlights(bgra, width, height, AdjShadowAmount, AdjShadowTone, AdjShadowRadius, AdjHighlightAmount, AdjHighlightTone, AdjHighlightRadius, AdjMidtone, AdjColor, AdjBlackClip, AdjWhiteClip),
+            "BlackAndWhite" => ImageAdjustmentEngine.ApplyBlackAndWhite(bgra, AdjBwR, AdjBwY, AdjBwG, AdjBwC, AdjBwB, AdjBwM, AdjBwTintEnabled ? AdjBwTintColor : null),
             _ => bgra
         };
     }

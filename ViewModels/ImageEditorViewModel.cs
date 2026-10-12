@@ -170,6 +170,76 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private double _canvasOriginScreenY;
 
+    // ── Studio View Extras & Preferences (Photoshop Parity) ───────────────
+    [ObservableProperty] private bool _viewExtras = true;
+    [ObservableProperty] private bool _enableNarrowOptionsBar = false;
+    public double OptionsBarHeight => EnableNarrowOptionsBar ? 28.0 : 34.0;
+    [ObservableProperty] private bool _missingGlyphProtection = true;
+
+    [RelayCommand]
+    public void ToggleViewExtras()
+    {
+        ViewExtras = !ViewExtras;
+        PdfEditorApp.Plugins.ImageEditor.Core.Preferences.StudioPreferences.Instance.ViewExtras = ViewExtras;
+        PdfEditorApp.Plugins.ImageEditor.Core.Preferences.StudioPreferences.Instance.Save();
+        StatusMessage = ViewExtras ? "Extras shown." : "Extras hidden.";
+    }
+
+    [RelayCommand]
+    public void ToggleNarrowOptionsBar()
+    {
+        EnableNarrowOptionsBar = !EnableNarrowOptionsBar;
+        OnPropertyChanged(nameof(OptionsBarHeight));
+        PdfEditorApp.Plugins.ImageEditor.Core.Preferences.StudioPreferences.Instance.EnableNarrowOptionsBar = EnableNarrowOptionsBar;
+        PdfEditorApp.Plugins.ImageEditor.Core.Preferences.StudioPreferences.Instance.Save();
+        StatusMessage = EnableNarrowOptionsBar ? "Narrow options bar enabled (28px)." : "Standard options bar enabled (34px).";
+    }
+
+    [RelayCommand]
+    public void ToggleMissingGlyphProtection()
+    {
+        MissingGlyphProtection = !MissingGlyphProtection;
+        PdfEditorApp.Plugins.ImageEditor.Core.Preferences.StudioPreferences.Instance.MissingGlyphProtection = MissingGlyphProtection;
+        PdfEditorApp.Plugins.ImageEditor.Core.Preferences.StudioPreferences.Instance.Save();
+        StatusMessage = MissingGlyphProtection ? "Missing glyph protection enabled." : "Missing glyph protection disabled.";
+    }
+
+    // ── Document Color Mode & Bit Depth ───────────────────────────────────
+    [ObservableProperty] private string _documentColorMode = "RGB"; // "RGB", "CMYK", "Grayscale"
+    [ObservableProperty] private int _documentBitsPerChannel = 8;    // 8, 16, 32
+
+    public bool IsDocumentColorModeRgb => DocumentColorMode == "RGB";
+    public bool IsDocumentColorModeCmyk => DocumentColorMode == "CMYK";
+    public bool IsDocumentColorModeGrayscale => DocumentColorMode == "Grayscale";
+
+    public bool IsDocument8Bits => DocumentBitsPerChannel == 8;
+    public bool IsDocument16Bits => DocumentBitsPerChannel == 16;
+    public bool IsDocument32Bits => DocumentBitsPerChannel == 32;
+
+    [RelayCommand]
+    public void SetDocumentColorMode(string mode)
+    {
+        if (string.IsNullOrWhiteSpace(mode)) return;
+        DocumentColorMode = mode.ToUpperInvariant();
+        OnPropertyChanged(nameof(IsDocumentColorModeRgb));
+        OnPropertyChanged(nameof(IsDocumentColorModeCmyk));
+        OnPropertyChanged(nameof(IsDocumentColorModeGrayscale));
+        StatusMessage = $"Color Mode set to {DocumentColorMode}.";
+    }
+
+    [RelayCommand]
+    public void SetDocumentBitsPerChannel(int bits)
+    {
+        if (bits != 8 && bits != 16 && bits != 32) return;
+        DocumentBitsPerChannel = bits;
+        OnPropertyChanged(nameof(IsDocument8Bits));
+        OnPropertyChanged(nameof(IsDocument16Bits));
+        OnPropertyChanged(nameof(IsDocument32Bits));
+        PdfEditorApp.Plugins.ImageEditor.Core.Preferences.StudioPreferences.Instance.DefaultBitsPerChannel = bits;
+        PdfEditorApp.Plugins.ImageEditor.Core.Preferences.StudioPreferences.Instance.Save();
+        StatusMessage = $"Color Depth set to {bits} Bits/Channel.";
+    }
+
     // ── Studio Document Title & Status Labels ──────────────────────────────
     [ObservableProperty]
     private string _documentTitle = "Untitled Design";
@@ -2103,6 +2173,19 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(LayersDescendingZ));
             _ = UpdateHistogramAsync();
         };
+        var studioPrefs = PdfEditorApp.Plugins.ImageEditor.Core.Preferences.StudioPreferences.Instance;
+        _viewExtras = studioPrefs.ViewExtras;
+        _showPixelGrid = studioPrefs.ShowPixelGrid;
+        _showGuides = studioPrefs.ShowGuides;
+        _lockGuides = studioPrefs.LockGuides;
+        _snapEnabled = studioPrefs.SnapEnabled;
+        _snapToGuides = studioPrefs.SnapToGuides;
+        _snapToGrid = studioPrefs.SnapToGrid;
+        _snapToLayers = studioPrefs.SnapToLayers;
+        _snapToDocumentBounds = studioPrefs.SnapToDocumentBounds;
+        _enableNarrowOptionsBar = studioPrefs.EnableNarrowOptionsBar;
+        _missingGlyphProtection = studioPrefs.MissingGlyphProtection;
+        _documentBitsPerChannel = studioPrefs.DefaultBitsPerChannel;
         LoadSettings();
         AddSampleElements();
         CreateNewSnapshot("Initial State");

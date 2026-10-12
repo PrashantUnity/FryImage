@@ -273,31 +273,189 @@ public class BrushSettings
         ShapeDynamics = ShapeDynamics.Clone(),
         Scattering = Scattering.Clone(),
         ColorDynamics = ColorDynamics.Clone(),
-        Transfer = Transfer.Clone()
+        Transfer = Transfer.Clone(),
+        Texture = Texture.Clone()
+    };
+
+    public BrushTexture Texture { get; set; } = new();
+}
+
+/// <summary>
+/// Photoshop texture combination modes for Brush Settings › Texture.
+/// </summary>
+public enum BrushTextureMode
+{
+    Multiply,
+    Subtract,
+    Darken,
+    ColorDodge,
+    ColorBurn,
+    LinearBurn,
+    HardMix,
+    LinearHeight,
+    Height
+}
+
+/// <summary>
+/// Brush Settings › Texture matching Photoshop 2026 / Photocraft.
+/// Supports Height, Linear Height, Subtract, Color Dodge/Burn, Brightness and Contrast levels.
+/// </summary>
+public class BrushTexture
+{
+    public const double HeightReach = 12.0;
+
+    public bool Enabled { get; set; }
+    public BrushTextureMode Mode { get; set; } = BrushTextureMode.Multiply;
+    public double Depth { get; set; } = 1.0; // 0..1
+    public double Scale { get; set; } = 1.0;
+    public bool Invert { get; set; }
+    public double Brightness { get; set; } = 0.0; // -255..255
+    public double Contrast { get; set; } = 0.0;   // -100..100
+    public bool EachTip { get; set; }
+
+    public double Level(double v)
+    {
+        double bShift = Brightness / 255.0;
+        double x;
+        if (Contrast > 0.0)
+        {
+            double slope = 1.0 / Math.Max(0.001, 1.0 - Math.Min(0.999, Contrast / 100.0));
+            x = (v + bShift - 0.5) * slope + 0.5;
+        }
+        else
+        {
+            x = (v - 0.5) * (1.0 + Contrast / 100.0) + 0.5 + bShift;
+        }
+        x = Math.Clamp(x, 0.0, 1.0);
+        return Invert ? 1.0 - x : x;
+    }
+
+    public static double TextureCombine(BrushTextureMode mode, double v, double t, double d)
+    {
+        if (v <= 0.0) return 0.0;
+        double r = mode switch
+        {
+            BrushTextureMode.Subtract => v - d * t,
+            BrushTextureMode.ColorDodge => v / Math.Max(1.0 - d * t, 1e-3),
+            BrushTextureMode.ColorBurn => 1.0 - (1.0 - v) / Math.Max(1.0 - d + d * t, 1e-3),
+            BrushTextureMode.Height => HeightReach * (Math.Round(d * 255.0) / 255.0) * v - t,
+            BrushTextureMode.LinearHeight => (HeightReach * (Math.Round(d * 255.0) / 255.0) * v) is var reach
+                && reach < 1.0 ? reach * (1.0 - t) : reach - t,
+            BrushTextureMode.Multiply => v * t,
+            BrushTextureMode.Darken => Math.Min(v, t),
+            BrushTextureMode.LinearBurn => v + t - 1.0,
+            BrushTextureMode.HardMix => (v + t >= 1.0) ? 1.0 : 0.0,
+            _ => v * t
+        };
+        return double.IsFinite(r) ? Math.Clamp(r, 0.0, 1.0) : 0.0;
+    }
+
+    public BrushTexture Clone() => new()
+    {
+        Enabled = Enabled,
+        Mode = Mode,
+        Depth = Depth,
+        Scale = Scale,
+        Invert = Invert,
+        Brightness = Brightness,
+        Contrast = Contrast,
+        EachTip = EachTip
     };
 }
 
 /// <summary>
-/// A named brush preset grouped by medium category (General, Dry Media, Wet Media, Special Effects).
+/// A named brush preset grouped by medium category and optional nested folder path.
 /// </summary>
 public class BrushPreset
 {
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string Group { get; set; } = "General";
+    public List<string> Folder { get; set; } = new();
     public string IconKind { get; set; } = "Brush";
     public BrushSettings Settings { get; set; } = new();
 
     public BrushPreset() { }
 
-    public BrushPreset(string id, string name, string group, string iconKind, BrushSettings settings)
+    public BrushPreset(string id, string name, string group, string iconKind, BrushSettings settings, IEnumerable<string>? folder = null)
     {
         Id = id;
         Name = name;
         Group = group;
         IconKind = iconKind;
         Settings = settings;
+        if (folder != null) Folder.AddRange(folder);
     }
 
-    public BrushPreset Clone() => new(Id, Name, Group, IconKind, Settings.Clone());
+    public BrushPreset Clone() => new(Id, Name, Group, IconKind, Settings.Clone(), Folder);
+}
+
+/// <summary>
+/// Helper for folder drag & drop in the Brushes panel matching Photoshop (#3851).
+/// </summary>
+public static class FolderDropHelper
+{
+    public record FolderDropResult(string Action, string SourceGroup, List<string> SourceFolder, string? TargetGroup, List<string>? TargetFolder, string? Before);
+
+    public static FolderDropResult? ComputeDrop(
+        string srcGroup,
+        IReadOnlyList<string> srcFolder,
+        string targetGroup,
+        IReadOnlyList<string> targetFolder,
+        bool isUpperEdge)
+    {
+        if (srcGroup == targetGroup && StartsWith(targetFolder, srcFolder))
+        {
+            return null;
+        }
+
+        if (!isUpperEdge)
+        {
+            if (srcGroup == targetGroup && ParentEquals(srcFolder, targetFolder))
+            {
+                return null;
+            }
+            return new FolderDropResult("MoveInto", srcGroup, srcFolder.ToList(), targetGroup, targetFolder.ToList(), null);
+        }
+
+        if (targetFolder.Count == 0)
+        {
+            if (srcFolder.Count == 0)
+                return new FolderDropResult("MoveGroup", srcGroup, srcFolder.ToList(), targetGroup, null, targetGroup);
+            else
+                return new FolderDropResult("MoveInto", srcGroup, srcFolder.ToList(), null, null, targetGroup);
+        }
+        else
+        {
+            string leaf = targetFolder[^1];
+            var parent = targetFolder.Take(targetFolder.Count - 1).ToList();
+            bool isSibling = srcGroup == targetGroup && ParentEquals(srcFolder, parent);
+            if (isSibling)
+                return new FolderDropResult("MoveGroup", srcGroup, srcFolder.ToList(), targetGroup, parent, leaf);
+            else
+                return new FolderDropResult("MoveInto", srcGroup, srcFolder.ToList(), targetGroup, parent, leaf);
+        }
+    }
+
+    private static bool StartsWith(IReadOnlyList<string> full, IReadOnlyList<string> prefix)
+    {
+        if (prefix.Count > full.Count) return false;
+        for (int i = 0; i < prefix.Count; i++)
+        {
+            if (full[i] != prefix[i]) return false;
+        }
+        return true;
+    }
+
+    private static bool ParentEquals(IReadOnlyList<string> folder, IReadOnlyList<string> parent)
+    {
+        if (folder.Count == 0 && parent.Count == 0) return true;
+        if (folder.Count <= 1 && parent.Count == 0) return true;
+        if (folder.Count - 1 != parent.Count) return false;
+        for (int i = 0; i < parent.Count; i++)
+        {
+            if (folder[i] != parent[i]) return false;
+        }
+        return true;
+    }
 }

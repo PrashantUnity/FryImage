@@ -113,6 +113,8 @@ public partial class ImageEditorViewModel
         AddCmd("adjust.gradientmap", "Gradient Map...", "Adjustments", null, "GradientHorizontal", () => OpenAdjustmentDialog("GradientMap"));
         AddCmd("adjust.threshold", "Threshold...", "Adjustments", null, "CircleHalfFull", () => OpenAdjustmentDialog("Threshold"));
         AddCmd("adjust.posterize", "Posterize...", "Adjustments", null, "ChartBarStacked", () => OpenAdjustmentDialog("Posterize"));
+        AddCmd("adjust.shadowshighlights", "Shadows / Highlights...", "Adjustments", null, "SunCompass", () => OpenAdjustmentDialog("ShadowsHighlights"));
+        AddCmd("adjust.blackandwhite", "Black & White...", "Adjustments", "Alt+Shift+Ctrl+B", "CircleHalfFull", () => OpenAdjustmentDialog("BlackAndWhite"));
         AddCmd("adjust.autotone", "Auto Tone", "Adjustments", "Shift+Ctrl+L", "AutoFix", ApplyAutoTone);
         AddCmd("adjust.autocontrast", "Auto Contrast", "Adjustments", "Alt+Shift+Ctrl+L", "Contrast", ApplyAutoContrast);
         AddCmd("adjust.autocolor", "Auto Color", "Adjustments", "Shift+Ctrl+B", "FormatColorFill", ApplyAutoColor);
@@ -149,6 +151,9 @@ public partial class ImageEditorViewModel
         AddCmd("layer.from.background", "Layer from Background...", "Layer", null, "LayersOutline", () => ConvertBackgroundToLayer());
         AddCmd("layer.to.background", "Background from Layer", "Layer", null, "LockOutline", () => ConvertLayerToBackground());
         AddCmd("layer.rename", "Rename Layer...", "Layer", null, "RenameBox", () => OpenRenameLayerDialog());
+        AddCmd("layer.mergedown", "Merge Down", "Layer", "Ctrl+E", "LayersMinus", MergeDown);
+        AddCmd("layer.mergevisible", "Merge Visible", "Layer", "Ctrl+Shift+E", "LayersMerge", MergeVisible);
+        AddCmd("layer.flatten", "Flatten Image", "Layer", null, "ImageOutline", FlattenImage);
         AddCmd("layer.blendmode.next", "Next Blend Mode", "Layer", "Shift++", "SwapVertical", () => CycleBlendMode(true));
         AddCmd("layer.blendmode.prev", "Previous Blend Mode", "Layer", "Shift+-", "SwapVertical", () => CycleBlendMode(false));
 
@@ -164,6 +169,8 @@ public partial class ImageEditorViewModel
         AddCmd("brush.symmetry.radial", "Symmetry: Radial (Mandala)", "Brush", null, "RadiusOutline", () => ActiveSymmetryMode = SymmetryMode.Radial);
 
         // ── 6. Edit & History ────────────────────────────────
+        AddCmd("history.undo", "Undo", "Edit", "Ctrl+Z", "Undo", Undo);
+        AddCmd("history.redo", "Redo", "Edit", "Ctrl+Y", "Redo", Redo);
         AddCmd("edit.undo", "Undo", "Edit", "Ctrl+Z", "Undo", Undo);
         AddCmd("edit.redo", "Redo", "Edit", "Ctrl+Y", "Redo", Redo);
         AddCmd("edit.cut", "Cut", "Edit", "Ctrl+X", "ContentCut", DeleteSelectedElement);
@@ -180,6 +187,9 @@ public partial class ImageEditorViewModel
         AddCmd("view.actual", "Actual Pixels 100%", "View", "Ctrl+1", "MagnifyScan", ResetZoom);
         AddCmd("view.zoomin", "Zoom In", "View", "Ctrl++", "MagnifyPlusOutline", ZoomIn);
         AddCmd("view.zoomout", "Zoom Out", "View", "Ctrl+-", "MagnifyMinusOutline", ZoomOut);
+        AddCmd("view.extras", "Extras", "View", "Ctrl+H", "EyeOutline", ToggleViewExtras);
+        AddCmd("view.narrowoptions", "Toggle Narrow Options Bar", "View", null, "DockTop", ToggleNarrowOptionsBar);
+        AddCmd("type.glyphprotection", "Toggle Missing Glyph Protection", "Type", null, "FormatFont", ToggleMissingGlyphProtection);
         AddCmd("view.rulers", "Toggle Rulers", "View", "Ctrl+R", "Ruler", ToggleRulers);
         AddCmd("view.grid", "Toggle Grid", "View", "Ctrl+'", "Grid", ToggleGrid);
         AddCmd("view.guides.toggle", "Toggle Guides", "View", "Ctrl+;", "EyeOutline", ToggleGuides);

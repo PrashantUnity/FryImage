@@ -3,11 +3,13 @@
              xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
              xmlns:views="using:PdfEditorApp.Plugins.ImageEditor.Controls"
              xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             xmlns:cp="clr-namespace:Avalonia.Controls;assembly=Avalonia.Controls.ColorPicker"
              x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Dialogs.AdjustmentDialog"
              x:DataType="local:ImageEditorViewModel">
 
     <UserControl.Resources>
         <local:StringEqualsConverter x:Key="StringEqualsConverter" />
+        <local:ColorToBrushConverter x:Key="ColorToBrushConverter" />
     </UserControl.Resources>
 
     <!-- Modal Backdrop -->
@@ -448,6 +450,155 @@
                             </StackPanel>
 
                             <CheckBox Content="Preserve Luminosity" IsChecked="{Binding AdjPhotoFilterPreserveLuminosity, Mode=TwoWay}" Margin="0,4,0,0" />
+                        </StackPanel>
+
+                        <!-- 13. Shadows / Highlights View (Photoshop 25.4 Algorithmic Model) -->
+                        <StackPanel Spacing="14" IsVisible="{Binding ActiveAdjustmentMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='ShadowsHighlights'}">
+                            <!-- Shadows Group -->
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Shadows" Classes="ps-label" FontWeight="SemiBold" />
+                                <StackPanel Spacing="4">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="Amount" Classes="ps-label" />
+                                        <TextBlock Grid.Column="1" Text="{Binding AdjShadowAmount, StringFormat='{}{0:0}%'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                    </Grid>
+                                    <Slider Minimum="0" Maximum="100" Value="{Binding AdjShadowAmount, Mode=TwoWay}" />
+                                </StackPanel>
+                                <StackPanel Spacing="4">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="Tone" Classes="ps-label" />
+                                        <TextBlock Grid.Column="1" Text="{Binding AdjShadowTone, StringFormat='{}{0:0}%'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                    </Grid>
+                                    <Slider Minimum="0" Maximum="100" Value="{Binding AdjShadowTone, Mode=TwoWay}" />
+                                </StackPanel>
+                                <StackPanel Spacing="4">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="Radius" Classes="ps-label" />
+                                        <TextBlock Grid.Column="1" Text="{Binding AdjShadowRadius, StringFormat='{}{0:0} px'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                    </Grid>
+                                    <Slider Minimum="1" Maximum="250" Value="{Binding AdjShadowRadius, Mode=TwoWay}" />
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- Highlights Group -->
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Highlights" Classes="ps-label" FontWeight="SemiBold" />
+                                <StackPanel Spacing="4">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="Amount" Classes="ps-label" />
+                                        <TextBlock Grid.Column="1" Text="{Binding AdjHighlightAmount, StringFormat='{}{0:0}%'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                    </Grid>
+                                    <Slider Minimum="0" Maximum="100" Value="{Binding AdjHighlightAmount, Mode=TwoWay}" />
+                                </StackPanel>
+                                <StackPanel Spacing="4">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="Tone" Classes="ps-label" />
+                                        <TextBlock Grid.Column="1" Text="{Binding AdjHighlightTone, StringFormat='{}{0:0}%'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                    </Grid>
+                                    <Slider Minimum="0" Maximum="100" Value="{Binding AdjHighlightTone, Mode=TwoWay}" />
+                                </StackPanel>
+                                <StackPanel Spacing="4">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="Radius" Classes="ps-label" />
+                                        <TextBlock Grid.Column="1" Text="{Binding AdjHighlightRadius, StringFormat='{}{0:0} px'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                    </Grid>
+                                    <Slider Minimum="1" Maximum="250" Value="{Binding AdjHighlightRadius, Mode=TwoWay}" />
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- Adjustments Group (Color, Midtone, Black Clip, White Clip) -->
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Adjustments" Classes="ps-label" FontWeight="SemiBold" />
+                                <StackPanel Spacing="4">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="Color" Classes="ps-label" />
+                                        <TextBlock Grid.Column="1" Text="{Binding AdjColor, StringFormat='{}{0:+0;-0;0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                    </Grid>
+                                    <Slider Minimum="-100" Maximum="100" Value="{Binding AdjColor, Mode=TwoWay}" />
+                                </StackPanel>
+                                <StackPanel Spacing="4">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="Midtone" Classes="ps-label" />
+                                        <TextBlock Grid.Column="1" Text="{Binding AdjMidtone, StringFormat='{}{0:+0;-0;0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                    </Grid>
+                                    <Slider Minimum="-100" Maximum="100" Value="{Binding AdjMidtone, Mode=TwoWay}" />
+                                </StackPanel>
+                                <Grid ColumnDefinitions="*,12,*">
+                                    <StackPanel Grid.Column="0" Spacing="2">
+                                        <TextBlock Text="Black Clip (%)" Classes="ps-label" FontSize="10" />
+                                        <NumericUpDown Classes="ps-num" Value="{Binding AdjBlackClip, Mode=TwoWay}" Minimum="0" Maximum="50" Increment="0.01" FormatString="{}{0:0.00}%" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Spacing="2">
+                                        <TextBlock Text="White Clip (%)" Classes="ps-label" FontSize="10" />
+                                        <NumericUpDown Classes="ps-num" Value="{Binding AdjWhiteClip, Mode=TwoWay}" Minimum="0" Maximum="50" Increment="0.01" FormatString="{}{0:0.00}%" />
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- 14. Black & White View (Photoshop 6-Range Decomposition & Tint) -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ActiveAdjustmentMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='BlackAndWhite'}">
+                            <!-- Reds -->
+                            <StackPanel Spacing="3">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Reds" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding AdjBwR, StringFormat='{}{0:+0;-0;0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="-200" Maximum="300" Value="{Binding AdjBwR, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <!-- Yellows -->
+                            <StackPanel Spacing="3">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Yellows" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding AdjBwY, StringFormat='{}{0:+0;-0;0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="-200" Maximum="300" Value="{Binding AdjBwY, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <!-- Greens -->
+                            <StackPanel Spacing="3">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Greens" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding AdjBwG, StringFormat='{}{0:+0;-0;0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="-200" Maximum="300" Value="{Binding AdjBwG, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <!-- Cyans -->
+                            <StackPanel Spacing="3">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Cyans" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding AdjBwC, StringFormat='{}{0:+0;-0;0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="-200" Maximum="300" Value="{Binding AdjBwC, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <!-- Blues -->
+                            <StackPanel Spacing="3">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Blues" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding AdjBwB, StringFormat='{}{0:+0;-0;0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="-200" Maximum="300" Value="{Binding AdjBwB, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <!-- Magentas -->
+                            <StackPanel Spacing="3">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Magentas" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding AdjBwM, StringFormat='{}{0:+0;-0;0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="-200" Maximum="300" Value="{Binding AdjBwM, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <!-- Tint Option -->
+                            <Border Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" CornerRadius="2" Padding="8,6" Margin="0,4,0,0">
+                                <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+                                    <CheckBox Grid.Column="0" Content="Tint" IsChecked="{Binding AdjBwTintEnabled, Mode=TwoWay}" VerticalAlignment="Center" />
+                                    <cp:ColorPicker Grid.Column="2" Color="{Binding AdjBwTintColor, Mode=TwoWay}" IsEnabled="{Binding AdjBwTintEnabled}" VerticalAlignment="Center" />
+                                </Grid>
+                            </Border>
                         </StackPanel>
 
                         <!-- Live Preview Toggle -->

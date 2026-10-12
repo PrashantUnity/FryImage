@@ -4,7 +4,7 @@
              xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.ToolOptionsBar"
              x:DataType="local:ImageEditorViewModel"
-             Height="34"
+             Height="{Binding OptionsBarHeight}"
              Background="{DynamicResource PsOptionsBrush}">
 
     <UserControl.Resources>

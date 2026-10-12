@@ -718,4 +718,48 @@ public static class PsdCodec
             Write((uint)value);
         }
     }
+
+    /// <summary>
+    /// Parses Photoshop 'phfl' tagged block data (Photo Filter adjustment).
+    /// Version 3 encodes D50 CIE XYZ colors (scaled by 32768) matching Photoshop CS2+ (#3790).
+    /// </summary>
+    public static (Color Color, double Density, bool PreserveLuminosity) DecodePhotoFilterBlock(ReadOnlySpan<byte> data)
+    {
+        if (data.Length < 18)
+            return (Color.FromRgb(0xEC, 0x8A, 0x00), 0.25, true);
+
+        ushort version = (ushort)((data[0] << 8) | data[1]);
+
+        if (version == 3 && data.Length >= 19)
+        {
+            // Version 3: 3x u32 XYZ components, density u32, preserve_luminosity u8
+            uint xRaw = (uint)((data[2] << 24) | (data[3] << 16) | (data[4] << 8) | data[5]);
+            uint yRaw = (uint)((data[6] << 24) | (data[7] << 16) | (data[8] << 8) | data[9]);
+            uint zRaw = (uint)((data[10] << 24) | (data[11] << 16) | (data[12] << 8) | data[13]);
+            uint densityRaw = (uint)((data[14] << 24) | (data[15] << 16) | (data[16] << 8) | data[17]);
+            bool preserve = data[18] != 0;
+
+            double x = xRaw / 32768.0;
+            double y = yRaw / 32768.0;
+            double z = zRaw / 32768.0;
+            var color = PdfEditorApp.Plugins.ImageEditor.Core.Coloring.ColorConversions.XyzD50ToSrgb(x, y, z);
+            return (color, densityRaw / 100.0, preserve);
+        }
+        else if (version == 2 && data.Length >= 18)
+        {
+            ushort colorSpace = (ushort)((data[2] << 8) | data[3]);
+            ushort c0 = (ushort)((data[4] << 8) | data[5]);
+            ushort c1 = (ushort)((data[6] << 8) | data[7]);
+            ushort c2 = (ushort)((data[8] << 8) | data[9]);
+            uint densityRaw = (uint)((data[14] << 24) | (data[15] << 16) | (data[16] << 8) | data[17]);
+            bool preserve = data.Length > 18 && data[18] != 0;
+
+            Color color = colorSpace == 0
+                ? Color.FromRgb((byte)(c0 >> 8), (byte)(c1 >> 8), (byte)(c2 >> 8))
+                : Color.FromRgb(0xEC, 0x8A, 0x00);
+            return (color, densityRaw / 100.0, preserve);
+        }
+
+        return (Color.FromRgb(0xEC, 0x8A, 0x00), 0.25, true);
+    }
 }

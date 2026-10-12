@@ -61,13 +61,13 @@ public static class MattingEngine
             p = BoxBlurFloat(p, width, height, featherR);
         }
 
-        // 4. Shift Edge (Dilation / Erosion)
-        if (Math.Abs(shiftEdge) > 0.1)
+        // 4. Shift Edge (Dilation / Erosion with smooth sub-pixel fractional blending)
+        if (Math.Abs(shiftEdge) > 0.01)
         {
-            int shiftPx = (int)Math.Round((shiftEdge / 100.0) * Math.Max(radius, 4.0));
-            if (shiftPx != 0)
+            float amount = (float)(Math.Clamp(shiftEdge, -100.0, 100.0) / 100.0 * Math.Max(radius, 4.0));
+            if (Math.Abs(amount) >= 1e-4f)
             {
-                p = MorphologyShift(p, width, height, shiftPx);
+                p = MorphologyShiftFractional(p, width, height, amount);
             }
         }
 
@@ -182,6 +182,7 @@ public static class MattingEngine
 
     private static float[] MorphologyShift(float[] src, int w, int h, int shiftPx)
     {
+        if (shiftPx == 0) return (float[])src.Clone();
         float[] dst = new float[w * h];
         int r = Math.Abs(shiftPx);
         bool isDilation = shiftPx > 0;
@@ -212,6 +213,34 @@ public static class MattingEngine
         });
 
         return dst;
+    }
+
+    /// <summary>
+    /// Grow or shrink by fractional pixel distance. Values between whole pixels blend the two neighbouring morphs.
+    /// </summary>
+    private static float[] MorphologyShiftFractional(float[] src, int w, int h, float amount)
+    {
+        float mag = Math.Abs(amount);
+        if (!float.IsFinite(mag) || mag < 1e-4f) return (float[])src.Clone();
+
+        bool grow = amount > 0.0f;
+        int whole = (int)Math.Floor(mag);
+        float frac = mag - whole;
+
+        if (frac < 1e-4f)
+        {
+            return MorphologyShift(src, w, h, grow ? whole : -whole);
+        }
+
+        float[] lo = whole == 0 ? (float[])src.Clone() : MorphologyShift(src, w, h, grow ? whole : -whole);
+        float[] hi = MorphologyShift(src, w, h, grow ? (whole + 1) : -(whole + 1));
+
+        float[] blended = new float[src.Length];
+        for (int i = 0; i < src.Length; i++)
+        {
+            blended[i] = lo[i] + (hi[i] - lo[i]) * frac;
+        }
+        return blended;
     }
 
     /// <summary>

@@ -39,6 +39,15 @@
                         <materialIcons:MaterialIcon Kind="Eraser" Width="14" Height="14" IsVisible="{Binding IsEraserToolActive}" />
                         <materialIcons:MaterialIcon Kind="FormatColorFill" Width="14" Height="14" IsVisible="{Binding IsGradientToolActive}" />
                         <materialIcons:MaterialIcon Kind="FormatColorText" Width="14" Height="14" IsVisible="{Binding IsTextToolActive}" />
+                        <materialIcons:MaterialIcon Kind="VectorBezier" Width="14" Height="14" IsVisible="{Binding IsPenToolActive}" />
+                        <materialIcons:MaterialIcon Kind="VectorSelection" Width="14" Height="14" IsVisible="{Binding IsPathSelectionToolActive}" />
+                        <materialIcons:MaterialIcon Kind="SquareOutline" Width="14" Height="14" IsVisible="{Binding IsShapeToolActive}" />
+                        <materialIcons:MaterialIcon Kind="WeatherSunny" Width="14" Height="14" IsVisible="{Binding IsDodgeToolActive}" />
+                        <materialIcons:MaterialIcon Kind="HandBackLeftOutline" Width="14" Height="14" IsVisible="{Binding IsBurnToolActive}" />
+                        <materialIcons:MaterialIcon Kind="ChartBubble" Width="14" Height="14" IsVisible="{Binding IsSpongeToolActive}" />
+                        <materialIcons:MaterialIcon Kind="WaterOutline" Width="14" Height="14" IsVisible="{Binding IsBlurToolActive}" />
+                        <materialIcons:MaterialIcon Kind="TriangleOutline" Width="14" Height="14" IsVisible="{Binding IsSharpenToolActive}" />
+                        <materialIcons:MaterialIcon Kind="Fingerprint" Width="14" Height="14" IsVisible="{Binding IsSmudgeToolActive}" />
                         <materialIcons:MaterialIcon Kind="HandBackRightOutline" Width="14" Height="14" IsVisible="{Binding IsHandToolActive}" />
                         <materialIcons:MaterialIcon Kind="Magnify" Width="14" Height="14" IsVisible="{Binding IsZoomToolActive}" />
                         <materialIcons:MaterialIcon Kind="MenuDown" Width="10" Height="10" Foreground="{DynamicResource PsTextDimBrush}" />
@@ -401,6 +410,13 @@
                             Background="{Binding PrimaryColor, Converter={StaticResource ColorToBrushConverter}}"
                             BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1"
                             ToolTip.Tip="Text Color" />
+
+                    <Rectangle Width="1" Height="16" Fill="{DynamicResource PsBorderSubtleBrush}" Margin="2,0" />
+
+                    <!-- Warp Text Button -->
+                    <Button Classes="ps-opt-btn" Width="24" Height="24" Command="{Binding OpenWarpTextDialogCommand}" ToolTip.Tip="Create warped text">
+                        <materialIcons:MaterialIcon Kind="Waves" Width="14" Height="14" />
+                    </Button>
                 </StackPanel>
 
                 <!-- ==========================================
@@ -573,6 +589,33 @@
                 </StackPanel>
 
                 <!-- ==========================================
+                     I2. PEN & VECTOR PATH TOOL OPTIONS (P)
+                     ========================================== -->
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                            IsVisible="{Binding IsPenToolActive}">
+                    <materialIcons:MaterialIcon Kind="VectorBezier" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+                    
+                    <TextBlock Text="Mode:" Classes="ps-label" />
+                    <ComboBox Classes="ps-combo" Width="85" Height="22" SelectedIndex="0">
+                        <ComboBoxItem Content="Path" />
+                        <ComboBoxItem Content="Shape" />
+                    </ComboBox>
+
+                    <Rectangle Width="1" Height="16" Fill="{DynamicResource PsBorderSubtleBrush}" Margin="2,0" />
+
+                    <!-- Make Buttons: Selection, Fill, Stroke -->
+                    <TextBlock Text="Make:" Classes="ps-label" />
+                    <Button Classes="ps-opt-btn" Content="Selection..." Padding="6,2" Command="{Binding LoadPathAsSelectionCommand}" ToolTip.Tip="Make Selection from Path" />
+                    <Button Classes="ps-opt-btn" Content="Fill Path" Padding="6,2" Command="{Binding FillActivePathCommand}" ToolTip.Tip="Fill Path with Foreground Color" />
+                    <Button Classes="ps-opt-btn" Content="Stroke Path" Padding="6,2" Command="{Binding StrokeActivePathCommand}" ToolTip.Tip="Stroke Path with Current Brush" />
+
+                    <Rectangle Width="1" Height="16" Fill="{DynamicResource PsBorderSubtleBrush}" Margin="2,0" />
+
+                    <CheckBox Classes="ps-check" Content="Auto Add/Delete" IsChecked="True" VerticalAlignment="Center" Margin="2,0" />
+                    <CheckBox Classes="ps-check" Content="Rubber Band" IsChecked="False" VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- ==========================================
                      J. EYEDROPPER TOOL OPTIONS (I)
                      ========================================== -->
                 <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
@@ -605,12 +648,58 @@
                 <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
                             IsVisible="{Binding IsLassoToolActive}">
                     <materialIcons:MaterialIcon Kind="Lasso" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+
+                    <!-- Sub-tool selector buttons -->
+                    <StackPanel Orientation="Horizontal" Spacing="2">
+                        <Button Classes="ps-opt-btn" Classes.active="{Binding IsStandardLassoMode}"
+                                Command="{Binding SetLassoSubModeStringCommand}" CommandParameter="standard"
+                                Width="24" Height="22" ToolTip.Tip="Lasso Tool (Freehand)">
+                            <materialIcons:MaterialIcon Kind="Lasso" Width="13" Height="13" />
+                        </Button>
+                        <Button Classes="ps-opt-btn" Classes.active="{Binding IsPolygonalLassoMode}"
+                                Command="{Binding SetLassoSubModeStringCommand}" CommandParameter="polygonal"
+                                Width="24" Height="22" ToolTip.Tip="Polygonal Lasso Tool">
+                            <materialIcons:MaterialIcon Kind="VectorPolygon" Width="13" Height="13" />
+                        </Button>
+                        <Button Classes="ps-opt-btn" Classes.active="{Binding IsMagneticLassoMode}"
+                                Command="{Binding SetLassoSubModeStringCommand}" CommandParameter="magnetic"
+                                Width="24" Height="22" ToolTip.Tip="Magnetic Lasso Tool (Intelligent Scissors)">
+                            <materialIcons:MaterialIcon Kind="Magnet" Width="13" Height="13" />
+                        </Button>
+                    </StackPanel>
+
                     <TextBlock Text="Feather:" Classes="ps-label" />
                     <NumericUpDown Classes="ps-num" Width="68" Height="22"
                                    Minimum="0" Maximum="250" Increment="1"
                                    Value="{Binding MarqueeFeather, Mode=TwoWay}"
                                    FormatString="{}{0:0} px" />
-                    <CheckBox Content="Anti-alias" IsChecked="True" Margin="6,0,0,0" />
+                    <CheckBox Content="Anti-alias" IsChecked="True" Margin="4,0,0,0" />
+
+                    <!-- Magnetic Lasso Specific Controls -->
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                                IsVisible="{Binding IsMagneticLassoMode}">
+                        <Border Width="1" Height="16" Background="{DynamicResource PsBorderBrush}" Margin="4,0" />
+                        <TextBlock Text="Width:" Classes="ps-label" />
+                        <NumericUpDown Classes="ps-num" Width="68" Height="22"
+                                       Minimum="1" Maximum="256" Increment="1"
+                                       Value="{Binding MagneticLassoWidth, Mode=TwoWay}"
+                                       FormatString="{}{0:0} px"
+                                       ToolTip.Tip="Edge detection width radius" />
+
+                        <TextBlock Text="Contrast:" Classes="ps-label" />
+                        <NumericUpDown Classes="ps-num" Width="64" Height="22"
+                                       Minimum="1" Maximum="100" Increment="5"
+                                       Value="{Binding MagneticLassoEdgeContrast, Mode=TwoWay}"
+                                       FormatString="{}{0:0}%"
+                                       ToolTip.Tip="Edge contrast sensitivity" />
+
+                        <TextBlock Text="Frequency:" Classes="ps-label" />
+                        <NumericUpDown Classes="ps-num" Width="60" Height="22"
+                                       Minimum="0" Maximum="100" Increment="5"
+                                       Value="{Binding MagneticLassoFrequency, Mode=TwoWay}"
+                                       FormatString="{}{0:0}"
+                                       ToolTip.Tip="Rate of automatic fastening point creation" />
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- ==========================================
@@ -620,12 +709,13 @@
                             IsVisible="{Binding IsWandToolActive}">
                     <materialIcons:MaterialIcon Kind="MagicStaff" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
                     <TextBlock Text="Tolerance:" Classes="ps-label" />
-                    <NumericUpDown Classes="ps-num" Width="62" Height="22"
+                    <NumericUpDown Classes="ps-num" Width="68" Height="22"
                                    Minimum="0" Maximum="255" Increment="1"
-                                   Value="32" FormatString="{}{0:0}" />
-                    <CheckBox Content="Anti-alias" IsChecked="True" Margin="6,0,0,0" />
-                    <CheckBox Content="Contiguous" IsChecked="True" />
-                    <CheckBox Content="Sample All Layers" />
+                                   Value="{Binding MagicWandTolerance, Mode=TwoWay}"
+                                   FormatString="{}{0:0}" />
+                    <CheckBox Content="Anti-alias" IsChecked="{Binding MagicWandAntiAlias, Mode=TwoWay}" Margin="6,0,0,0" />
+                    <CheckBox Content="Contiguous" IsChecked="{Binding MagicWandContiguous, Mode=TwoWay}" />
+                    <CheckBox Content="Sample All Layers" IsChecked="{Binding MagicWandSampleAllLayers, Mode=TwoWay}" />
                 </StackPanel>
 
                 <!-- ==========================================

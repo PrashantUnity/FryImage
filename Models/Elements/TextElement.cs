@@ -132,6 +132,11 @@ public class TextElement : CanvasElement
         if (IsHeightAutoFitEnabled) Height = Math.Max(ft.Height + 4, 20);
     }
 
+    /// <summary>
+    /// Non-destructive warp deformation applied to the text glyphs.
+    /// </summary>
+    public TextWarpSettings Warp { get; set; } = new();
+
     public override void Draw(DrawingContext dc)
     {
         if (string.IsNullOrEmpty(Text)) return;
@@ -158,7 +163,56 @@ public class TextElement : CanvasElement
         var decorations = BuildTextDecorations();
         if (decorations != null) ft.SetTextDecorations(decorations);
 
-        dc.DrawText(ft, new Point(X + 4, Y + 2));
+        if (Warp != null && Warp.IsActive)
+        {
+            DrawWarpedText(dc, ft);
+        }
+        else
+        {
+            dc.DrawText(ft, new Point(X + 4, Y + 2));
+        }
+    }
+
+    private void DrawWarpedText(DrawingContext dc, FormattedText ft)
+    {
+        var bounds = new Rect(X + 4, Y + 2, Math.Max(20, Width - 8), Math.Max(16, Height - 4));
+        int slices = Math.Clamp((int)(bounds.Width / 5.0), 20, 60);
+
+        for (int i = 0; i < slices; i++)
+        {
+            double u0 = (double)i / slices;
+            double u1 = (double)(i + 1) / slices;
+            double stripX = bounds.X + u0 * bounds.Width;
+            double stripW = (u1 - u0) * bounds.Width;
+
+            var centerPt = new Point(stripX + stripW / 2.0, bounds.Center.Y);
+            var topPt = new Point(stripX + stripW / 2.0, bounds.Top);
+            var bottomPt = new Point(stripX + stripW / 2.0, bounds.Bottom);
+
+            var warpedCenter = Core.Warp.TextWarpEngine.TransformPoint(centerPt, bounds, Warp);
+            var warpedTop = Core.Warp.TextWarpEngine.TransformPoint(topPt, bounds, Warp);
+            var warpedBottom = Core.Warp.TextWarpEngine.TransformPoint(bottomPt, bounds, Warp);
+
+            double dx = warpedCenter.X - centerPt.X;
+            double dy = warpedCenter.Y - centerPt.Y;
+            double stripHeight = Math.Max(1.0, warpedBottom.Y - warpedTop.Y);
+            double scaleY = Math.Clamp(stripHeight / bounds.Height, 0.1, 4.0);
+
+            var nextCenter = Core.Warp.TextWarpEngine.TransformPoint(new Point(stripX + stripW + 2, bounds.Center.Y), bounds, Warp);
+            var prevCenter = Core.Warp.TextWarpEngine.TransformPoint(new Point(stripX - 2, bounds.Center.Y), bounds, Warp);
+            double angleRad = Math.Atan2(nextCenter.Y - prevCenter.Y, nextCenter.X - prevCenter.X);
+
+            var stripTransform = Matrix.CreateTranslation(-centerPt.X, -centerPt.Y)
+                                 * Matrix.CreateScale(1.0, scaleY)
+                                 * Matrix.CreateRotation(angleRad)
+                                 * Matrix.CreateTranslation(centerPt.X + dx, centerPt.Y + dy);
+
+            using (dc.PushTransform(stripTransform))
+            using (dc.PushClip(new Rect(stripX - 0.5, bounds.Y - 150, stripW + 1.0, bounds.Height + 300)))
+            {
+                dc.DrawText(ft, new Point(X + 4, Y + 2));
+            }
+        }
     }
 
     public override bool HitTest(Point pt)
@@ -187,6 +241,7 @@ public class TextElement : CanvasElement
 
         clone.IsWidthAutoFitEnabled = IsWidthAutoFitEnabled;
         clone.IsHeightAutoFitEnabled = IsHeightAutoFitEnabled;
+        clone.Warp = Warp?.Clone() ?? new TextWarpSettings();
         return clone;
     }
 }

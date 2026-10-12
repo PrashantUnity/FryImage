@@ -439,6 +439,11 @@ public static class CanvasElementMapper
             IsHeightAutoFitEnabled = t.IsHeightAutoFitEnabled,
             IsWrapEnabled = t.IsWrapEnabled,
             LineHeight = t.LineHeight,
+            WarpStyle = t.Warp?.Style.ToString(),
+            WarpBend = t.Warp?.Bend ?? 50.0,
+            WarpHorizontalDistortion = t.Warp?.HorizontalDistortion ?? 0.0,
+            WarpVerticalDistortion = t.Warp?.VerticalDistortion ?? 0.0,
+            WarpIsHorizontal = t.Warp?.IsHorizontal ?? true,
         };
         CopyBaseToDto(t, dto);
         return dto;
@@ -467,6 +472,18 @@ public static class CanvasElementMapper
         t.TextCaseTransform = Enum.Parse<TextCaseTransform>(dto.TextCaseTransform);
         t.IsWrapEnabled = dto.IsWrapEnabled;
         t.LineHeight = dto.LineHeight;
+
+        if (!string.IsNullOrEmpty(dto.WarpStyle) && Enum.TryParse<TextWarpStyle>(dto.WarpStyle, true, out var ws))
+        {
+            t.Warp = new TextWarpSettings
+            {
+                Style = ws,
+                Bend = dto.WarpBend,
+                HorizontalDistortion = dto.WarpHorizontalDistortion,
+                VerticalDistortion = dto.WarpVerticalDistortion,
+                IsHorizontal = dto.WarpIsHorizontal
+            };
+        }
 
         CopyBaseFromDto(dto, t);
 

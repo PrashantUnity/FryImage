@@ -107,18 +107,19 @@
                         </Grid>
                     </StackPanel>
 
-                    <!-- Guides Group -->
+                    <!-- Guides & Snapping Group -->
                     <StackPanel Spacing="4">
-                        <TextBlock Text="▾ Guides" Classes="ps-label" FontWeight="SemiBold" />
+                        <TextBlock Text="▾ Guides &amp; Snapping" Classes="ps-label" FontWeight="SemiBold" />
                         <StackPanel Orientation="Horizontal" Spacing="4">
-                            <Button Classes="ps-tool-btn" Width="24" Height="22" ToolTip.Tip="View Guides">
+                            <Button Classes="ps-tool-btn" Classes.active="{Binding ShowGuides}" Width="24" Height="22" ToolTip.Tip="Toggle Guides (Ctrl+;)" Command="{Binding ToggleGuidesCommand}">
                                 <materialIcons:MaterialIcon Kind="EyeOutline" Width="13" Height="13" />
                             </Button>
-                            <Button Classes="ps-tool-btn" Width="24" Height="22" ToolTip.Tip="Lock Guides">
+                            <Button Classes="ps-tool-btn" Classes.active="{Binding LockGuides}" Width="24" Height="22" ToolTip.Tip="Lock Guides (Alt+Ctrl+;)" Command="{Binding ToggleLockGuidesCommand}">
                                 <materialIcons:MaterialIcon Kind="LockOutline" Width="13" Height="13" />
                             </Button>
-                            <Button Classes="ps-opt-btn" Content="New Guide..." Padding="8,2" />
-                            <Button Classes="ps-opt-btn" Content="Clear" Padding="8,2" />
+                            <Button Classes="ps-opt-btn" Content="New Guide..." Padding="8,2" Command="{Binding OpenNewGuideDialogCommand}" />
+                            <Button Classes="ps-opt-btn" Content="Layout..." Padding="8,2" Command="{Binding OpenNewGuideLayoutDialogCommand}" />
+                            <Button Classes="ps-opt-btn" Content="Clear" Padding="8,2" Command="{Binding ClearGuidesCommand}" />
                         </StackPanel>
                     </StackPanel>
                 </StackPanel>

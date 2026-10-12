@@ -88,7 +88,7 @@
                     </Border>
 
                     <!-- Right: Effect Controls -->
-                    <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Margin="14,10">
+                    <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Margin="14,10,6,10" Padding="0,0,12,0">
                         <!-- Drop Shadow Settings -->
                         <StackPanel Spacing="10" IsVisible="{Binding ActiveLayerStyleSection, Converter={StaticResource StringEqualsConverter}, ConverterParameter='DropShadow'}">
                             <TextBlock Text="Drop Shadow" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource PsTextBrush}" />

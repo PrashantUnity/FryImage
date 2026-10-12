@@ -63,6 +63,7 @@ public partial class ImageEditorViewModel
                 Elements.Insert(0, img);
                 SelectedElement = img;
                 _liquifyTargetImageElement = img;
+                _liquifyFallbackComposite = img;
             }
         }
 
@@ -157,9 +158,17 @@ public partial class ImageEditorViewModel
         IsLiquifyDialogOpen = false;
     }
 
+    private ImageElement? _liquifyFallbackComposite;
+
     [RelayCommand]
     public void CancelLiquifyDialog()
     {
+        if (_liquifyFallbackComposite != null)
+        {
+            Elements.Remove(_liquifyFallbackComposite);
+            _liquifyFallbackComposite = null;
+        }
+
         IsLiquifyDialogOpen = false;
         StatusMessage = "Liquify canceled.";
     }

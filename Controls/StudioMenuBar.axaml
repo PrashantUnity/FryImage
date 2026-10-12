@@ -57,6 +57,9 @@
                             <Separator />
                             <MenuItem Header="Search / Command Palette..." InputGesture="Ctrl+K" Command="{Binding ToggleCommandPaletteCommand}" />
                             <Separator />
+                            <MenuItem Header="Content-Aware Fill..." Command="{Binding ApplyContentAwareFillCommand}" />
+                            <MenuItem Header="Content-Aware Scale..." InputGesture="Alt+Shift+Ctrl+C" Command="{Binding OpenContentAwareScaleDialogCommand}" />
+                            <Separator />
                             <MenuItem Header="Free Transform" InputGesture="Ctrl+T" Command="{Binding SetToolCommand}" CommandParameter="select" />
                             <MenuItem Header="Rotate 90° CW" Command="{Binding RotateArtboardClockwiseCommand}" />
                             <MenuItem Header="Rotate 90° CCW" Command="{Binding RotateArtboardCounterClockwiseCommand}" />
@@ -143,6 +146,8 @@
                             <MenuItem Header="Bold" InputGesture="Ctrl+B" Command="{Binding ToggleBoldCommand}" />
                             <MenuItem Header="Italic" InputGesture="Ctrl+I" Command="{Binding ToggleItalicCommand}" />
                             <MenuItem Header="Underline" InputGesture="Ctrl+U" Command="{Binding ToggleUnderlineCommand}" />
+                            <Separator />
+                            <MenuItem Header="Warp Text..." Command="{Binding OpenWarpTextDialogCommand}" />
                         </MenuFlyout>
                     </Button.Flyout>
                 </Button>
@@ -236,6 +241,55 @@
                                 <MenuItem.Icon>
                                     <materialIcons:MaterialIcon Kind="Check" Width="12" Height="12" IsVisible="{Binding ShowGrid}" Foreground="{DynamicResource PsAccentBrush}" />
                                 </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Pixel Grid" Command="{Binding TogglePixelGridCommand}">
+                                <MenuItem.Icon>
+                                    <materialIcons:MaterialIcon Kind="Check" Width="12" Height="12" IsVisible="{Binding ShowPixelGrid}" Foreground="{DynamicResource PsAccentBrush}" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <Separator />
+                            <MenuItem Header="Guides">
+                                <MenuItem Header="Show Guides" Command="{Binding ToggleGuidesCommand}">
+                                    <MenuItem.Icon>
+                                        <materialIcons:MaterialIcon Kind="Check" Width="12" Height="12" IsVisible="{Binding ShowGuides}" Foreground="{DynamicResource PsAccentBrush}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Lock Guides" Command="{Binding ToggleLockGuidesCommand}">
+                                    <MenuItem.Icon>
+                                        <materialIcons:MaterialIcon Kind="Check" Width="12" Height="12" IsVisible="{Binding LockGuides}" Foreground="{DynamicResource PsAccentBrush}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Clear Guides" Command="{Binding ClearGuidesCommand}" />
+                                <Separator />
+                                <MenuItem Header="New Guide..." Command="{Binding OpenNewGuideDialogCommand}" />
+                                <MenuItem Header="New Guide Layout..." Command="{Binding OpenNewGuideLayoutDialogCommand}" />
+                            </MenuItem>
+                            <MenuItem Header="Snap" Command="{Binding ToggleSnapCommand}">
+                                <MenuItem.Icon>
+                                    <materialIcons:MaterialIcon Kind="Check" Width="12" Height="12" IsVisible="{Binding SnapEnabled}" Foreground="{DynamicResource PsAccentBrush}" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Snap To">
+                                <MenuItem Header="Guides" Command="{Binding ToggleSnapToGuidesCommand}">
+                                    <MenuItem.Icon>
+                                        <materialIcons:MaterialIcon Kind="Check" Width="12" Height="12" IsVisible="{Binding SnapToGuides}" Foreground="{DynamicResource PsAccentBrush}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Grid" Command="{Binding ToggleSnapToGridCommand}">
+                                    <MenuItem.Icon>
+                                        <materialIcons:MaterialIcon Kind="Check" Width="12" Height="12" IsVisible="{Binding SnapToGrid}" Foreground="{DynamicResource PsAccentBrush}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Layers" Command="{Binding ToggleSnapToLayersCommand}">
+                                    <MenuItem.Icon>
+                                        <materialIcons:MaterialIcon Kind="Check" Width="12" Height="12" IsVisible="{Binding SnapToLayers}" Foreground="{DynamicResource PsAccentBrush}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Document Bounds" Command="{Binding ToggleSnapToDocumentBoundsCommand}">
+                                    <MenuItem.Icon>
+                                        <materialIcons:MaterialIcon Kind="Check" Width="12" Height="12" IsVisible="{Binding SnapToDocumentBounds}" Foreground="{DynamicResource PsAccentBrush}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
                             </MenuItem>
                         </MenuFlyout>
                     </Button.Flyout>

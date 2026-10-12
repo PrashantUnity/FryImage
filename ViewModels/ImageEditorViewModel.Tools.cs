@@ -503,4 +503,72 @@ public partial class ImageEditorViewModel
         SelectedElements.Clear();
         CanvasControl?.SetSelection(Array.Empty<CanvasElement>());
     }
+
+    // ── Lasso Tool Options ───────────────────────────────────────────────────
+    [ObservableProperty] private string _lassoSubMode = "standard"; // standard | polygonal | magnetic
+    [ObservableProperty] private double _magneticLassoWidth = 10;
+    [ObservableProperty] private double _magneticLassoEdgeContrast = 10;
+    [ObservableProperty] private double _magneticLassoFrequency = 57;
+
+    public bool IsStandardLassoMode => LassoSubMode == "standard";
+    public bool IsPolygonalLassoMode => LassoSubMode == "polygonal";
+    public bool IsMagneticLassoMode => LassoSubMode == "magnetic";
+
+    partial void OnLassoSubModeChanged(string value)
+    {
+        if (CanvasControl != null)
+        {
+            CanvasControl.LassoMode = value;
+        }
+        OnPropertyChanged(nameof(IsStandardLassoMode));
+        OnPropertyChanged(nameof(IsPolygonalLassoMode));
+        OnPropertyChanged(nameof(IsMagneticLassoMode));
+    }
+
+    partial void OnMagneticLassoWidthChanged(double value)
+    {
+        if (CanvasControl != null) CanvasControl.MagneticWidth = value;
+    }
+
+    partial void OnMagneticLassoEdgeContrastChanged(double value)
+    {
+        if (CanvasControl != null) CanvasControl.MagneticContrast = value;
+    }
+
+    partial void OnMagneticLassoFrequencyChanged(double value)
+    {
+        if (CanvasControl != null) CanvasControl.MagneticFrequency = value;
+    }
+
+    [RelayCommand]
+    public void SetLassoSubModeString(string mode)
+    {
+        LassoSubMode = mode;
+    }
+
+    // ── Magic Wand Tool Options ─────────────────────────────────────────────
+    [ObservableProperty] private double _magicWandTolerance = 32;
+    [ObservableProperty] private bool _magicWandAntiAlias = true;
+    [ObservableProperty] private bool _magicWandContiguous = true;
+    [ObservableProperty] private bool _magicWandSampleAllLayers;
+
+    partial void OnMagicWandToleranceChanged(double value)
+    {
+        if (CanvasControl != null) CanvasControl.WandTolerance = value;
+    }
+
+    partial void OnMagicWandAntiAliasChanged(bool value)
+    {
+        if (CanvasControl != null) CanvasControl.WandAntiAlias = value;
+    }
+
+    partial void OnMagicWandContiguousChanged(bool value)
+    {
+        if (CanvasControl != null) CanvasControl.WandContiguous = value;
+    }
+
+    partial void OnMagicWandSampleAllLayersChanged(bool value)
+    {
+        if (CanvasControl != null) CanvasControl.WandSampleAllLayers = value;
+    }
 }

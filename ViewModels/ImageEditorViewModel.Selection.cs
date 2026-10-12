@@ -309,6 +309,7 @@ public partial class ImageEditorViewModel
                 Elements.Insert(0, img);
                 SelectedElement = img;
                 _colorRangeTargetImage = img;
+                _colorRangeFallbackComposite = img;
             }
         }
 
@@ -329,9 +330,17 @@ public partial class ImageEditorViewModel
         StatusMessage = "Color Range dialog open. Choose color range or sampled color.";
     }
 
+    private ImageElement? _colorRangeFallbackComposite;
+
     [RelayCommand]
     public void CancelColorRangeDialog()
     {
+        if (_colorRangeFallbackComposite != null)
+        {
+            Elements.Remove(_colorRangeFallbackComposite);
+            _colorRangeFallbackComposite = null;
+        }
+
         _colorRangeTargetImage = null;
         _colorRangeOriginalImageBytes = null;
         IsColorRangeDialogOpen = false;

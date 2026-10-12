@@ -1,0 +1,107 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:models="using:PdfEditorApp.Plugins.ImageEditor.Models"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Dialogs.WarpTextDialog"
+             x:DataType="local:ImageEditorViewModel">
+
+    <UserControl.Resources>
+        <local:StringEqualsConverter x:Key="StringEqualsConverter" />
+    </UserControl.Resources>
+
+    <!-- Modal Backdrop -->
+    <Border Background="#99000000"
+            IsVisible="{Binding IsWarpTextDialogOpen}"
+            ZIndex="500">
+        <Border Background="{DynamicResource PsPanelBrush}"
+                BorderBrush="{DynamicResource PsBorderLightBrush}"
+                BorderThickness="1"
+                CornerRadius="3"
+                Width="420" Height="410"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                BoxShadow="0 10 30 #80000000">
+            <Grid RowDefinitions="32,*,44">
+                <!-- Header -->
+                <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="12,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <materialIcons:MaterialIcon Kind="Waves" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+                            <TextBlock Text="Warp Text" FontWeight="SemiBold" FontSize="12" Foreground="#FFFFFF" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="ps-opt-btn" Command="{Binding CancelWarpTextDialogCommand}">
+                            <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Body -->
+                <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Margin="16,14,6,14" Padding="0,0,14,0">
+                    <StackPanel Spacing="14">
+                        <!-- Style Selector -->
+                        <Grid ColumnDefinitions="80,*">
+                            <TextBlock Grid.Column="0" Text="Style:" Classes="ps-label" VerticalAlignment="Center" />
+                            <ComboBox Grid.Column="1" Classes="ps-combo" HorizontalAlignment="Stretch"
+                                      ItemsSource="{Binding AvailableWarpStyles}"
+                                      SelectedItem="{Binding WarpTextStyle, Mode=TwoWay}" />
+                        </Grid>
+
+                        <!-- Orientation -->
+                        <Grid ColumnDefinitions="80,*">
+                            <TextBlock Grid.Column="0" Text="Axis:" Classes="ps-label" VerticalAlignment="Center" />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16">
+                                <RadioButton Content="Horizontal"
+                                             GroupName="WarpOrient"
+                                             IsChecked="{Binding WarpTextOrientation, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Horizontal', Mode=TwoWay}" />
+                                <RadioButton Content="Vertical"
+                                             GroupName="WarpOrient"
+                                             IsChecked="{Binding WarpTextOrientation, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Vertical', Mode=TwoWay}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Border Height="1" Background="{DynamicResource PsBorderBrush}" Margin="0,2" />
+
+                        <!-- Bend Slider -->
+                        <StackPanel Spacing="3">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="Bend:" Classes="ps-label" />
+                                <TextBlock Grid.Column="1" Text="{Binding WarpTextBend, StringFormat='{}{0:+0;-0;0}%'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                            </Grid>
+                            <Slider Minimum="-100" Maximum="100" Value="{Binding WarpTextBend, Mode=TwoWay}" />
+                        </StackPanel>
+
+                        <!-- Horizontal Distortion Slider -->
+                        <StackPanel Spacing="3">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="Horizontal Distortion:" Classes="ps-label" />
+                                <TextBlock Grid.Column="1" Text="{Binding WarpTextHorizontalDistortion, StringFormat='{}{0:+0;-0;0}%'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                            </Grid>
+                            <Slider Minimum="-100" Maximum="100" Value="{Binding WarpTextHorizontalDistortion, Mode=TwoWay}" />
+                        </StackPanel>
+
+                        <!-- Vertical Distortion Slider -->
+                        <StackPanel Spacing="3">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="Vertical Distortion:" Classes="ps-label" />
+                                <TextBlock Grid.Column="1" Text="{Binding WarpTextVerticalDistortion, StringFormat='{}{0:+0;-0;0}%'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                            </Grid>
+                            <Slider Minimum="-100" Maximum="100" Value="{Binding WarpTextVerticalDistortion, Mode=TwoWay}" />
+                        </StackPanel>
+
+                        <!-- Preview Checkbox -->
+                        <CheckBox Content="Preview" IsChecked="{Binding WarpTextPreview, Mode=TwoWay}" Margin="0,4,0,0" />
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Footer -->
+                <Border Grid.Row="2" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="12,0">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" VerticalAlignment="Center">
+                        <Button Classes="ps-btn" Content="Cancel" Padding="14,5" Command="{Binding CancelWarpTextDialogCommand}" />
+                        <Button Classes="ps-btn ps-btn-primary" Content="OK" Padding="18,5" Command="{Binding ConfirmWarpTextDialogCommand}" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Border>
+</UserControl>

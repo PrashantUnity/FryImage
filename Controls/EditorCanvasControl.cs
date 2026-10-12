@@ -22,7 +22,7 @@ public readonly record struct ImageCropState(Rect? SourceCropRect, double X, dou
 /// and handles pointer interaction for selecting, moving, resizing, placing new shapes,
 /// and cropping images.
 /// </summary>
-public class EditorCanvasControl : Control
+public partial class EditorCanvasControl : Control
 {
     // ── Handle geometry (screen-space; divided by zoom wherever compared against
     //    canvas-space coordinates, so handles read as a constant screen size) ──────
@@ -309,7 +309,7 @@ public class EditorCanvasControl : Control
             "eraser" => new Cursor(StandardCursorType.Cross),
             "text" => new Cursor(StandardCursorType.Ibeam),
             "eyedropper" => new Cursor(StandardCursorType.Cross),
-            "marquee" => new Cursor(StandardCursorType.Cross),
+            "marquee" or "lasso" or "wand" => new Cursor(StandardCursorType.Cross),
             "zoom" => new Cursor(StandardCursorType.Cross),
             "hand" => new Cursor(StandardCursorType.Hand),
             "rect" or "ellipse" or "arrow" or "triangle" or "star" or "polygon" or "line" => new Cursor(StandardCursorType.Cross),
@@ -596,6 +596,9 @@ public class EditorCanvasControl : Control
                 DrawElement(dc, el);
             }
 
+            // Pixel grid overlay at >= 500% zoom (Studio standard)
+            DrawPixelGrid(dc);
+
             // 4. Selection / marquee / shape-preview / crop overlay
             if (_isCropModeActive && _selection.Count == 1 && _selection[0] is ImageElement cropImg)
             {
@@ -623,6 +626,11 @@ public class EditorCanvasControl : Control
             if (_isMarqueeSelecting)
             {
                 DrawMarquee(dc, _marqueeStart, _marqueeEnd, _zoom);
+            }
+
+            if (_isLassoActive || _lassoPoints.Count > 0 || _lassoKnots.Count > 0)
+            {
+                DrawLassoOverlay(dc, _zoom);
             }
 
             if (_isPlacingShape)
@@ -733,11 +741,22 @@ public class EditorCanvasControl : Control
                 DrawSourceMarker(dc, CloneSourcePoint.Value, _zoom);
             }
 
+            if (ShowUserGuides && _userGuides.Count > 0)
+            {
+                DrawUserGuides(dc, _userGuides, _zoom);
+            }
+
+            DrawActiveDragGuideInCanvasSpace(dc);
+
             if (_activeGuides.Count > 0)
             {
                 DrawAlignmentGuides(dc, _activeGuides, _zoom);
             }
         }
+
+        // Active Guide & Transform Floating HUD Pill Badges (Screen space)
+        DrawActiveGuideHudBadge(dc);
+        DrawTransformHudBadge(dc);
 
         // Eyedropper Magnifier Loupe (Screen-space floating HUD)
         if (ActiveToolMode == "eyedropper" && _cursorCanvasPos is { } eyeCursor && !_isPanning && !_spaceHeld)
@@ -997,15 +1016,27 @@ public class EditorCanvasControl : Control
     private static void DrawSelectionHandles(DrawingContext dc, CanvasElement el, double zoom)
     {
         var bounds = el.Bounds;
+        IDisposable? rotScope = null;
+        if (el.RotationDegrees != 0)
+        {
+            rotScope = dc.PushTransform(Matrix.CreateRotation(el.RotationDegrees * Math.PI / 180.0, bounds.Center));
+        }
 
-        // Dashed selection border
-        var borderPen = new Pen(
-            new SolidColorBrush(Color.FromArgb(220, 0, 120, 212)),
-            1.5 / zoom,
-            new DashStyle(new double[] { 5, 3 }, 0));
-        dc.DrawRectangle(null, borderPen, bounds.Inflate(2 / zoom));
+        try
+        {
+            // Dashed selection border
+            var borderPen = new Pen(
+                new SolidColorBrush(Color.FromArgb(220, 0, 120, 212)),
+                1.5 / zoom,
+                new DashStyle(new double[] { 5, 3 }, 0));
+            dc.DrawRectangle(null, borderPen, bounds.Inflate(2 / zoom));
 
-        DrawResizeHandles(dc, bounds, zoom);
+            DrawResizeHandles(dc, bounds, zoom);
+        }
+        finally
+        {
+            rotScope?.Dispose();
+        }
     }
 
     /// <summary>8 resize handles around a bounds rect — shared by single-element selection
@@ -1066,6 +1097,17 @@ public class EditorCanvasControl : Control
         var localHandle = new Point(axisBounds.X + axisBounds.Width / 2, axisBounds.Y - offset);
         if (rotationDegrees == 0) return localHandle;
         return localHandle.Transform(Matrix.CreateRotation(rotationDegrees * Math.PI / 180.0, axisBounds.Center));
+    }
+
+    private static void DrawUserGuides(DrawingContext dc, List<(bool IsVertical, double Position)> guides, double zoom)
+    {
+        const double span = 10000;
+        var guidePen = new Pen(new SolidColorBrush(Color.FromArgb(240, 0, 229, 255)), 1.0 / zoom);
+        foreach (var (isVertical, pos) in guides)
+        {
+            if (isVertical) dc.DrawLine(guidePen, new Point(pos, -span), new Point(pos, span));
+            else dc.DrawLine(guidePen, new Point(-span, pos), new Point(span, pos));
+        }
     }
 
     private static void DrawAlignmentGuides(DrawingContext dc, List<(bool IsVertical, double Position)> guides, double zoom)
@@ -1288,6 +1330,20 @@ public class EditorCanvasControl : Control
             return;
         }
 
+        // Lasso tools (Standard, Polygonal, Magnetic)
+        if (ActiveToolMode == "lasso")
+        {
+            HandleLassoPointerPressed(canvasPt, e);
+            return;
+        }
+
+        // Magic Wand tool
+        if (ActiveToolMode == "wand")
+        {
+            HandleMagicWandPointerPressed(canvasPt, e);
+            return;
+        }
+
         // 3. Tool-placement mode.
         if (ActiveToolMode != "select")
         {
@@ -1441,6 +1497,14 @@ public class EditorCanvasControl : Control
         bool shiftHeld = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
         _dragOccurred = false;
 
+        // Interactive user guide drag (Move Tool)
+        if (ShowUserGuides && !LockUserGuides && TryStartGuideDrag(e.GetPosition(this), e.KeyModifiers.HasFlag(KeyModifiers.Alt)))
+        {
+            e.Pointer.Capture(this);
+            e.Handled = true;
+            return;
+        }
+
         // 4. Resize handle of the current single-element selection.
         if (_selection.Count == 1 && !_selection[0].IsLocked)
         {
@@ -1448,12 +1512,19 @@ public class EditorCanvasControl : Control
             double handleSize = HandleSize / _zoom;
             double halfHandle = handleSize / 2;
             double pad = 4 / _zoom;
+
+            Point localPt = canvasPt;
+            if (single.RotationDegrees != 0)
+            {
+                localPt = canvasPt.Transform(Matrix.CreateRotation(-single.RotationDegrees * Math.PI / 180.0, single.Bounds.Center));
+            }
+
             var handles = GetHandlePoints(single.Bounds);
             for (int i = 0; i < handles.Length; i++)
             {
                 var hr = new Rect(handles[i].X - halfHandle - pad, handles[i].Y - halfHandle - pad,
                                   handleSize + pad * 2, handleSize + pad * 2);
-                if (hr.Contains(canvasPt))
+                if (hr.Contains(localPt))
                 {
                     _isResizing = true;
                     _resizeHandle = i;
@@ -1647,6 +1718,29 @@ public class EditorCanvasControl : Control
         CursorPositionChanged?.Invoke(pos);
         _cursorCanvasPos = pos;
 
+        if (_isDraggingExistingGuide || _activeDragGuide.HasValue)
+        {
+            UpdateGuideDragPointer(e.GetPosition(this));
+            e.Handled = true;
+            return;
+        }
+
+        if (ActiveToolMode == "select" && !_isDragging && !_isResizing && !_isRotating)
+        {
+            if (UpdateTransformHoverCursor(pos, e.GetPosition(this)))
+            {
+                // Handled by resize or rotation handle
+            }
+            else if (ShowUserGuides && !LockUserGuides)
+            {
+                UpdateGuideHoverCursor(e.GetPosition(this));
+            }
+            else
+            {
+                Cursor = Cursor.Default;
+            }
+        }
+
         if ((ActiveToolMode is "brush" or "pencil" or "eraser" or "clonestamp" or "healing" or "historybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" or "bgeraser" or "colorreplacement" or "eyedropper") && !_isDrawingDoodle && !_isDrawingRetouch)
         {
             InvalidateVisual();
@@ -1736,6 +1830,12 @@ public class EditorCanvasControl : Control
             return;
         }
 
+        if (_isLassoActive)
+        {
+            HandleLassoPointerMoved(pos, e);
+            return;
+        }
+
         double dx = pos.X - _dragStart.X;
         double dy = pos.Y - _dragStart.Y;
         if (Math.Abs(dx) > 0.5 || Math.Abs(dy) > 0.5) _dragOccurred = true;
@@ -1802,14 +1902,35 @@ public class EditorCanvasControl : Control
         double tolerance = 6 / _zoom;
         var draggedSet = new HashSet<CanvasElement>(_groupDragOrigins.Keys);
 
-        var targetsX = new List<double> { 0, _logicalWidth / 2, _logicalWidth };
-        var targetsY = new List<double> { 0, _logicalHeight / 2, _logicalHeight };
-        foreach (var other in _elements)
+        if (!SnapEnabled) return (dx, dy, guides);
+
+        var targetsX = new List<double>();
+        var targetsY = new List<double>();
+
+        if (SnapToDocumentBounds)
         {
-            if (draggedSet.Contains(other) || !other.IsVisible) continue;
-            var ob = other.GetRotatedBounds();
-            targetsX.Add(ob.X); targetsX.Add(ob.X + ob.Width / 2); targetsX.Add(ob.Right);
-            targetsY.Add(ob.Y); targetsY.Add(ob.Y + ob.Height / 2); targetsY.Add(ob.Bottom);
+            targetsX.Add(0); targetsX.Add(_logicalWidth / 2); targetsX.Add(_logicalWidth);
+            targetsY.Add(0); targetsY.Add(_logicalHeight / 2); targetsY.Add(_logicalHeight);
+        }
+
+        if (SnapToGuides && ShowUserGuides)
+        {
+            foreach (var (isVertical, pos) in _userGuides)
+            {
+                if (isVertical) targetsX.Add(pos);
+                else targetsY.Add(pos);
+            }
+        }
+
+        if (SnapToLayers)
+        {
+            foreach (var other in _elements)
+            {
+                if (draggedSet.Contains(other) || !other.IsVisible) continue;
+                var ob = other.GetRotatedBounds();
+                targetsX.Add(ob.X); targetsX.Add(ob.X + ob.Width / 2); targetsX.Add(ob.Right);
+                targetsY.Add(ob.Y); targetsY.Add(ob.Y + ob.Height / 2); targetsY.Add(ob.Bottom);
+            }
         }
 
         double snapDx = dx, snapDy = dy;
@@ -1897,6 +2018,14 @@ public class EditorCanvasControl : Control
     {
         base.OnPointerReleased(e);
 
+        if (_isDraggingExistingGuide)
+        {
+            CompleteExistingGuideDrag(e.GetPosition(this));
+            e.Pointer.Capture(null);
+            e.Handled = true;
+            return;
+        }
+
         if (_isCropDragging)
         {
             _isCropDragging = false;
@@ -1958,6 +2087,11 @@ public class EditorCanvasControl : Control
         {
             FinishMarqueeSelection(e.KeyModifiers.HasFlag(KeyModifiers.Shift));
             _isMarqueeSelecting = false;
+        }
+        else if (_isLassoActive && LassoMode == "standard")
+        {
+            var canvasRelPt = ScreenToCanvas(e.GetPosition(this));
+            HandleLassoPointerReleased(canvasRelPt, e);
         }
         else if (_isDragging)
         {

@@ -52,6 +52,7 @@ public partial class ImageEditorView : UserControl
         CanvasControl.CanvasChanged += SyncRulerOrigins;
         CanvasControl.ZoomChanged += _ => SyncRulerOrigins();
         CanvasControl.SizeChanged += (_, _) => SyncRulerOrigins();
+        CanvasControl.GuideStatusChanged += msg => vm.StatusMessage = msg;
         SyncRulerOrigins();
 
         // Keep the floating quick-actions cluster anchored to the selection whenever anything

@@ -46,7 +46,9 @@
                             IsVisible="{Binding ShowRulers}" />
 
                     <!-- Top Horizontal Ruler -->
-                    <controls:CanvasRulerControl Grid.Row="0" Grid.Column="1"
+                    <controls:CanvasRulerControl x:Name="TopRuler"
+                                                 Grid.Row="0" Grid.Column="1"
+                                                 TargetCanvas="{Binding #CanvasControl}"
                                                  Orientation="Horizontal"
                                                  PageOffset="{Binding CanvasOriginScreenX}"
                                                  CursorPosition="{Binding CursorCanvasX}"
@@ -55,7 +57,9 @@
                                                  IsVisible="{Binding ShowRulers}" />
 
                     <!-- Left Vertical Ruler -->
-                    <controls:CanvasRulerControl Grid.Row="1" Grid.Column="0"
+                    <controls:CanvasRulerControl x:Name="LeftRuler"
+                                                 Grid.Row="1" Grid.Column="0"
+                                                 TargetCanvas="{Binding #CanvasControl}"
                                                  Orientation="Vertical"
                                                  PageOffset="{Binding CanvasOriginScreenY}"
                                                  CursorPosition="{Binding CursorCanvasY}"
@@ -69,7 +73,25 @@
                         <controls:EditorCanvasControl x:Name="CanvasControl"
                                                    HorizontalAlignment="Stretch"
                                                    VerticalAlignment="Stretch"
-                                                   Focusable="True" />
+                                                   Focusable="True">
+                            <controls:EditorCanvasControl.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Deselect" InputGesture="Ctrl+D" Command="{Binding DeselectAllCommand}" />
+                                    <Separator />
+                                    <MenuItem Header="Duplicate Layer" InputGesture="Ctrl+J" Command="{Binding DuplicateCommand}" />
+                                    <MenuItem Header="Delete Layer" Command="{Binding DeleteSelectedElementCommand}" />
+                                    <Separator />
+                                    <MenuItem Header="Layer Style / Blending Options..." Command="{Binding OpenLayerStyleDialogCommand}" />
+                                    <MenuItem Header="Warp Text..." Command="{Binding OpenWarpTextDialogCommand}" />
+                                    <Separator />
+                                    <MenuItem Header="New Guide..." Command="{Binding OpenNewGuideDialogCommand}" />
+                                    <MenuItem Header="New Guide Layout..." Command="{Binding OpenNewGuideLayoutDialogCommand}" />
+                                    <MenuItem Header="Clear Guides" Command="{Binding ClearGuidesCommand}" />
+                                    <Separator />
+                                    <MenuItem Header="Export As..." InputGesture="Ctrl+Shift+W" Command="{Binding OpenExportDialogCommand}" />
+                                </ContextMenu>
+                            </controls:EditorCanvasControl.ContextMenu>
+                        </controls:EditorCanvasControl>
 
                         <!-- Adorner: Floating Quick Actions Cluster -->
                         <Border x:Name="QuickActionsCluster"
@@ -155,6 +177,11 @@
         <dialogs:SelectAndMaskDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsSelectAndMaskDialogOpen}" />
         <dialogs:ColorRangeDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsColorRangeDialogOpen}" />
         <dialogs:LiquifyDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsLiquifyDialogOpen}" />
+        <dialogs:ContentAwareScaleDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsContentAwareScaleDialogOpen}" />
+        <dialogs:NewGuideDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsNewGuideDialogOpen}" />
+        <dialogs:NewGuideLayoutDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsNewGuideLayoutDialogOpen}" />
+        <dialogs:WarpTextDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="500" IsVisible="{Binding IsWarpTextDialogOpen}" />
+        <dialogs:ConfirmDiscardDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="600" IsVisible="{Binding IsConfirmingDiscard}" />
         <dialogs:CommandPaletteDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="600" IsVisible="{Binding IsCommandPaletteOpen}" />
 
     </Grid>

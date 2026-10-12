@@ -35,7 +35,7 @@
                 </Border>
 
                 <!-- Body Controls -->
-                <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Margin="16,12">
+                <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Margin="16,12,6,12" Padding="0,0,14,0">
                     <StackPanel Spacing="14">
 
                         <!-- 1. Gaussian Blur -->

@@ -147,6 +147,13 @@ public partial class ImageEditorViewModel
         AddCmd("view.zoomout", "Zoom Out", "View", "Ctrl+-", "MagnifyMinusOutline", ZoomOut);
         AddCmd("view.rulers", "Toggle Rulers", "View", "Ctrl+R", "Ruler", ToggleRulers);
         AddCmd("view.grid", "Toggle Grid", "View", "Ctrl+'", "Grid", ToggleGrid);
+        AddCmd("view.guides.toggle", "Toggle Guides", "View", "Ctrl+;", "EyeOutline", ToggleGuides);
+        AddCmd("view.guides.lock", "Lock Guides", "View", "Alt+Ctrl+;", "LockOutline", ToggleLockGuides);
+        AddCmd("view.guides.clear", "Clear Guides", "View", null, "DeleteOutline", ClearGuides);
+        AddCmd("view.guides.new", "New Guide...", "View", null, "Ruler", OpenNewGuideDialog);
+        AddCmd("view.guides.layout", "New Guide Layout...", "View", null, "GridLarge", OpenNewGuideLayoutDialog);
+        AddCmd("view.snap.toggle", "Toggle Snap", "View", "Ctrl+Shift+;", "Magnet", ToggleSnap);
+        AddCmd("type.warp", "Warp Text...", "Type", null, "Waves", OpenWarpTextDialog);
         AddCmd("file.exportas", "Export As...", "File", "Alt+Shift+Ctrl+S", "Export", OpenExportDialog);
         AddCmd("file.new", "New Document...", "File", "Ctrl+N", "FileDocumentPlusOutline", OpenNewDocumentDialog);
 

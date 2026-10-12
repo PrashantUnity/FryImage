@@ -1,0 +1,74 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Dialogs.ContentAwareScaleDialog"
+             x:DataType="local:ImageEditorViewModel">
+
+    <!-- Modal Backdrop -->
+    <Border Background="#99000000"
+            IsVisible="{Binding IsContentAwareScaleDialogOpen}"
+            ZIndex="500">
+        <Border Background="{DynamicResource PsPanelBrush}"
+                BorderBrush="{DynamicResource PsBorderLightBrush}"
+                BorderThickness="1"
+                CornerRadius="3"
+                Width="380" Height="280"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                BoxShadow="0 10 30 #80000000">
+            <Grid RowDefinitions="32,*,44">
+                <!-- Header -->
+                <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="12,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <materialIcons:MaterialIcon Kind="ArrowExpandAll" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+                            <TextBlock Text="Content-Aware Scale" FontWeight="SemiBold" FontSize="12" Foreground="#FFFFFF" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="ps-opt-btn" Command="{Binding CancelContentAwareScaleDialogCommand}">
+                            <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Body -->
+                <StackPanel Grid.Row="1" Spacing="14" Margin="20,16">
+                    <TextBlock Text="Resize using Seam Carving energy minimization to preserve subject geometry."
+                               FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" TextWrapping="Wrap" />
+
+                    <!-- Target Dimensions -->
+                    <Grid ColumnDefinitions="80,*,80,*" RowDefinitions="Auto,Auto">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Width:" Classes="ps-label" VerticalAlignment="Center" />
+                        <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="ps-num"
+                                       Minimum="10" Maximum="10000" Increment="10"
+                                       Value="{Binding ContentAwareScaleWidth, Mode=TwoWay}"
+                                       FormatString="{}{0:0} px" />
+
+                        <TextBlock Grid.Row="0" Grid.Column="2" Text="Height:" Classes="ps-label" VerticalAlignment="Center" Margin="10,0,0,0" />
+                        <NumericUpDown Grid.Row="0" Grid.Column="3" Classes="ps-num"
+                                       Minimum="10" Maximum="10000" Increment="10"
+                                       Value="{Binding ContentAwareScaleHeight, Mode=TwoWay}"
+                                       FormatString="{}{0:0} px" />
+                    </Grid>
+
+                    <!-- Scale Percentage Slider -->
+                    <StackPanel Spacing="4">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Text="Amount:" Classes="ps-label" />
+                            <TextBlock Grid.Column="1" Text="{Binding ContentAwareScalePercent, StringFormat='{}{0:0}%'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                        </Grid>
+                        <Slider Minimum="25" Maximum="200" Value="{Binding ContentAwareScalePercent, Mode=TwoWay}" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Footer -->
+                <Border Grid.Row="2" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="12,0">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" VerticalAlignment="Center">
+                        <Button Classes="ps-opt-btn" Content="Cancel" Width="72" Command="{Binding CancelContentAwareScaleDialogCommand}" />
+                        <Button Classes="ps-btn-accent" Content="OK" Width="72" Command="{Binding ConfirmContentAwareScaleDialogCommand}" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Border>
+</UserControl>

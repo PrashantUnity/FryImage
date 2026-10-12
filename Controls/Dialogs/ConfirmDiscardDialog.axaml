@@ -1,0 +1,53 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Dialogs.ConfirmDiscardDialog"
+             x:DataType="local:ImageEditorViewModel">
+
+    <!-- Modal Backdrop -->
+    <Border Background="#99000000"
+            IsVisible="{Binding IsConfirmingDiscard}"
+            ZIndex="600">
+        <Border Background="{DynamicResource PsPanelBrush}"
+                BorderBrush="{DynamicResource PsBorderLightBrush}"
+                BorderThickness="1"
+                CornerRadius="3"
+                Width="420" Height="170"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                BoxShadow="0 10 30 #80000000">
+            <Grid RowDefinitions="32,*,46">
+                <!-- Header -->
+                <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="12,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <materialIcons:MaterialIcon Kind="AlertCircleOutline" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+                            <TextBlock Text="FryImage" FontWeight="SemiBold" FontSize="12" Foreground="#FFFFFF" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="ps-opt-btn" Command="{Binding CancelDiscardCommand}">
+                            <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Body -->
+                <Grid Grid.Row="1" ColumnDefinitions="Auto,*" Margin="20,16" VerticalAlignment="Center">
+                    <materialIcons:MaterialIcon Grid.Column="0" Kind="HelpCircleOutline" Width="32" Height="32" Foreground="{DynamicResource PsAccentBrush}" Margin="0,0,16,0" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding DiscardConfirmMessage}"
+                               FontSize="12" Foreground="{DynamicResource PsTextBrush}"
+                               TextWrapping="Wrap" VerticalAlignment="Center" />
+                </Grid>
+
+                <!-- Footer -->
+                <Border Grid.Row="2" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="12,0">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" VerticalAlignment="Center">
+                        <Button Classes="ps-btn ps-btn-primary" Content="Save" Padding="16,5" Command="{Binding SaveAndDiscardCommand}" />
+                        <Button Classes="ps-btn" Content="Don't Save" Padding="14,5" Command="{Binding ConfirmDiscardCommand}" />
+                        <Button Classes="ps-btn" Content="Cancel" Padding="14,5" Command="{Binding CancelDiscardCommand}" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Border>
+</UserControl>

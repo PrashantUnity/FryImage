@@ -1,0 +1,106 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Dialogs.NewGuideLayoutDialog"
+             x:DataType="local:ImageEditorViewModel">
+
+    <!-- Modal Backdrop -->
+    <Border Background="#99000000"
+            IsVisible="{Binding IsNewGuideLayoutDialogOpen}"
+            ZIndex="500">
+        <Border Background="{DynamicResource PsPanelBrush}"
+                BorderBrush="{DynamicResource PsBorderLightBrush}"
+                BorderThickness="1"
+                CornerRadius="3"
+                Width="520" Height="460"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                BoxShadow="0 10 30 #80000000">
+            <Grid RowDefinitions="32,*,42">
+                <!-- Header -->
+                <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="10,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <materialIcons:MaterialIcon Kind="GridLarge" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+                            <TextBlock Text="New Guide Layout" FontWeight="SemiBold" FontSize="12" Foreground="#FFFFFF" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="ps-opt-btn" Command="{Binding CancelNewGuideLayoutDialogCommand}">
+                            <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Body -->
+                <ScrollViewer Grid.Row="1" Padding="16" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="16">
+                        <!-- Columns Section -->
+                        <Border Background="{DynamicResource PsFieldBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" Padding="12" CornerRadius="2">
+                            <StackPanel Spacing="10">
+                                <CheckBox Content="Columns" IsChecked="{Binding GuideLayoutColumnsEnabled, Mode=TwoWay}" FontWeight="SemiBold" />
+                                <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto" IsEnabled="{Binding GuideLayoutColumnsEnabled}">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Number:" Classes="ps-label" Width="60" VerticalAlignment="Center" />
+                                    <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="ps-num" Value="{Binding GuideLayoutColumnsCount, Mode=TwoWay}" Minimum="1" Maximum="100" Margin="0,0,12,6" />
+
+                                    <TextBlock Grid.Row="0" Grid.Column="2" Text="Width:" Classes="ps-label" Width="50" VerticalAlignment="Center" />
+                                    <NumericUpDown Grid.Row="0" Grid.Column="3" Classes="ps-num" Value="{Binding GuideLayoutColumnWidth, Mode=TwoWay}" Minimum="0" Maximum="5000" FormatString="{}{0:0} px" Margin="0,0,0,6" />
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Gutter:" Classes="ps-label" Width="60" VerticalAlignment="Center" />
+                                    <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="ps-num" Value="{Binding GuideLayoutColumnGutter, Mode=TwoWay}" Minimum="0" Maximum="500" FormatString="{}{0:0} px" Margin="0,0,12,0" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Rows Section -->
+                        <Border Background="{DynamicResource PsFieldBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" Padding="12" CornerRadius="2">
+                            <StackPanel Spacing="10">
+                                <CheckBox Content="Rows" IsChecked="{Binding GuideLayoutRowsEnabled, Mode=TwoWay}" FontWeight="SemiBold" />
+                                <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto" IsEnabled="{Binding GuideLayoutRowsEnabled}">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Number:" Classes="ps-label" Width="60" VerticalAlignment="Center" />
+                                    <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="ps-num" Value="{Binding GuideLayoutRowsCount, Mode=TwoWay}" Minimum="1" Maximum="100" Margin="0,0,12,6" />
+
+                                    <TextBlock Grid.Row="0" Grid.Column="2" Text="Height:" Classes="ps-label" Width="50" VerticalAlignment="Center" />
+                                    <NumericUpDown Grid.Row="0" Grid.Column="3" Classes="ps-num" Value="{Binding GuideLayoutRowHeight, Mode=TwoWay}" Minimum="0" Maximum="5000" FormatString="{}{0:0} px" Margin="0,0,0,6" />
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Gutter:" Classes="ps-label" Width="60" VerticalAlignment="Center" />
+                                    <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="ps-num" Value="{Binding GuideLayoutRowGutter, Mode=TwoWay}" Minimum="0" Maximum="500" FormatString="{}{0:0} px" Margin="0,0,12,0" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Margins Section -->
+                        <Border Background="{DynamicResource PsFieldBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" Padding="12" CornerRadius="2">
+                            <StackPanel Spacing="10">
+                                <CheckBox Content="Margin" IsChecked="{Binding GuideLayoutMarginsEnabled, Mode=TwoWay}" FontWeight="SemiBold" />
+                                <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto" IsEnabled="{Binding GuideLayoutMarginsEnabled}">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Top:" Classes="ps-label" Width="60" VerticalAlignment="Center" />
+                                    <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="ps-num" Value="{Binding GuideLayoutMarginTop, Mode=TwoWay}" Minimum="0" Maximum="2000" FormatString="{}{0:0} px" Margin="0,0,12,6" />
+
+                                    <TextBlock Grid.Row="0" Grid.Column="2" Text="Left:" Classes="ps-label" Width="50" VerticalAlignment="Center" />
+                                    <NumericUpDown Grid.Row="0" Grid.Column="3" Classes="ps-num" Value="{Binding GuideLayoutMarginLeft, Mode=TwoWay}" Minimum="0" Maximum="2000" FormatString="{}{0:0} px" Margin="0,0,0,6" />
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Bottom:" Classes="ps-label" Width="60" VerticalAlignment="Center" />
+                                    <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="ps-num" Value="{Binding GuideLayoutMarginBottom, Mode=TwoWay}" Minimum="0" Maximum="2000" FormatString="{}{0:0} px" Margin="0,0,12,0" />
+
+                                    <TextBlock Grid.Row="1" Grid.Column="2" Text="Right:" Classes="ps-label" Width="50" VerticalAlignment="Center" />
+                                    <NumericUpDown Grid.Row="1" Grid.Column="3" Classes="ps-num" Value="{Binding GuideLayoutMarginRight, Mode=TwoWay}" Minimum="0" Maximum="2000" FormatString="{}{0:0} px" Margin="0,0,0,0" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Clear existing guides option -->
+                        <CheckBox Content="Clear Existing Guides" IsChecked="{Binding GuideLayoutClearExisting, Mode=TwoWay}" />
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Footer -->
+                <Border Grid.Row="2" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="10,0">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" VerticalAlignment="Center">
+                        <Button Classes="ps-btn" Content="Cancel" Padding="14,5" Command="{Binding CancelNewGuideLayoutDialogCommand}" />
+                        <Button Classes="ps-btn ps-btn-primary" Content="OK" Padding="18,5" Command="{Binding ConfirmNewGuideLayoutDialogCommand}" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Border>
+</UserControl>

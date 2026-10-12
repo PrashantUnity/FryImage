@@ -204,6 +204,11 @@ public sealed class TextElementDto : CanvasElementDto
     public bool IsHeightAutoFitEnabled { get; set; } = true;
     public bool IsWrapEnabled { get; set; }
     public double LineHeight { get; set; }
+    public string? WarpStyle { get; set; }
+    public double WarpBend { get; set; }
+    public double WarpHorizontalDistortion { get; set; }
+    public double WarpVerticalDistortion { get; set; }
+    public bool WarpIsHorizontal { get; set; } = true;
 }
 
 public sealed class ImageElementDto : CanvasElementDto

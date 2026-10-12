@@ -46,6 +46,9 @@
                     <NativeMenuItemSeparator />
                     <NativeMenuItem Header="Search / Command Palette..." Gesture="Meta+K" Command="{Binding ToggleCommandPaletteCommand}" />
                     <NativeMenuItemSeparator />
+                    <NativeMenuItem Header="Content-Aware Fill..." Command="{Binding ApplyContentAwareFillCommand}" />
+                    <NativeMenuItem Header="Content-Aware Scale..." Gesture="Meta+Alt+Shift+C" Command="{Binding OpenContentAwareScaleDialogCommand}" />
+                    <NativeMenuItemSeparator />
                     <NativeMenuItem Header="Free Transform" Gesture="Meta+T" Command="{Binding SetToolCommand}" CommandParameter="select" />
                     <NativeMenuItem Header="Rotate 90° CW" Command="{Binding RotateArtboardClockwiseCommand}" />
                     <NativeMenuItem Header="Rotate 90° CCW" Command="{Binding RotateArtboardCounterClockwiseCommand}" />
@@ -118,6 +121,8 @@
                     <NativeMenuItem Header="Bold" Gesture="Meta+B" Command="{Binding ToggleBoldCommand}" />
                     <NativeMenuItem Header="Italic" Gesture="Meta+I" Command="{Binding ToggleItalicCommand}" />
                     <NativeMenuItem Header="Underline" Gesture="Meta+U" Command="{Binding ToggleUnderlineCommand}" />
+                    <NativeMenuItemSeparator />
+                    <NativeMenuItem Header="Warp Text..." Command="{Binding OpenWarpTextDialogCommand}" />
                 </NativeMenu>
             </NativeMenuItem>
 
@@ -191,6 +196,27 @@
                     <NativeMenuItemSeparator />
                     <NativeMenuItem Header="Rulers" Gesture="Meta+R" Command="{Binding ToggleRulersCommand}" />
                     <NativeMenuItem Header="Grid" Command="{Binding ToggleGridCommand}" />
+                    <NativeMenuItem Header="Pixel Grid" Command="{Binding TogglePixelGridCommand}" />
+                    <NativeMenuItemSeparator />
+                    <NativeMenuItem Header="Guides">
+                        <NativeMenu>
+                            <NativeMenuItem Header="Show Guides" Command="{Binding ToggleGuidesCommand}" />
+                            <NativeMenuItem Header="Lock Guides" Command="{Binding ToggleLockGuidesCommand}" />
+                            <NativeMenuItem Header="Clear Guides" Command="{Binding ClearGuidesCommand}" />
+                            <NativeMenuItemSeparator />
+                            <NativeMenuItem Header="New Guide..." Command="{Binding OpenNewGuideDialogCommand}" />
+                            <NativeMenuItem Header="New Guide Layout..." Command="{Binding OpenNewGuideLayoutDialogCommand}" />
+                        </NativeMenu>
+                    </NativeMenuItem>
+                    <NativeMenuItem Header="Snap" Command="{Binding ToggleSnapCommand}" />
+                    <NativeMenuItem Header="Snap To">
+                        <NativeMenu>
+                            <NativeMenuItem Header="Guides" Command="{Binding ToggleSnapToGuidesCommand}" />
+                            <NativeMenuItem Header="Grid" Command="{Binding ToggleSnapToGridCommand}" />
+                            <NativeMenuItem Header="Layers" Command="{Binding ToggleSnapToLayersCommand}" />
+                            <NativeMenuItem Header="Document Bounds" Command="{Binding ToggleSnapToDocumentBoundsCommand}" />
+                        </NativeMenu>
+                    </NativeMenuItem>
                 </NativeMenu>
             </NativeMenuItem>
 

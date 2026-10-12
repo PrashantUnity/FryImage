@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using PdfEditorApp.Core.Models;
 
 namespace PdfEditorApp.Plugins.ImageEditor.Controls;
@@ -28,6 +31,15 @@ public class CanvasRulerControl : Control
 
     public static readonly StyledProperty<double> PageDimensionProperty =
         AvaloniaProperty.Register<CanvasRulerControl, double>(nameof(PageDimension), 800.0);
+
+    public static readonly StyledProperty<EditorCanvasControl?> TargetCanvasProperty =
+        AvaloniaProperty.Register<CanvasRulerControl, EditorCanvasControl?>(nameof(TargetCanvas));
+
+    public EditorCanvasControl? TargetCanvas
+    {
+        get => GetValue(TargetCanvasProperty);
+        set => SetValue(TargetCanvasProperty, value);
+    }
 
     public Orientation Orientation
     {
@@ -255,6 +267,93 @@ public class CanvasRulerControl : Control
                     context.DrawLine(s_cursorPen, new Point(0, cursorY), new Point(bounds.Width, cursorY));
                 }
             }
+        }
+    }
+
+    // ── Interactive Ruler-Pulled Guide Drag ─────────────────────────────────
+    private bool _isDraggingRulerGuide;
+
+    private EditorCanvasControl? ResolveTargetCanvas()
+    {
+        if (TargetCanvas != null) return TargetCanvas;
+        if (Parent is Visual parentVisual)
+        {
+            return parentVisual.GetVisualDescendants().OfType<EditorCanvasControl>().FirstOrDefault();
+        }
+        return null;
+    }
+
+    protected override void OnPointerPressed(PointerPressedEventArgs e)
+    {
+        base.OnPointerPressed(e);
+
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+
+        var canvas = ResolveTargetCanvas();
+        if (canvas == null) return;
+
+        _isDraggingRulerGuide = true;
+        e.Pointer.Capture(this);
+
+        // For Horizontal ruler, dragging down creates a Horizontal guide (isVertical = false).
+        // For Vertical ruler, dragging right creates a Vertical guide (isVertical = true).
+        bool isGuideVertical = Orientation == Orientation.Vertical;
+
+        var ptOnCanvas = this.TranslatePoint(e.GetPosition(this), canvas);
+        if (ptOnCanvas.HasValue)
+        {
+            canvas.BeginGuideDragFromRuler(isGuideVertical, ptOnCanvas.Value);
+        }
+
+        e.Handled = true;
+    }
+
+    protected override void OnPointerMoved(PointerEventArgs e)
+    {
+        base.OnPointerMoved(e);
+
+        if (!_isDraggingRulerGuide) return;
+
+        var canvas = ResolveTargetCanvas();
+        if (canvas == null) return;
+
+        bool isGuideVertical = Orientation == Orientation.Vertical;
+        var ptOnCanvas = this.TranslatePoint(e.GetPosition(this), canvas);
+        if (ptOnCanvas.HasValue)
+        {
+            canvas.UpdateGuideDrag(isGuideVertical, ptOnCanvas.Value);
+        }
+
+        e.Handled = true;
+    }
+
+    protected override void OnPointerReleased(PointerReleasedEventArgs e)
+    {
+        base.OnPointerReleased(e);
+
+        if (!_isDraggingRulerGuide) return;
+
+        _isDraggingRulerGuide = false;
+        e.Pointer.Capture(null);
+
+        var canvas = ResolveTargetCanvas();
+        if (canvas != null)
+        {
+            var ptOnCanvas = this.TranslatePoint(e.GetPosition(this), canvas);
+            canvas.EndGuideDrag(commit: true, ptOnCanvas);
+        }
+
+        e.Handled = true;
+    }
+
+    protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
+    {
+        base.OnPointerCaptureLost(e);
+
+        if (_isDraggingRulerGuide)
+        {
+            _isDraggingRulerGuide = false;
+            ResolveTargetCanvas()?.CancelGuideDrag();
         }
     }
 

@@ -124,6 +124,30 @@
                     <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="models:CanvasElement">
                             <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" Height="26" VerticalAlignment="Center">
+                                <Grid.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Blending Options..."
+                                                  Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).OpenLayerStyleDialogCommand}" />
+                                        <Separator />
+                                        <MenuItem Header="Duplicate Layer" InputGesture="Ctrl+J"
+                                                  Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).DuplicateCommand}" />
+                                        <MenuItem Header="Delete Layer"
+                                                  Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).DeleteSelectedElementCommand}" />
+                                        <Separator />
+                                        <MenuItem Header="Toggle Lock"
+                                                  Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleLayerLockCommand}"
+                                                  CommandParameter="{Binding}" />
+                                        <MenuItem Header="Toggle Visibility"
+                                                  Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleLayerVisibilityCommand}"
+                                                  CommandParameter="{Binding}" />
+                                        <Separator />
+                                        <MenuItem Header="Warp Text..."
+                                                  Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).OpenWarpTextDialogCommand}" />
+                                        <MenuItem Header="Export As..."
+                                                  Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).OpenExportDialogCommand}" />
+                                    </ContextMenu>
+                                </Grid.ContextMenu>
+
                                 <!-- Eye Visibility Toggle Button -->
                                 <Button Grid.Column="0" Classes="ps-tool-btn" Width="18" Height="18"
                                         Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleLayerVisibilityCommand}"

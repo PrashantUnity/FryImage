@@ -158,8 +158,16 @@ public partial class ImageEditorViewModel
     private void SelectColorDockTab(string tab) => ActiveColorDockTab = tab;
 
     [RelayCommand]
-    private void PickSwatchColor(Color c)
+    private void PickSwatchColor(object? parameter)
     {
+        Color c;
+        if (parameter is Color col)
+            c = col;
+        else if (parameter is string hex && Color.TryParse(hex, out var parsed))
+            c = parsed;
+        else
+            return;
+
         PrimaryColor = c;
         if (SelectedElement is IHasFill fillable)
             FillColorField = PrimaryColor;

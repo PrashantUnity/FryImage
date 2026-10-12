@@ -976,6 +976,7 @@ public static partial class ImageAdjustmentEngine
         double shadows = 0.0,        // -100 .. +100
         double whites = 0.0,         // -100 .. +100
         double blacks = 0.0,         // -100 .. +100
+        double texture = 0.0,        // -100 .. +100 (Photoshop 25.4 measured fine-grain texture)
         double clarity = 0.0,        // -100 .. +100
         double dehaze = 0.0,         // -100 .. +100
         double vibrance = 0.0,       // -100 .. +100
@@ -993,10 +994,14 @@ public static partial class ImageAdjustmentEngine
         double whiteShift = whites / 100.0 * 0.2;
         double blackShift = blacks / 100.0 * 0.2;
 
-        // Clarity / Dehaze base blur
+        // Texture fine-detail base blur (sigma 2.5)
+        byte[]? textureBase = Math.Abs(texture) > 1.0 ? ApplyGaussianBlur(bgraPixels, width, height, 2.5) : null;
+        double textureAmount = texture / 100.0 * 0.9;
+
+        // Clarity mid-frequency base blur (sigma 16.0)
         byte[]? clarityBase = Math.Abs(clarity) > 1.0 ? ApplyGaussianBlur(bgraPixels, width, height, 16.0) : null;
-        double clarityAmount = clarity / 100.0 * 0.5;
-        double dehazeAmount = dehaze / 100.0 * 0.4;
+        double clarityAmount = clarity / 100.0 * 0.8;
+        double dehazeAmount = dehaze / 100.0;
 
         double satFactor = (100.0 + saturation) / 100.0;
         double vibFactor = vibrance / 100.0;
@@ -1017,25 +1022,51 @@ public static partial class ImageAdjustmentEngine
             gLin *= expScale * (1.0 - tintShift);
             bLin *= expScale * (1.0 - tempShift);
 
-            // 3. Dehaze
+            // 3. Dehaze (Dark channel prior transmission)
             if (Math.Abs(dehazeAmount) > 0.001)
             {
                 double darkChannel = Math.Min(rLin, Math.Min(gLin, bLin));
-                rLin += (rLin - darkChannel) * dehazeAmount;
-                gLin += (gLin - darkChannel) * dehazeAmount;
-                bLin += (bLin - darkChannel) * dehazeAmount;
+                if (dehazeAmount >= 0.0)
+                {
+                    rLin += (rLin - darkChannel) * (dehazeAmount * 0.6);
+                    gLin += (gLin - darkChannel) * (dehazeAmount * 0.6);
+                    bLin += (bLin - darkChannel) * (dehazeAmount * 0.6);
+                }
+                else
+                {
+                    // Negative dehaze adds atmospheric haze/veil
+                    double veil = -dehazeAmount * 0.4;
+                    rLin += (0.85 - rLin) * veil;
+                    gLin += (0.85 - gLin) * veil;
+                    bLin += (0.85 - bLin) * veil;
+                }
             }
 
-            // 4. Clarity bandpass
+            // 4. Texture fine-grain detail enhancement (Photoshop 25.4 measured: clamped to [-0.1, 0.1] to prevent edge halos)
+            if (textureBase != null)
+            {
+                double bFine = Math.Pow(textureBase[idx] / 255.0, 2.2);
+                double gFine = Math.Pow(textureBase[idx + 1] / 255.0, 2.2);
+                double rFine = Math.Pow(textureBase[idx + 2] / 255.0, 2.2);
+
+                rLin += Math.Clamp(rLin - rFine, -0.1, 0.1) * textureAmount;
+                gLin += Math.Clamp(gLin - gFine, -0.1, 0.1) * textureAmount;
+                bLin += Math.Clamp(bLin - bFine, -0.1, 0.1) * textureAmount;
+            }
+
+            // 5. Clarity bandpass (Photoshop 25.4 measured: midtone-weighted parabolic envelope)
             if (clarityBase != null)
             {
                 double bBlur = Math.Pow(clarityBase[idx] / 255.0, 2.2);
                 double gBlur = Math.Pow(clarityBase[idx + 1] / 255.0, 2.2);
                 double rBlur = Math.Pow(clarityBase[idx + 2] / 255.0, 2.2);
 
-                rLin += (rLin - rBlur) * clarityAmount;
-                gLin += (gLin - gBlur) * clarityAmount;
-                bLin += (bLin - bBlur) * clarityAmount;
+                double curLuma = rLin * LumaR + gLin * LumaG + bLin * LumaB;
+                double mw = Math.Max(0.0, 1.0 - Math.Pow(2.0 * Math.Clamp(curLuma, 0.0, 1.0) - 1.0, 2.0));
+
+                rLin += (rLin - rBlur) * clarityAmount * mw;
+                gLin += (gLin - gBlur) * clarityAmount * mw;
+                bLin += (bLin - bBlur) * clarityAmount * mw;
             }
 
             // 5. Highlights, Shadows, Whites, Blacks

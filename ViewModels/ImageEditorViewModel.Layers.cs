@@ -679,4 +679,438 @@ public partial class ImageEditorViewModel
         OnPropertyChanged(nameof(LayersDescendingZ));
         StatusMessage = $"Merged {visible.Count} visible layers.";
     }
+
+    // ── Flatten All Layer Effects (Photoshop Parity #3804 / #3835) ─────────────
+    [RelayCommand]
+    public void FlattenAllLayerEffects()
+    {
+        var targets = Elements.Where(e => e.Effects.HasAnyActiveEffect).ToList();
+        if (targets.Count == 0)
+        {
+            StatusMessage = "No layer effects to flatten.";
+            return;
+        }
+
+        var oldList = Elements.Select(e => e.Clone()).ToList();
+        int flattenedCount = 0;
+
+        foreach (var el in targets)
+        {
+            int w = Math.Max(1, (int)Math.Ceiling(el.Width));
+            int h = Math.Max(1, (int)Math.Ceiling(el.Height));
+
+            var rtb = new RenderTargetBitmap(new PixelSize(w, h));
+            using (var dc = rtb.CreateDrawingContext())
+            {
+                // Temporarily disable masks during effect baking so masks are kept separate
+                bool origMaskEnabled = el.IsMaskEnabled;
+                bool origVecMaskEnabled = el.IsVectorMaskEnabled;
+                el.IsMaskEnabled = false;
+                el.IsVectorMaskEnabled = false;
+
+                try
+                {
+                    double origX = el.X;
+                    double origY = el.Y;
+                    el.X = 0;
+                    el.Y = 0;
+                    EditorCanvasControl.DrawElement(dc, el);
+                    el.X = origX;
+                    el.Y = origY;
+                }
+                finally
+                {
+                    el.IsMaskEnabled = origMaskEnabled;
+                    el.IsVectorMaskEnabled = origVecMaskEnabled;
+                }
+            }
+
+            using var ms = new MemoryStream();
+            rtb.Save(ms, new PngBitmapEncoderOptions());
+            ms.Position = 0;
+            var bakedBmp = new Bitmap(ms);
+
+            var bakedEl = new ImageElement
+            {
+                Name = el.Name,
+                Width = el.Width,
+                Height = el.Height,
+                X = el.X,
+                Y = el.Y,
+                ZIndex = el.ZIndex,
+                Source = bakedBmp,
+                NaturalPixelWidth = w,
+                NaturalPixelHeight = h,
+                OriginalImageBytes = ms.ToArray(),
+                IsVisible = el.IsVisible,
+                Opacity = el.Opacity,
+                FillOpacity = 1.0,
+                BlendMode = el.BlendMode,
+                // KEEP MASKS INTACT!
+                MaskData = el.MaskData != null ? (byte[])el.MaskData.Clone() : null,
+                IsMaskEnabled = el.IsMaskEnabled,
+                MaskBounds = el.MaskBounds,
+                VectorMask = el.VectorMask?.Clone(),
+                IsVectorMaskEnabled = el.IsVectorMaskEnabled,
+                // CLEAR EFFECTS
+                Effects = new LayerStyleEffects()
+            };
+
+            int idx = Elements.IndexOf(el);
+            if (idx >= 0)
+            {
+                Elements[idx] = bakedEl;
+                if (SelectedElement == el) SelectedElement = bakedEl;
+            }
+            flattenedCount++;
+        }
+
+        History.Push(new RestoreSnapshotCommand(Elements, oldList, Elements.ToList(), "Flatten All Layer Effects", () => RefreshCanvas()));
+        RefreshCanvas();
+        OnPropertyChanged(nameof(LayersDescendingZ));
+        StatusMessage = $"Flattened layer effects on {flattenedCount} layers (masks preserved).";
+    }
+
+    [RelayCommand]
+    public void FlattenAllMasks()
+    {
+        var targets = Elements.Where(e => e.MaskData != null || e.VectorMask != null).ToList();
+        if (targets.Count == 0)
+        {
+            StatusMessage = "No layer masks to flatten.";
+            return;
+        }
+
+        var oldList = Elements.Select(e => e.Clone()).ToList();
+        int flattenedCount = 0;
+
+        foreach (var el in targets)
+        {
+            int w = Math.Max(1, (int)Math.Ceiling(el.Width));
+            int h = Math.Max(1, (int)Math.Ceiling(el.Height));
+
+            var rtb = new RenderTargetBitmap(new PixelSize(w, h));
+            using (var dc = rtb.CreateDrawingContext())
+            {
+                var origEffects = el.Effects;
+                el.Effects = new LayerStyleEffects();
+
+                try
+                {
+                    double origX = el.X;
+                    double origY = el.Y;
+                    el.X = 0;
+                    el.Y = 0;
+                    EditorCanvasControl.DrawElement(dc, el);
+                    el.X = origX;
+                    el.Y = origY;
+                }
+                finally
+                {
+                    el.Effects = origEffects;
+                }
+            }
+
+            using var ms = new MemoryStream();
+            rtb.Save(ms, new PngBitmapEncoderOptions());
+            ms.Position = 0;
+            var bakedBmp = new Bitmap(ms);
+
+            var bakedEl = new ImageElement
+            {
+                Name = el.Name,
+                Width = el.Width,
+                Height = el.Height,
+                X = el.X,
+                Y = el.Y,
+                ZIndex = el.ZIndex,
+                Source = bakedBmp,
+                NaturalPixelWidth = w,
+                NaturalPixelHeight = h,
+                OriginalImageBytes = ms.ToArray(),
+                IsVisible = el.IsVisible,
+                Opacity = el.Opacity,
+                FillOpacity = el.FillOpacity,
+                BlendMode = el.BlendMode,
+                Effects = el.Effects.Clone(),
+                MaskData = null,
+                VectorMask = null
+            };
+
+            int idx = Elements.IndexOf(el);
+            if (idx >= 0)
+            {
+                Elements[idx] = bakedEl;
+                if (SelectedElement == el) SelectedElement = bakedEl;
+            }
+            flattenedCount++;
+        }
+
+        History.Push(new RestoreSnapshotCommand(Elements, oldList, Elements.ToList(), "Flatten All Masks", () => RefreshCanvas()));
+        RefreshCanvas();
+        OnPropertyChanged(nameof(LayersDescendingZ));
+        StatusMessage = $"Flattened masks on {flattenedCount} layers.";
+    }
+
+    [RelayCommand]
+    public void RasterizeLayer(CanvasElement? element = null)
+    {
+        var target = element ?? SelectedElement;
+        if (target == null)
+        {
+            StatusMessage = "No layer selected to rasterize.";
+            return;
+        }
+
+        if (target is ImageElement img && !img.Effects.HasAnyActiveEffect)
+        {
+            StatusMessage = $"Layer '{target.DisplayName}' is already a raster layer.";
+            return;
+        }
+
+        var oldList = Elements.Select(e => e.Clone()).ToList();
+        int w = Math.Max(1, (int)Math.Ceiling(target.Width));
+        int h = Math.Max(1, (int)Math.Ceiling(target.Height));
+
+        var rtb = new RenderTargetBitmap(new PixelSize(w, h));
+        using (var dc = rtb.CreateDrawingContext())
+        {
+            double origX = target.X;
+            double origY = target.Y;
+            target.X = 0;
+            target.Y = 0;
+            EditorCanvasControl.DrawElement(dc, target);
+            target.X = origX;
+            target.Y = origY;
+        }
+
+        using var ms = new MemoryStream();
+        rtb.Save(ms, new PngBitmapEncoderOptions());
+        ms.Position = 0;
+        var bakedBmp = new Bitmap(ms);
+
+        var baked = new ImageElement
+        {
+            Name = target.Name,
+            Width = target.Width,
+            Height = target.Height,
+            X = target.X,
+            Y = target.Y,
+            ZIndex = target.ZIndex,
+            Source = bakedBmp,
+            NaturalPixelWidth = w,
+            NaturalPixelHeight = h,
+            OriginalImageBytes = ms.ToArray(),
+            IsVisible = target.IsVisible,
+            Opacity = target.Opacity,
+            FillOpacity = target.FillOpacity,
+            BlendMode = target.BlendMode,
+            MaskData = target.MaskData != null ? (byte[])target.MaskData.Clone() : null,
+            IsMaskEnabled = target.IsMaskEnabled,
+            VectorMask = target.VectorMask?.Clone(),
+            IsVectorMaskEnabled = target.IsVectorMaskEnabled
+        };
+
+        int idx = Elements.IndexOf(target);
+        if (idx >= 0)
+        {
+            Elements[idx] = baked;
+            SelectedElement = baked;
+        }
+
+        History.Push(new RestoreSnapshotCommand(Elements, oldList, Elements.ToList(), $"Rasterize {target.DisplayName}", () => RefreshCanvas()));
+        RefreshCanvas();
+        OnPropertyChanged(nameof(LayersDescendingZ));
+        StatusMessage = $"Rasterized '{target.DisplayName}'.";
+    }
+
+    [RelayCommand]
+    public void RasterizeAllLayers()
+    {
+        var nonRaster = Elements.Where(e => e is not ImageElement || e.Effects.HasAnyActiveEffect).ToList();
+        if (nonRaster.Count == 0)
+        {
+            StatusMessage = "All layers are already rasterized.";
+            return;
+        }
+
+        var oldList = Elements.Select(e => e.Clone()).ToList();
+        foreach (var el in nonRaster)
+        {
+            int w = Math.Max(1, (int)Math.Ceiling(el.Width));
+            int h = Math.Max(1, (int)Math.Ceiling(el.Height));
+
+            var rtb = new RenderTargetBitmap(new PixelSize(w, h));
+            using (var dc = rtb.CreateDrawingContext())
+            {
+                double origX = el.X;
+                double origY = el.Y;
+                el.X = 0;
+                el.Y = 0;
+                EditorCanvasControl.DrawElement(dc, el);
+                el.X = origX;
+                el.Y = origY;
+            }
+
+            using var ms = new MemoryStream();
+            rtb.Save(ms, new PngBitmapEncoderOptions());
+            ms.Position = 0;
+            var bakedBmp = new Bitmap(ms);
+
+            var baked = new ImageElement
+            {
+                Name = el.Name,
+                Width = el.Width,
+                Height = el.Height,
+                X = el.X,
+                Y = el.Y,
+                ZIndex = el.ZIndex,
+                Source = bakedBmp,
+                NaturalPixelWidth = w,
+                NaturalPixelHeight = h,
+                OriginalImageBytes = ms.ToArray(),
+                IsVisible = el.IsVisible,
+                Opacity = el.Opacity,
+                FillOpacity = el.FillOpacity,
+                BlendMode = el.BlendMode,
+                MaskData = el.MaskData != null ? (byte[])el.MaskData.Clone() : null,
+                IsMaskEnabled = el.IsMaskEnabled,
+                VectorMask = el.VectorMask?.Clone(),
+                IsVectorMaskEnabled = el.IsVectorMaskEnabled
+            };
+
+            int idx = Elements.IndexOf(el);
+            if (idx >= 0) Elements[idx] = baked;
+        }
+
+        History.Push(new RestoreSnapshotCommand(Elements, oldList, Elements.ToList(), "Rasterize All Layers", () => RefreshCanvas()));
+        RefreshCanvas();
+        OnPropertyChanged(nameof(LayersDescendingZ));
+        StatusMessage = $"Rasterized {nonRaster.Count} layers.";
+    }
+
+    [RelayCommand]
+    public void StampVisible()
+    {
+        var visible = Elements.Where(e => e.IsVisible).OrderBy(e => e.ZIndex).ToList();
+        if (visible.Count == 0)
+        {
+            StatusMessage = "No visible layers to stamp.";
+            return;
+        }
+
+        int w = Math.Max(1, (int)_canvasWidth);
+        int h = Math.Max(1, (int)_canvasHeight);
+        var rtb = new RenderTargetBitmap(new PixelSize(w, h));
+        using (var dc = rtb.CreateDrawingContext())
+        {
+            if (BackgroundColor.A > 0)
+            {
+                dc.DrawRectangle(new SolidColorBrush(BackgroundColor), null, new Rect(0, 0, w, h));
+            }
+            foreach (var el in visible)
+            {
+                EditorCanvasControl.DrawElement(dc, el);
+            }
+        }
+
+        using var ms = new MemoryStream();
+        rtb.Save(ms, new PngBitmapEncoderOptions());
+        ms.Position = 0;
+        var stampedBmp = new Bitmap(ms);
+
+        int maxZ = Elements.Count > 0 ? Elements.Max(e => e.ZIndex) + 1 : 1;
+        var stamped = new ImageElement
+        {
+            Name = "Merged Stamp",
+            Width = w,
+            Height = h,
+            X = 0,
+            Y = 0,
+            ZIndex = maxZ,
+            Source = stampedBmp,
+            NaturalPixelWidth = w,
+            NaturalPixelHeight = h,
+            OriginalImageBytes = ms.ToArray(),
+            IsVisible = true,
+            Opacity = 1.0
+        };
+
+        var oldList = Elements.ToList();
+        Elements.Add(stamped);
+        SelectedElement = stamped;
+
+        History.Push(new RestoreSnapshotCommand(Elements, oldList, Elements.ToList(), "Stamp Visible", () => RefreshCanvas()));
+        RefreshCanvas();
+        OnPropertyChanged(nameof(LayersDescendingZ));
+        StatusMessage = "Stamped visible layers into new top layer.";
+    }
+
+    [RelayCommand]
+    public void StampDown()
+    {
+        var target = SelectedElement;
+        if (target == null)
+        {
+            StatusMessage = "No layer selected to stamp down.";
+            return;
+        }
+
+        var sorted = Elements.OrderBy(e => e.ZIndex).ToList();
+        int idx = sorted.IndexOf(target);
+        if (idx <= 0)
+        {
+            StatusMessage = "Selected layer cannot be stamped down.";
+            return;
+        }
+
+        var lower = sorted[idx - 1];
+
+        double minX = Math.Min(target.X, lower.X);
+        double minY = Math.Min(target.Y, lower.Y);
+        double maxX = Math.Max(target.X + target.Width, lower.X + lower.Width);
+        double maxY = Math.Max(target.Y + target.Height, lower.Y + lower.Height);
+        int w = Math.Max(1, (int)Math.Ceiling(maxX - minX));
+        int h = Math.Max(1, (int)Math.Ceiling(maxY - minY));
+
+        var rtb = new RenderTargetBitmap(new PixelSize(w, h));
+        using (var dc = rtb.CreateDrawingContext())
+        {
+            using (dc.PushTransform(Matrix.CreateTranslation(-minX, -minY)))
+            {
+                EditorCanvasControl.DrawElement(dc, lower);
+                EditorCanvasControl.DrawElement(dc, target);
+            }
+        }
+
+        using var ms = new MemoryStream();
+        rtb.Save(ms, new PngBitmapEncoderOptions());
+        ms.Position = 0;
+        var stampedBmp = new Bitmap(ms);
+
+        var stamped = new ImageElement
+        {
+            Name = $"{lower.Name} (Stamped)",
+            Width = w,
+            Height = h,
+            X = minX,
+            Y = minY,
+            ZIndex = target.ZIndex + 1,
+            Source = stampedBmp,
+            NaturalPixelWidth = w,
+            NaturalPixelHeight = h,
+            OriginalImageBytes = ms.ToArray(),
+            IsVisible = true,
+            Opacity = 1.0
+        };
+
+        var oldList = Elements.ToList();
+        Elements.Add(stamped);
+        SelectedElement = stamped;
+
+        History.Push(new RestoreSnapshotCommand(Elements, oldList, Elements.ToList(), "Stamp Down", () => RefreshCanvas()));
+        RefreshCanvas();
+        OnPropertyChanged(nameof(LayersDescendingZ));
+        StatusMessage = $"Stamped '{target.DisplayName}' down into new layer.";
+    }
 }

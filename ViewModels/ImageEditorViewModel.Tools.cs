@@ -33,7 +33,7 @@ public partial class ImageEditorViewModel
     [ObservableProperty] private string _activeWandSubTool = "objectselection"; // objectselection | quickselection | wand
     [ObservableProperty] private string _activeCropSubTool = "crop"; // crop | perspectivecrop | slice | sliceselect
     [ObservableProperty] private string _activeEyedropperSubTool = "eyedropper"; // eyedropper | materialeyedropper | colorsampler | ruler | note | count
-    [ObservableProperty] private string _activeHealingSubTool = "healing"; // healing | healingbrush | patch | contentawaremove | redeye
+    [ObservableProperty] private string _activeHealingSubTool = "remove"; // remove | healing | healingbrush | patch | contentawaremove | redeye
     [ObservableProperty] private string _activeBrushSubTool = "brush"; // brush | pencil | colorreplace | mixerbrush
     [ObservableProperty] private string _activeStampSubTool = "clonestamp"; // clonestamp | patternstamp
     [ObservableProperty] private string _activeHistorySubTool = "historybrush"; // historybrush | arthistorybrush
@@ -230,6 +230,7 @@ public partial class ImageEditorViewModel
     public bool IsZoomToolActive => ActiveToolMode == "zoom";
 
     // Retouch predicates
+    public bool IsRemoveToolActive => ActiveToolMode == "remove";
     public bool IsCloneStampToolActive => ActiveToolMode == "clonestamp";
     public bool IsHealingToolActive => ActiveToolMode == "healing";
     public bool IsHistoryBrushToolActive => ActiveToolMode == "historybrush";
@@ -243,7 +244,7 @@ public partial class ImageEditorViewModel
     public bool IsPatchToolActive => ActiveToolMode == "patch";
     public bool IsBlurSharpenSmudgeActive => ActiveToolMode is "blur" or "sharpen" or "smudge";
     public bool IsDodgeBurnSpongeActive => ActiveToolMode is "dodge" or "burn" or "sponge";
-    public bool IsRetouchToolActive => ActiveToolMode is "clonestamp" or "healing" or "historybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" or "redeye" or "patch";
+    public bool IsRetouchToolActive => ActiveToolMode is "remove" or "clonestamp" or "healing" or "historybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" or "redeye" or "patch";
 
     // Navigation & Measurement predicates
     public bool IsRulerToolActive => ActiveToolMode == "ruler";
@@ -261,7 +262,7 @@ public partial class ImageEditorViewModel
     public bool IsCropSlotActive => ActiveToolMode is "crop" or "perspectivecrop" or "slice" or "sliceselect";
     public bool IsFrameSlotActive => ActiveToolMode == "frame";
     public bool IsEyedropperSlotActive => ActiveToolMode is "eyedropper" or "materialeyedropper" or "colorsampler" or "ruler" or "note" or "count";
-    public bool IsHealingSlotActive => ActiveToolMode is "healing" or "healingbrush" or "patch" or "contentawaremove" or "redeye";
+    public bool IsHealingSlotActive => ActiveToolMode is "remove" or "healing" or "healingbrush" or "patch" or "contentawaremove" or "redeye";
     public bool IsBrushSlotActive => ActiveToolMode is "brush" or "pencil" or "colorreplace" or "mixerbrush";
     public bool IsStampSlotActive => ActiveToolMode is "clonestamp" or "patternstamp";
     public bool IsHistorySlotActive => ActiveToolMode is "historybrush" or "arthistorybrush";
@@ -305,6 +306,7 @@ public partial class ImageEditorViewModel
     public bool IsSubNoteActive => ActiveToolMode == "note";
     public bool IsSubCountActive => ActiveToolMode == "count";
 
+    public bool IsSubRemoveActive => ActiveToolMode == "remove";
     public bool IsSubSpotHealingActive => ActiveToolMode == "healing";
     public bool IsSubHealingBrushActive => ActiveToolMode == "healingbrush";
     public bool IsSubPatchActive => ActiveToolMode == "patch";
@@ -395,7 +397,7 @@ public partial class ImageEditorViewModel
         else if (toolMode is "objectselection" or "quickselection" or "wand") ActiveWandSubTool = toolMode;
         else if (toolMode is "crop" or "perspectivecrop" or "slice" or "sliceselect") ActiveCropSubTool = toolMode;
         else if (toolMode is "eyedropper" or "materialeyedropper" or "colorsampler" or "ruler" or "note" or "count") ActiveEyedropperSubTool = toolMode;
-        else if (toolMode is "healing" or "healingbrush" or "patch" or "contentawaremove" or "redeye") ActiveHealingSubTool = toolMode;
+        else if (toolMode is "remove" or "healing" or "healingbrush" or "patch" or "contentawaremove" or "redeye") ActiveHealingSubTool = toolMode;
         else if (toolMode is "brush" or "pencil" or "colorreplace" or "mixerbrush") ActiveBrushSubTool = toolMode;
         else if (toolMode is "clonestamp" or "patternstamp") ActiveStampSubTool = toolMode;
         else if (toolMode is "historybrush" or "arthistorybrush") ActiveHistorySubTool = toolMode;
@@ -472,6 +474,7 @@ public partial class ImageEditorViewModel
         OnPropertyChanged(nameof(IsGradientToolActive));
         OnPropertyChanged(nameof(IsHandToolActive));
         OnPropertyChanged(nameof(IsZoomToolActive));
+        OnPropertyChanged(nameof(IsRemoveToolActive));
         OnPropertyChanged(nameof(IsCloneStampToolActive));
         OnPropertyChanged(nameof(IsHealingToolActive));
         OnPropertyChanged(nameof(IsHistoryBrushToolActive));
@@ -538,6 +541,7 @@ public partial class ImageEditorViewModel
         OnPropertyChanged(nameof(IsSubRulerActive));
         OnPropertyChanged(nameof(IsSubNoteActive));
         OnPropertyChanged(nameof(IsSubCountActive));
+        OnPropertyChanged(nameof(IsSubRemoveActive));
         OnPropertyChanged(nameof(IsSubSpotHealingActive));
         OnPropertyChanged(nameof(IsSubHealingBrushActive));
         OnPropertyChanged(nameof(IsSubPatchActive));
@@ -590,7 +594,19 @@ public partial class ImageEditorViewModel
     {
         InvalidateAllToolProperties();
 
-        if (value == "redeye")
+        if (value != "remove" && PendingRemoveStrokes.Count > 0)
+        {
+            PendingRemoveStrokes.Clear();
+            CanvasControl?.InvalidateVisual();
+        }
+
+        if (value == "remove")
+        {
+            StatusMessage = RemoveAfterEachStroke
+                ? "Remove Tool (J): Paint over unwanted objects to automatically remove them."
+                : $"Remove Tool (J): {PendingRemoveStrokes.Count} strokes waiting. Press Enter or ✓ to apply, Esc to cancel.";
+        }
+        else if (value == "redeye")
         {
             StatusMessage = "Red Eye Tool: Click directly on the red pupil to automatically neutralize and darken it.";
         }
@@ -1109,6 +1125,13 @@ public partial class ImageEditorViewModel
                 else if (ActiveToolMode == "sharpen") ActivateSubTool("smudge");
                 else ActivateSubTool("blur");
                 break;
+            case "healing":
+            case "j":
+                if (ActiveToolMode == "remove") ActivateSubTool("healing");
+                else if (ActiveToolMode == "healing") ActivateSubTool("patch");
+                else if (ActiveToolMode == "patch") ActivateSubTool("redeye");
+                else ActivateSubTool("remove");
+                break;
             case "move":
             case "v":
                 if (ActiveToolMode is "select" or "move") ActivateSubTool("artboard");
@@ -1116,4 +1139,23 @@ public partial class ImageEditorViewModel
                 break;
         }
     }
+
+    /// <summary>
+    /// Rotates the brush tip by the specified degrees (wrapped into -180..180), matching Photoshop Left/Right arrow keys.
+    /// </summary>
+    [RelayCommand]
+    public void RotateBrush(double degrees)
+    {
+        double newAngle = BrushAngle + degrees;
+        while (newAngle > 180.0) newAngle -= 360.0;
+        while (newAngle <= -180.0) newAngle += 360.0;
+        BrushAngle = Math.Round(newAngle, 1);
+        if (CanvasControl != null)
+        {
+            CanvasControl.BrushAngle = BrushAngle;
+            CanvasControl.InvalidateVisual();
+        }
+        StatusMessage = $"Brush angle: {BrushAngle:0}°";
+    }
 }
+

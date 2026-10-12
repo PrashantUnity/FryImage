@@ -1365,6 +1365,7 @@ public partial class ImageEditorViewModel
     [ObservableProperty] private double _filterRawShadows = 0.0;
     [ObservableProperty] private double _filterRawWhites = 0.0;
     [ObservableProperty] private double _filterRawBlacks = 0.0;
+    [ObservableProperty] private double _filterRawTexture = 0.0;
     [ObservableProperty] private double _filterRawClarity = 0.0;
     [ObservableProperty] private double _filterRawDehaze = 0.0;
     [ObservableProperty] private double _filterRawVibrance = 0.0;
@@ -1565,6 +1566,7 @@ public partial class ImageEditorViewModel
         FilterRawShadows = 0.0;
         FilterRawWhites = 0.0;
         FilterRawBlacks = 0.0;
+        FilterRawTexture = 0.0;
         FilterRawClarity = 0.0;
         FilterRawDehaze = 0.0;
         FilterRawVibrance = 0.0;
@@ -1741,6 +1743,7 @@ public partial class ImageEditorViewModel
     partial void OnFilterRawShadowsChanged(double value) => ApplyFilterPreview();
     partial void OnFilterRawWhitesChanged(double value) => ApplyFilterPreview();
     partial void OnFilterRawBlacksChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterRawTextureChanged(double value) => ApplyFilterPreview();
     partial void OnFilterRawClarityChanged(double value) => ApplyFilterPreview();
     partial void OnFilterRawDehazeChanged(double value) => ApplyFilterPreview();
     partial void OnFilterRawVibranceChanged(double value) => ApplyFilterPreview();
@@ -1799,7 +1802,7 @@ public partial class ImageEditorViewModel
             "Pointillize" => ImageAdjustmentEngine.ApplyPointillize(bgra, width, height, FilterPointillizeCellSize),
             "Facet" => ImageAdjustmentEngine.ApplyFacet(bgra, width, height, FilterFacetRadius),
             "OilPaint" => ImageAdjustmentEngine.ApplyOilPaint(bgra, width, height, FilterOilStylization, FilterOilCleanliness, FilterOilScale, FilterOilBristleDetail, FilterOilLighting, FilterOilAngle, FilterOilShine),
-            "CameraRaw" => ImageAdjustmentEngine.ApplyCameraRaw(bgra, width, height, FilterRawExposure, FilterRawTemperature, FilterRawTint, FilterRawContrast, FilterRawHighlights, FilterRawShadows, FilterRawWhites, FilterRawBlacks, FilterRawClarity, FilterRawDehaze, FilterRawVibrance, FilterRawSaturation),
+            "CameraRaw" => ImageAdjustmentEngine.ApplyCameraRaw(bgra, width, height, FilterRawExposure, FilterRawTemperature, FilterRawTint, FilterRawContrast, FilterRawHighlights, FilterRawShadows, FilterRawWhites, FilterRawBlacks, FilterRawTexture, FilterRawClarity, FilterRawDehaze, FilterRawVibrance, FilterRawSaturation),
             "LensFlare" => ImageAdjustmentEngine.ApplyLensFlare(bgra, width, height, FilterLensBrightness, lensType: FilterLensType),
             "Clouds" => ImageAdjustmentEngine.ApplyClouds(bgra, width, height, PrimaryColor, SecondaryColor, false),
             "DifferenceClouds" => ImageAdjustmentEngine.ApplyClouds(bgra, width, height, PrimaryColor, SecondaryColor, true),

@@ -57,6 +57,7 @@ public sealed class DropShadowStyle
     public double Size { get; set; } = 8.0; // Blur radius
     public double Spread { get; set; } = 0.0;
     public LayerBlendMode BlendMode { get; set; } = LayerBlendMode.Multiply;
+    public string ContourName { get; set; } = "Linear";
 
     public DropShadowStyle Clone() => new()
     {
@@ -67,7 +68,8 @@ public sealed class DropShadowStyle
         Distance = Distance,
         Size = Size,
         Spread = Spread,
-        BlendMode = BlendMode
+        BlendMode = BlendMode,
+        ContourName = ContourName
     };
 }
 
@@ -79,6 +81,7 @@ public sealed class OuterGlowStyle
     public double Size { get; set; } = 12.0; // Blur radius
     public double Spread { get; set; } = 0.0;
     public LayerBlendMode BlendMode { get; set; } = LayerBlendMode.Screen;
+    public string ContourName { get; set; } = "Linear";
 
     public OuterGlowStyle Clone() => new()
     {
@@ -87,7 +90,8 @@ public sealed class OuterGlowStyle
         Opacity = Opacity,
         Size = Size,
         Spread = Spread,
-        BlendMode = BlendMode
+        BlendMode = BlendMode,
+        ContourName = ContourName
     };
 }
 
@@ -100,6 +104,7 @@ public sealed class InnerShadowStyle
     public double Distance { get; set; } = 4.0;
     public double Size { get; set; } = 6.0;
     public LayerBlendMode BlendMode { get; set; } = LayerBlendMode.Multiply;
+    public string ContourName { get; set; } = "Linear";
 
     public InnerShadowStyle Clone() => new()
     {
@@ -109,7 +114,8 @@ public sealed class InnerShadowStyle
         Angle = Angle,
         Distance = Distance,
         Size = Size,
-        BlendMode = BlendMode
+        BlendMode = BlendMode,
+        ContourName = ContourName
     };
 }
 
@@ -122,6 +128,7 @@ public sealed class InnerGlowStyle
     public double Spread { get; set; } = 0.0;
     public LayerBlendMode BlendMode { get; set; } = LayerBlendMode.Screen;
     public bool CenterSource { get; set; } = false;
+    public string ContourName { get; set; } = "Linear";
 
     public InnerGlowStyle Clone() => new()
     {
@@ -131,7 +138,8 @@ public sealed class InnerGlowStyle
         Size = Size,
         Spread = Spread,
         BlendMode = BlendMode,
-        CenterSource = CenterSource
+        CenterSource = CenterSource,
+        ContourName = ContourName
     };
 }
 
@@ -159,6 +167,7 @@ public sealed class BevelEmbossStyle
     public Color ShadowColor { get; set; } = Colors.Black;
     public double ShadowOpacity { get; set; } = 0.75;
     public LayerBlendMode ShadowMode { get; set; } = LayerBlendMode.Multiply;
+    public string ContourName { get; set; } = "Linear";
 
     public BevelEmbossStyle Clone() => new()
     {
@@ -174,7 +183,8 @@ public sealed class BevelEmbossStyle
         HighlightMode = HighlightMode,
         ShadowColor = ShadowColor,
         ShadowOpacity = ShadowOpacity,
-        ShadowMode = ShadowMode
+        ShadowMode = ShadowMode,
+        ContourName = ContourName
     };
 }
 
@@ -188,6 +198,7 @@ public sealed class SatinStyle
     public double Distance { get; set; } = 11.0;
     public double Size { get; set; } = 14.0;
     public bool Invert { get; set; } = true;
+    public string ContourName { get; set; } = "Linear";
 
     public SatinStyle Clone() => new()
     {
@@ -198,7 +209,8 @@ public sealed class SatinStyle
         Angle = Angle,
         Distance = Distance,
         Size = Size,
-        Invert = Invert
+        Invert = Invert,
+        ContourName = ContourName
     };
 }
 

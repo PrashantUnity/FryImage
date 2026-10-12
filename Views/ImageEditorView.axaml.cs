@@ -206,6 +206,11 @@ public partial class ImageEditorView : UserControl
                 CanvasControl.ActiveDocumentPath = vm.ActiveDocumentPath;
                 CanvasControl.InvalidateVisual();
             }
+            else if (args.PropertyName == nameof(ImageEditorViewModel.CanvasPasteboardColor))
+            {
+                CanvasControl.PasteboardColor = vm.CanvasPasteboardColor;
+                CanvasControl.InvalidateVisual();
+            }
             else if (_editingTextElement is { } editing &&
                      (args.PropertyName == nameof(ImageEditorViewModel.IsBold) ||
                       args.PropertyName == nameof(ImageEditorViewModel.IsItalic) ||
@@ -230,6 +235,8 @@ public partial class ImageEditorView : UserControl
         CanvasControl.ActiveSymmetryMode = vm.ActiveSymmetryMode;
         CanvasControl.IsHighlighterMode = vm.IsHighlighterMode;
         CanvasControl.BrushColor = vm.PrimaryColor;
+        CanvasControl.PendingRemoveStrokes = vm.PendingRemoveStrokes;
+        CanvasControl.PasteboardColor = vm.CanvasPasteboardColor;
 
         // Initial canvas push
         CanvasControl.SetElements([.. vm.Elements]);
@@ -243,11 +250,27 @@ public partial class ImageEditorView : UserControl
         };
     }
 
+    private bool _isSpaceKeyDown;
+
+    protected override void OnKeyUp(KeyEventArgs e)
+    {
+        base.OnKeyUp(e);
+        if (e.Key == Key.Space)
+        {
+            _isSpaceKeyDown = false;
+        }
+    }
+
     // ── Keyboard handling ──────────────────────────────────────────────────
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
         if (DataContext is not ImageEditorViewModel vm) return;
+
+        if (e.Key == Key.Space)
+        {
+            _isSpaceKeyDown = true;
+        }
 
         // Never steal keystrokes from a focused text-entry control (e.g. the text-content
         // TextBox or the font-size NumericUpDown) — otherwise typing/backspacing there would
@@ -258,6 +281,34 @@ public partial class ImageEditorView : UserControl
         bool ctrl = e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta);
         bool shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
         bool alt = e.KeyModifiers.HasFlag(KeyModifiers.Alt);
+
+        // Commit or Cancel pending remove strokes
+        if (e.Key == Key.Enter && vm.PendingRemoveStrokes.Count > 0 && !vm.IsFreeTransformActive)
+        {
+            vm.CommitRemoveCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+        if (e.Key == Key.Escape && vm.PendingRemoveStrokes.Count > 0 && !vm.IsFreeTransformActive)
+        {
+            vm.CancelRemoveCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+
+        // Photoshop Brush Keys: Left and Right arrow keys turn the brush tip by 1° (15° with Shift)
+        if (!ctrl && !alt && (e.Key == Key.Left || e.Key == Key.Right))
+        {
+            if (vm.IsStandardBrushToolActive || vm.IsPencilToolActive || vm.IsEraserToolActive ||
+                vm.IsCloneStampToolActive || vm.IsHealingToolActive || vm.IsRemoveToolActive ||
+                vm.IsBlurSharpenSmudgeActive || vm.IsDodgeBurnSpongeActive)
+            {
+                double delta = (e.Key == Key.Right ? 1.0 : -1.0) * (shift ? 15.0 : 1.0);
+                vm.RotateBrush(delta);
+                e.Handled = true;
+                return;
+            }
+        }
 
         // Escape: dismiss any open modal dialogs, cancel Free Transform, cancel crop, deselect, or reset tool
         if (e.Key == Key.Escape)
@@ -525,6 +576,7 @@ public partial class ImageEditorView : UserControl
                 case Key.O: vm.CycleSubToolInSlot("o"); e.Handled = true; return;
                 case Key.R: if (vm.SelectedTextElement == null) { vm.CycleSubToolInSlot("r"); e.Handled = true; return; } break;
                 case Key.V: vm.CycleSubToolInSlot("v"); e.Handled = true; return;
+                case Key.J: vm.CycleSubToolInSlot("j"); e.Handled = true; return;
             }
         }
 
@@ -537,6 +589,7 @@ public partial class ImageEditorView : UserControl
             case Key.W: vm.SelectWandSlotCommand.Execute(null); e.Handled = true; break;
             case Key.C: vm.SelectCropSlotCommand.Execute(null); e.Handled = true; break;
             case Key.I: if (vm.SelectedTextElement == null) { vm.SelectEyedropperSlotCommand.Execute(null); e.Handled = true; } break;
+            case Key.J: vm.SelectHealingSlotCommand.Execute(null); e.Handled = true; break;
             case Key.B: if (vm.SelectedTextElement == null) { vm.SelectBrushSlotCommand.Execute(null); e.Handled = true; } break;
             case Key.E: vm.SelectEraserSlotCommand.Execute(null); e.Handled = true; break;
             case Key.G: vm.SelectGradientSlotCommand.Execute(null); e.Handled = true; break;
@@ -550,7 +603,17 @@ public partial class ImageEditorView : UserControl
             case Key.X: vm.SwapColorsCommand.Execute(null); e.Handled = true; break;
             case Key.D: vm.ResetColorsCommand.Execute(null); e.Handled = true; break;
             case Key.Q: vm.ToggleQuickMaskCommand.Execute(null); e.Handled = true; break;
-            case Key.F: vm.FitToWindowCommand.Execute(null); e.Handled = true; break;
+            case Key.F:
+                if (_isSpaceKeyDown || vm.ActiveToolMode == "hand")
+                {
+                    vm.CycleCanvasColor(reverse: shift);
+                }
+                else
+                {
+                    vm.FitToWindowCommand.Execute(null);
+                }
+                e.Handled = true;
+                break;
         }
     }
 

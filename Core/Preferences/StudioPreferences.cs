@@ -30,6 +30,8 @@ public sealed class StudioPreferences
     public bool SnapToLayers { get; set; } = true;
     public bool SnapToDocumentBounds { get; set; } = true;
     public bool EnableNarrowOptionsBar { get; set; } = false;
+    public bool AutoCollapseIconicPanels { get; set; } = false;
+    public int CanvasPasteboardColorIndex { get; set; } = 0; // 0=Default, 1=Black, 2=Dark Gray, 3=Medium Gray, 4=Light Gray, 5=Custom
     public bool MissingGlyphProtection { get; set; } = true;
     public int DefaultBitsPerChannel { get; set; } = 8; // 8, 16, or 32
 

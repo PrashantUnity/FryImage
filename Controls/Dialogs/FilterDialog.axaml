@@ -517,6 +517,14 @@
 
                             <StackPanel Spacing="3">
                                 <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Texture" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterRawTexture, StringFormat='{}{0:+0;-0;0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="-100" Maximum="100" Value="{Binding FilterRawTexture, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="3">
+                                <Grid ColumnDefinitions="*,Auto">
                                     <TextBlock Grid.Column="0" Text="Clarity" Classes="ps-label" />
                                     <TextBlock Grid.Column="1" Text="{Binding FilterRawClarity, StringFormat='{}{0:+0;-0;0}'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
                                 </Grid>

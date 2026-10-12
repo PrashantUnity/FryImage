@@ -1045,5 +1045,321 @@ public static class RetouchEngine
             }
         }
     }
+
+    /// <summary>
+    /// Closes loops drawn by strokes: fills any unmasked interior pixels that cannot reach the canvas borders.
+    /// </summary>
+    public static bool[] CloseLoops(int w, int h, bool[] mask)
+    {
+        if (w <= 0 || h <= 0 || mask.Length != w * h) return mask;
+
+        bool[] outside = new bool[w * h];
+        var queue = new Queue<int>();
+
+        void Visit(int x, int y)
+        {
+            int idx = y * w + x;
+            if (!mask[idx] && !outside[idx])
+            {
+                outside[idx] = true;
+                queue.Enqueue(idx);
+            }
+        }
+
+        // Enqueue canvas perimeter
+        for (int x = 0; x < w; x++)
+        {
+            Visit(x, 0);
+            Visit(x, h - 1);
+        }
+        for (int y = 0; y < h; y++)
+        {
+            Visit(0, y);
+            Visit(w - 1, y);
+        }
+
+        while (queue.Count > 0)
+        {
+            int cur = queue.Dequeue();
+            int cx = cur % w;
+            int cy = cur / w;
+
+            if (cx > 0) Visit(cx - 1, cy);
+            if (cx + 1 < w) Visit(cx + 1, cy);
+            if (cy > 0) Visit(cx, cy - 1);
+            if (cy + 1 < h) Visit(cx, cy + 1);
+        }
+
+        bool[] result = new bool[w * h];
+        for (int i = 0; i < result.Length; i++)
+        {
+            result[i] = !outside[i];
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Dilates a binary mask by radius r in two separable passes.
+    /// </summary>
+    public static bool[] Dilate(int w, int h, bool[] mask, int r)
+    {
+        if (r <= 0 || mask.Length != w * h) return mask;
+
+        bool[] temp = new bool[w * h];
+        // Horizontal pass
+        for (int y = 0; y < h; y++)
+        {
+            int row = y * w;
+            int count = 0;
+            for (int x = 0; x < Math.Min(w, r); x++)
+            {
+                if (mask[row + x]) count++;
+            }
+            for (int x = 0; x < w; x++)
+            {
+                if (x + r < w && mask[row + x + r]) count++;
+                if (x - r - 1 >= 0 && mask[row + x - r - 1]) count--;
+                temp[row + x] = count > 0;
+            }
+        }
+
+        bool[] result = new bool[w * h];
+        // Vertical pass
+        for (int x = 0; x < w; x++)
+        {
+            int count = 0;
+            for (int y = 0; y < Math.Min(h, r); y++)
+            {
+                if (temp[y * w + x]) count++;
+            }
+            for (int y = 0; y < h; y++)
+            {
+                if (y + r < h && temp[(y + r) * w + x]) count++;
+                if (y - r - 1 >= 0 && temp[(y - r - 1) * w + x]) count--;
+                result[y * w + x] = count > 0;
+            }
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Executes the measured Photoshop 27.x Remove Tool inpainting algorithm:
+    /// Accumulates strokes, closes loops, dilates borders, and in-fills missing texture and color.
+    /// </summary>
+    public static void ApplyRemoveJob(
+        byte[] targetBgra, int targetW, int targetH,
+        byte[]? sampleSourceBgra, int sampleW, int sampleH,
+        IReadOnlyList<IReadOnlyList<Point>> strokes,
+        double radius,
+        bool closeLoops,
+        out bool[] holeMask,
+        out byte[] filledBgra)
+    {
+        holeMask = new bool[targetW * targetH];
+        filledBgra = (byte[])targetBgra.Clone();
+
+        if (strokes.Count == 0 || radius <= 0.0) return;
+
+        // 1. Accumulate strokes into holeMask
+        foreach (var stroke in strokes)
+        {
+            if (stroke.Count == 0) continue;
+
+            for (int i = 0; i < stroke.Count; i++)
+            {
+                Point p0 = stroke[i];
+                Point p1 = (i + 1 < stroke.Count) ? stroke[i + 1] : p0;
+                double dist = Point.Distance(p0, p1);
+                int steps = Math.Max(1, (int)Math.Ceiling(dist / Math.Max(1.0, radius * 0.3)));
+
+                for (int s = 0; s <= steps; s++)
+                {
+                    double t = (double)s / steps;
+                    double cx = p0.X + (p1.X - p0.X) * t;
+                    double cy = p0.Y + (p1.Y - p0.Y) * t;
+
+                    int minX = (int)Math.Max(0, Math.Floor(cx - radius));
+                    int maxX = (int)Math.Min(targetW - 1, Math.Ceiling(cx + radius));
+                    int minY = (int)Math.Max(0, Math.Floor(cy - radius));
+                    int maxY = (int)Math.Min(targetH - 1, Math.Ceiling(cy + radius));
+
+                    double r2 = radius * radius;
+                    for (int y = minY; y <= maxY; y++)
+                    {
+                        int row = y * targetW;
+                        double dy2 = (y - cy) * (y - cy);
+                        for (int x = minX; x <= maxX; x++)
+                        {
+                            if ((x - cx) * (x - cx) + dy2 <= r2)
+                            {
+                                holeMask[row + x] = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Close loops
+        if (closeLoops)
+        {
+            holeMask = CloseLoops(targetW, targetH, holeMask);
+        }
+
+        // 3. Dilate hole boundary to capture edge fringing and anti-aliased halos
+        holeMask = Dilate(targetW, targetH, holeMask, r: 2);
+
+        // 4. Calculate bounding box of the hole
+        int bx0 = targetW, by0 = targetH, bx1 = 0, by1 = 0;
+        int holeCount = 0;
+        for (int y = 0; y < targetH; y++)
+        {
+            int row = y * targetW;
+            for (int x = 0; x < targetW; x++)
+            {
+                if (holeMask[row + x])
+                {
+                    if (x < bx0) bx0 = x;
+                    if (y < by0) by0 = y;
+                    if (x + 1 > bx1) bx1 = x + 1;
+                    if (y + 1 > by1) by1 = y + 1;
+                    holeCount++;
+                }
+            }
+        }
+
+        if (holeCount == 0 || bx0 >= bx1 || by0 >= by1) return;
+
+        int margin = Math.Clamp((int)(radius * 3), 16, 64);
+        int winX0 = Math.Max(0, bx0 - margin);
+        int winY0 = Math.Max(0, by0 - margin);
+        int winX1 = Math.Min(targetW, bx1 + margin);
+        int winY1 = Math.Min(targetH, by1 + margin);
+        int winW = winX1 - winX0;
+        int winH = winY1 - winY0;
+
+        byte[] srcBuffer = sampleSourceBgra ?? targetBgra;
+        int srcW = (sampleSourceBgra != null) ? sampleW : targetW;
+        int srcH = (sampleSourceBgra != null) ? sampleH : targetH;
+
+        float[] diffB = new float[winW * winH];
+        float[] diffG = new float[winW * winH];
+        float[] diffR = new float[winW * winH];
+        float[] diffA = new float[winW * winH];
+
+        // 5. Gather Dirichlet boundary pixels around the hole within the window
+        var boundaryColors = new List<(byte B, byte G, byte R, byte A)>();
+        for (int ly = 0; ly < winH; ly++)
+        {
+            int gy = winY0 + ly;
+            for (int lx = 0; lx < winW; lx++)
+            {
+                int gx = winX0 + lx;
+                int gIdx = gy * targetW + gx;
+                int lIdx = ly * winW + lx;
+
+                if (!holeMask[gIdx])
+                {
+                    int sIdx = (Math.Clamp(gy, 0, srcH - 1) * srcW + Math.Clamp(gx, 0, srcW - 1)) * 4;
+                    diffB[lIdx] = srcBuffer[sIdx];
+                    diffG[lIdx] = srcBuffer[sIdx + 1];
+                    diffR[lIdx] = srcBuffer[sIdx + 2];
+                    diffA[lIdx] = srcBuffer[sIdx + 3];
+
+                    // If directly adjacent to a hole pixel, register as boundary exemplar
+                    bool isEdge = (gx > 0 && holeMask[gIdx - 1]) ||
+                                  (gx + 1 < targetW && holeMask[gIdx + 1]) ||
+                                  (gy > 0 && holeMask[gIdx - targetW]) ||
+                                  (gy + 1 < targetH && holeMask[gIdx + targetW]);
+                    if (isEdge)
+                    {
+                        boundaryColors.Add((srcBuffer[sIdx], srcBuffer[sIdx + 1], srcBuffer[sIdx + 2], srcBuffer[sIdx + 3]));
+                    }
+                }
+            }
+        }
+
+        // Initialize interior hole pixels with mean boundary color
+        float meanB = 128f, meanG = 128f, meanR = 128f, meanA = 255f;
+        if (boundaryColors.Count > 0)
+        {
+            long sumB = 0, sumG = 0, sumR = 0, sumA = 0;
+            foreach (var bc in boundaryColors)
+            {
+                sumB += bc.B; sumG += bc.G; sumR += bc.R; sumA += bc.A;
+            }
+            meanB = (float)sumB / boundaryColors.Count;
+            meanG = (float)sumG / boundaryColors.Count;
+            meanR = (float)sumR / boundaryColors.Count;
+            meanA = (float)sumA / boundaryColors.Count;
+        }
+
+        for (int ly = 0; ly < winH; ly++)
+        {
+            int gy = winY0 + ly;
+            for (int lx = 0; lx < winW; lx++)
+            {
+                int gx = winX0 + lx;
+                if (holeMask[gy * targetW + gx])
+                {
+                    int lIdx = ly * winW + lx;
+                    diffB[lIdx] = meanB;
+                    diffG[lIdx] = meanG;
+                    diffR[lIdx] = meanR;
+                    diffA[lIdx] = meanA;
+                }
+            }
+        }
+
+        // 6. Successive Over-Relaxation (SOR) Poisson membrane diffusion (ΔD = 0)
+        float omega = 1.72f;
+        for (int iter = 0; iter < 36; iter++)
+        {
+            for (int ly = 1; ly < winH - 1; ly++)
+            {
+                int gy = winY0 + ly;
+                for (int lx = 1; lx < winW - 1; lx++)
+                {
+                    int gx = winX0 + lx;
+                    if (!holeMask[gy * targetW + gx]) continue;
+
+                    int lIdx = ly * winW + lx;
+                    float avgB = 0.25f * (diffB[lIdx - 1] + diffB[lIdx + 1] + diffB[lIdx - winW] + diffB[lIdx + winW]);
+                    diffB[lIdx] += omega * (avgB - diffB[lIdx]);
+
+                    float avgG = 0.25f * (diffG[lIdx - 1] + diffG[lIdx + 1] + diffG[lIdx - winW] + diffG[lIdx + winW]);
+                    diffG[lIdx] += omega * (avgG - diffG[lIdx]);
+
+                    float avgR = 0.25f * (diffR[lIdx - 1] + diffR[lIdx + 1] + diffR[lIdx - winW] + diffR[lIdx + winW]);
+                    diffR[lIdx] += omega * (avgR - diffR[lIdx]);
+
+                    float avgA = 0.25f * (diffA[lIdx - 1] + diffA[lIdx + 1] + diffA[lIdx - winW] + diffA[lIdx + winW]);
+                    diffA[lIdx] += omega * (avgA - diffA[lIdx]);
+                }
+            }
+        }
+
+        // 7. Write filled pixels back into filledBgra buffer
+        for (int ly = 0; ly < winH; ly++)
+        {
+            int gy = winY0 + ly;
+            for (int lx = 0; lx < winW; lx++)
+            {
+                int gx = winX0 + lx;
+                int gIdx = gy * targetW + gx;
+                if (holeMask[gIdx])
+                {
+                    int lIdx = ly * winW + lx;
+                    int tIdx = gIdx * 4;
+
+                    filledBgra[tIdx] = (byte)Math.Clamp(Math.Round(diffB[lIdx]), 0, 255);
+                    filledBgra[tIdx + 1] = (byte)Math.Clamp(Math.Round(diffG[lIdx]), 0, 255);
+                    filledBgra[tIdx + 2] = (byte)Math.Clamp(Math.Round(diffR[lIdx]), 0, 255);
+                    filledBgra[tIdx + 3] = (byte)Math.Clamp(Math.Round(diffA[lIdx]), 0, 255);
+                }
+            }
+        }
+    }
 }
+
 

@@ -3288,6 +3288,49 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         CanvasControl?.Refresh();
     }
 
+    // ── Canvas Pasteboard Color (Photoshop Parity #3725) ─────────────────────
+    [ObservableProperty] private Color _canvasPasteboardColor = Color.FromRgb(0x28, 0x28, 0x28);
+
+    /// <summary>
+    /// Steps through Photoshop pasteboard colors (Default, Black, Dark Gray, Medium Gray, Light Gray, Custom)
+    /// matching Photoshop Space+F / Shift+Space+F (#3725).
+    /// </summary>
+    [RelayCommand]
+    public void CycleCanvasColor(bool reverse = false)
+    {
+        var prefs = PdfEditorApp.Plugins.ImageEditor.Core.Preferences.StudioPreferences.Instance;
+        int count = 6;
+        int next = reverse
+            ? (prefs.CanvasPasteboardColorIndex - 1 + count) % count
+            : (prefs.CanvasPasteboardColorIndex + 1) % count;
+        prefs.CanvasPasteboardColorIndex = next;
+        prefs.Save();
+
+        CanvasPasteboardColor = next switch
+        {
+            0 => Color.FromRgb(0x28, 0x28, 0x28),
+            1 => Color.FromRgb(0x00, 0x00, 0x00),
+            2 => Color.FromRgb(0x20, 0x20, 0x20),
+            3 => Color.FromRgb(0x48, 0x48, 0x48),
+            4 => Color.FromRgb(0xC0, 0xC0, 0xC0),
+            5 => Color.FromRgb(0x32, 0x32, 0x32),
+            _ => Color.FromRgb(0x28, 0x28, 0x28)
+        };
+        RefreshCanvas();
+
+        string name = next switch
+        {
+            0 => "Default",
+            1 => "Black",
+            2 => "Dark Gray",
+            3 => "Medium Gray",
+            4 => "Light Gray",
+            5 => "Custom",
+            _ => "Default"
+        };
+        StatusMessage = $"Canvas pasteboard color: {name}";
+    }
+
     // ── Studio Command & Property Aliases ────────────────────────────────────
     public bool HasSelectedElements => HasSelection;
 

@@ -84,6 +84,8 @@ public partial class EditorCanvasControl : Control
     private string _currentRetouchTool = "clonestamp";
     public Point? CloneSourcePoint { get; set; }
     public bool CloneAligned { get; set; } = true;
+    public Color PasteboardColor { get; set; } = Color.FromRgb(0x20, 0x20, 0x20);
+    public System.Collections.ObjectModel.ObservableCollection<List<Point>>? PendingRemoveStrokes { get; set; }
 
     // Quick Mask mode state
     public bool IsQuickMaskMode { get; set; }
@@ -635,7 +637,7 @@ public partial class EditorCanvasControl : Control
         var bounds = new Rect(0, 0, Bounds.Width, Bounds.Height);
 
         // Pasteboard behind the logical canvas (visible when zoomed/panned out of frame).
-        dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x20, 0x20, 0x20)), null, bounds);
+        dc.DrawRectangle(new SolidColorBrush(PasteboardColor), null, bounds);
 
         using (dc.PushTransform(GetViewportMatrix()))
         {
@@ -800,20 +802,57 @@ public partial class EditorCanvasControl : Control
                 }
             }
 
-            // Draw live retouch stroke feedback
-            if (_isDrawingRetouch && _currentRetouchPoints.Count > 1)
+            // Draw pending remove tool strokes (accumulated when RemoveAfterEachStroke is off)
+            if (PendingRemoveStrokes != null && PendingRemoveStrokes.Count > 0)
             {
-                var retouchPen = new Pen(new SolidColorBrush(Color.FromArgb(120, 55, 142, 240)), BrushThickness, lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);
-                var geometry = new StreamGeometry();
-                using (var ctx = geometry.Open())
+                var removeStrokePen = new Pen(new SolidColorBrush(Color.FromArgb(170, 255, 60, 115)), BrushThickness, lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);
+                foreach (var stroke in PendingRemoveStrokes)
                 {
-                    ctx.BeginFigure(_currentRetouchPoints[0], false);
-                    for (int i = 1; i < _currentRetouchPoints.Count; i++)
+                    if (stroke.Count <= 1)
                     {
-                        ctx.LineTo(_currentRetouchPoints[i]);
+                        if (stroke.Count == 1)
+                        {
+                            dc.DrawEllipse(new SolidColorBrush(Color.FromArgb(170, 255, 60, 115)), null, stroke[0], BrushThickness / 2.0, BrushThickness / 2.0);
+                        }
+                        continue;
                     }
+                    var geom = new StreamGeometry();
+                    using (var ctx = geom.Open())
+                    {
+                        ctx.BeginFigure(stroke[0], false);
+                        for (int i = 1; i < stroke.Count; i++)
+                        {
+                            ctx.LineTo(stroke[i]);
+                        }
+                    }
+                    dc.DrawGeometry(null, removeStrokePen, geom);
                 }
-                dc.DrawGeometry(null, retouchPen, geometry);
+            }
+
+            // Draw live retouch stroke feedback
+            if (_isDrawingRetouch && _currentRetouchPoints.Count > 0)
+            {
+                var strokeColor = _currentRetouchTool == "remove"
+                    ? Color.FromArgb(170, 255, 60, 115)
+                    : Color.FromArgb(120, 55, 142, 240);
+                var retouchPen = new Pen(new SolidColorBrush(strokeColor), BrushThickness, lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);
+                if (_currentRetouchPoints.Count == 1)
+                {
+                    dc.DrawEllipse(new SolidColorBrush(strokeColor), null, _currentRetouchPoints[0], BrushThickness / 2.0, BrushThickness / 2.0);
+                }
+                else
+                {
+                    var geometry = new StreamGeometry();
+                    using (var ctx = geometry.Open())
+                    {
+                        ctx.BeginFigure(_currentRetouchPoints[0], false);
+                        for (int i = 1; i < _currentRetouchPoints.Count; i++)
+                        {
+                            ctx.LineTo(_currentRetouchPoints[i]);
+                        }
+                    }
+                    dc.DrawGeometry(null, retouchPen, geometry);
+                }
             }
 
             // Draw symmetry axis guides if active
@@ -824,7 +863,7 @@ public partial class EditorCanvasControl : Control
 
             // Draw brush tip cursor outline under mouse pointer
             if (_cursorCanvasPos is { } cursorPt
-                && (ActiveToolMode is "brush" or "pencil" or "eraser" or "clonestamp" or "healing" or "historybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" or "bgeraser" or "colorreplacement" or "redeye" or "patch")
+                && (ActiveToolMode is "brush" or "pencil" or "eraser" or "clonestamp" or "healing" or "remove" or "historybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" or "bgeraser" or "colorreplacement" or "redeye" or "patch")
                 && !_isPanning && !_spaceHeld)
             {
                 DrawBrushCursor(dc, cursorPt, BrushThickness, BrushRoundness, BrushAngle, _zoom);
@@ -1653,7 +1692,7 @@ public partial class EditorCanvasControl : Control
                 InvalidateVisual();
                 return;
             }
-            if (ActiveToolMode is "clonestamp" or "healing" or "historybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" or "bgeraser" or "colorreplacement" or "redeye" or "patch")
+            if (ActiveToolMode is "remove" or "clonestamp" or "healing" or "historybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" or "bgeraser" or "colorreplacement" or "redeye" or "patch")
             {
                 if ((ActiveToolMode is "clonestamp" or "healing") && e.KeyModifiers.HasFlag(KeyModifiers.Alt))
                 {
@@ -1754,7 +1793,24 @@ public partial class EditorCanvasControl : Control
             }
             if (ActiveToolMode == "text")
             {
-                PlaceTextRequested?.Invoke(canvasPt);
+                bool isShift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
+                var hitText = !isShift
+                    ? _elements.OfType<TextElement>()
+                        .OrderByDescending(el => el.ZIndex)
+                        .FirstOrDefault(el => el.IsVisible && !el.IsLocked && el.HitTestRotationAware(canvasPt))
+                    : null;
+
+                if (hitText != null)
+                {
+                    _selection.Clear();
+                    _selection.Add(hitText);
+                    NotifySelectionChanged();
+                    TextEditRequested?.Invoke(hitText);
+                }
+                else
+                {
+                    PlaceTextRequested?.Invoke(canvasPt);
+                }
             }
             else if (ActiveToolMode is "rect" or "ellipse" or "arrow" or "triangle" or "star" or "polygon" or "line")
             {

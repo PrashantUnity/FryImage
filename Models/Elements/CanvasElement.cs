@@ -82,6 +82,21 @@ public abstract class CanvasElement
     public byte BlendIfUnderMin { get; set; } = 0;
     public byte BlendIfUnderMax { get; set; } = 255;
 
+    /// <summary>8-bit raster mask alpha buffer (0..255).</summary>
+    public byte[]? MaskData { get; set; }
+
+    /// <summary>Whether the raster mask is enabled.</summary>
+    public bool IsMaskEnabled { get; set; } = true;
+
+    /// <summary>Bounds of the raster mask if distinct from element Bounds.</summary>
+    public Rect? MaskBounds { get; set; }
+
+    /// <summary>Optional vector mask path attached to the element.</summary>
+    public PdfEditorApp.Plugins.ImageEditor.Core.Vector.VectorDocumentPath? VectorMask { get; set; }
+
+    /// <summary>Whether the vector mask is enabled.</summary>
+    public bool IsVectorMaskEnabled { get; set; } = true;
+
     /// <summary>When true, transparency of this layer is locked against modification (Photoshop Lock Transparent Pixels, '/').</summary>
     public bool IsTransparencyLocked { get; set; }
 
@@ -126,6 +141,11 @@ public abstract class CanvasElement
         target.BlendIfThisMax = BlendIfThisMax;
         target.BlendIfUnderMin = BlendIfUnderMin;
         target.BlendIfUnderMax = BlendIfUnderMax;
+        target.MaskData = MaskData != null ? (byte[])MaskData.Clone() : null;
+        target.IsMaskEnabled = IsMaskEnabled;
+        target.MaskBounds = MaskBounds;
+        target.VectorMask = VectorMask?.Clone();
+        target.IsVectorMaskEnabled = IsVectorMaskEnabled;
     }
 
     /// <summary>Display name shown in the layer panel.</summary>

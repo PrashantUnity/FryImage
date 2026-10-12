@@ -1,3 +1,4 @@
+using PdfEditorApp.Plugins.ImageEditor.Models;
 using PdfEditorApp.Plugins.ImageEditor.UISnapshots.Core;
 
 namespace PdfEditorApp.Plugins.ImageEditor.UISnapshots.Suites;
@@ -37,6 +38,23 @@ public static class DockSnapshotSuite
         // 6. Properties Dock Panel (Document Mode)
         vm.SelectRightDockTabCommand.Execute("Properties");
         ctx.Capture("dock_properties_document_tab.png");
+
+        // 6b. Properties Dock Panel (Character OpenType & Typography Mode)
+        var textEl = new TextElement
+        {
+            Text = "Typography Elegance",
+            FontSize = 28,
+            StandardLigatures = true,
+            ContextualAlternates = true,
+            DiscretionaryLigatures = true,
+            Swash = true
+        };
+        vm.Elements.Add(textEl);
+        vm.SelectedElement = textEl;
+        vm.SelectRightDockTabCommand.Execute("Properties");
+        ctx.Capture("dock_properties_character_opentype.png");
+        vm.Elements.Remove(textEl);
+        vm.SelectedElement = null;
 
         // 7. Navigator Dock Panel (Canvas thumbnail & Zoom slider)
         vm.SelectRightDockTabCommand.Execute("Navigator");

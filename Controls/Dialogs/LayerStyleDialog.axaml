@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:controls="using:PdfEditorApp.Plugins.ImageEditor.Controls"
              xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Dialogs.LayerStyleDialog"
              x:DataType="local:ImageEditorViewModel">
@@ -168,13 +169,16 @@
                                 <Slider Minimum="0" Maximum="1" Value="{Binding FxDropShadowOpacity, Mode=TwoWay}" />
                             </StackPanel>
 
-                            <!-- Angle Slider -->
+                            <!-- Angle Slider & Rotary Dial -->
                             <StackPanel Spacing="2">
                                 <Grid ColumnDefinitions="*,Auto">
                                     <TextBlock Grid.Column="0" Text="Angle" Classes="ps-label" />
                                     <TextBlock Grid.Column="1" Text="{Binding FxDropShadowAngle, StringFormat='{}{0:0}°'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" />
                                 </Grid>
-                                <Slider Minimum="0" Maximum="360" Value="{Binding FxDropShadowAngle, Mode=TwoWay}" />
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                    <Slider Grid.Column="0" Minimum="0" Maximum="360" Value="{Binding FxDropShadowAngle, Mode=TwoWay}" VerticalAlignment="Center" />
+                                    <controls:AngleDialControl Grid.Column="1" Angle="{Binding FxDropShadowAngle, Mode=TwoWay}" Minimum="0" Maximum="360" Width="36" Height="36" />
+                                </Grid>
                             </StackPanel>
 
                             <!-- Distance & Size -->

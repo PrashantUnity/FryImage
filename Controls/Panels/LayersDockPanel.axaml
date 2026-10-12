@@ -146,18 +146,49 @@
                                                   Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleLayerVisibilityCommand}"
                                                   CommandParameter="{Binding}" />
                                         <Separator />
+                                        <MenuItem Header="Color">
+                                            <MenuItem Header="None" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="None" />
+                                            <Separator />
+                                            <MenuItem Header="Red" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Red" />
+                                            <MenuItem Header="Orange" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Orange" />
+                                            <MenuItem Header="Yellow" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Yellow" />
+                                            <MenuItem Header="Green" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Green" />
+                                            <MenuItem Header="Blue" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Blue" />
+                                            <MenuItem Header="Violet" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Violet" />
+                                            <MenuItem Header="Gray" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Gray" />
+                                        </MenuItem>
+                                        <Separator />
                                         <MenuItem Header="Warp Text..."
                                                   Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).OpenWarpTextDialogCommand}" />
                                         <MenuItem Header="Export As..."
                                                   Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).OpenExportDialogCommand}" />
+                                        <MenuItem Header="Export Layers As Files..."
+                                                  Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).OpenExportSelectedLayersDialogCommand}" />
                                     </ContextMenu>
                                 </Grid.ContextMenu>
 
-                                <!-- Eye Visibility Toggle Button -->
-                                <Button Grid.Column="0" Classes="ps-tool-btn" Width="18" Height="18"
+                                <!-- Left Label Color Strip -->
+                                <Border Grid.Column="0" Width="3" Height="20" Background="{Binding LabelColorBrush}"
+                                        CornerRadius="1" Margin="0,0,3,0" HorizontalAlignment="Left" />
+
+                                <!-- Eye Visibility Toggle Button (with Color choices on context menu) -->
+                                <Button Grid.Column="0" Classes="ps-tool-btn" Width="18" Height="18" Margin="4,0,0,0"
                                         Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleLayerVisibilityCommand}"
                                         CommandParameter="{Binding}"
-                                        ToolTip.Tip="Indicates layer visibility">
+                                        ToolTip.Tip="Indicates layer visibility (right-click for color label)">
+                                    <Button.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="None" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="None" />
+                                            <Separator />
+                                            <MenuItem Header="Red" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Red" />
+                                            <MenuItem Header="Orange" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Orange" />
+                                            <MenuItem Header="Yellow" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Yellow" />
+                                            <MenuItem Header="Green" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Green" />
+                                            <MenuItem Header="Blue" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Blue" />
+                                            <MenuItem Header="Violet" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Violet" />
+                                            <MenuItem Header="Gray" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Gray" />
+                                        </ContextMenu>
+                                    </Button.ContextMenu>
                                     <materialIcons:MaterialIcon Kind="{Binding IsVisible, Converter={StaticResource IsVisibleToIconConverter}}"
                                                                 Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
                                 </Button>
@@ -227,7 +258,12 @@
                             <materialIcons:MaterialIcon Kind="FolderOutline" Width="12" Height="12" />
                         </Button>
                         <!-- Create New Layer (+) -->
-                        <Button Classes="ps-footer-btn" Command="{Binding InsertRectangleCommand}" ToolTip.Tip="Create a new layer">
+                        <Button Classes="ps-footer-btn" Command="{Binding InsertRectangleCommand}" ToolTip.Tip="Create a new layer (right-click for New Layer dialog)">
+                            <Button.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="New Layer..." InputGesture="Ctrl+Shift+N" Command="{Binding OpenNewLayerDialogCommand}" />
+                                </ContextMenu>
+                            </Button.ContextMenu>
                             <materialIcons:MaterialIcon Kind="Plus" Width="13" Height="13" />
                         </Button>
                         <!-- Delete Layer (Trash) -->

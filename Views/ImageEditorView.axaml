@@ -190,6 +190,7 @@
         <dialogs:NewGuideLayoutDialog Grid.Row="0" Grid.RowSpan="4" ZIndex="500" IsVisible="{Binding IsNewGuideLayoutDialogOpen}" />
         <dialogs:WarpTextDialog Grid.Row="0" Grid.RowSpan="4" ZIndex="500" IsVisible="{Binding IsWarpTextDialogOpen}" />
         <dialogs:DuplicateLayerDialog Grid.Row="0" Grid.RowSpan="4" ZIndex="500" IsVisible="{Binding IsDuplicateLayerDialogOpen}" />
+        <dialogs:NewLayerDialog Grid.Row="0" Grid.RowSpan="4" ZIndex="500" IsVisible="{Binding IsNewLayerDialogOpen}" />
         <dialogs:ColorPickerDialog Grid.Row="0" Grid.RowSpan="4" ZIndex="500" IsVisible="{Binding IsColorPickerVisible}" />
         <dialogs:ConfirmDiscardDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="600" IsVisible="{Binding IsConfirmingDiscard}" />
         <dialogs:CommandPaletteDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="600" IsVisible="{Binding IsCommandPaletteOpen}" />

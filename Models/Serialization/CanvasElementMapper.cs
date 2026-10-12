@@ -47,6 +47,7 @@ public static class CanvasElementMapper
         dto.FillOpacity = el.FillOpacity;
         dto.BlendMode = el.BlendMode.ToString();
         dto.IsClippingMask = el.IsClippingMask;
+        dto.LabelColor = el.LabelColor.ToString();
         dto.BlendIfThisMin = el.BlendIfThisMin;
         dto.BlendIfThisMax = el.BlendIfThisMax;
         dto.BlendIfUnderMin = el.BlendIfUnderMin;
@@ -64,6 +65,7 @@ public static class CanvasElementMapper
         el.FillOpacity = dto.FillOpacity;
         el.BlendMode = Enum.TryParse<LayerBlendMode>(dto.BlendMode, true, out var bm) ? bm : LayerBlendMode.Normal;
         el.IsClippingMask = dto.IsClippingMask;
+        el.LabelColor = Enum.TryParse<LayerLabelColor>(dto.LabelColor, true, out var lc) ? lc : LayerLabelColor.None;
         el.BlendIfThisMin = dto.BlendIfThisMin;
         el.BlendIfThisMax = dto.BlendIfThisMax;
         el.BlendIfUnderMin = dto.BlendIfUnderMin;
@@ -586,6 +588,17 @@ public static class CanvasElementMapper
             WarpHorizontalDistortion = t.Warp?.HorizontalDistortion ?? 0.0,
             WarpVerticalDistortion = t.Warp?.VerticalDistortion ?? 0.0,
             WarpIsHorizontal = t.Warp?.IsHorizontal ?? true,
+            StandardLigatures = t.StandardLigatures,
+            ContextualAlternates = t.ContextualAlternates,
+            DiscretionaryLigatures = t.DiscretionaryLigatures,
+            Swash = t.Swash,
+            StylisticAlternates = t.StylisticAlternates,
+            TitlingAlternates = t.TitlingAlternates,
+            Ordinals = t.Ordinals,
+            Fractions = t.Fractions,
+            FauxSmallCaps = t.FauxSmallCaps,
+            FauxSuperscript = t.FauxSuperscript,
+            FauxSubscript = t.FauxSubscript,
         };
         CopyBaseToDto(t, dto);
         return dto;
@@ -614,6 +627,18 @@ public static class CanvasElementMapper
         t.TextCaseTransform = Enum.Parse<TextCaseTransform>(dto.TextCaseTransform);
         t.IsWrapEnabled = dto.IsWrapEnabled;
         t.LineHeight = dto.LineHeight;
+
+        t.StandardLigatures = dto.StandardLigatures;
+        t.ContextualAlternates = dto.ContextualAlternates;
+        t.DiscretionaryLigatures = dto.DiscretionaryLigatures;
+        t.Swash = dto.Swash;
+        t.StylisticAlternates = dto.StylisticAlternates;
+        t.TitlingAlternates = dto.TitlingAlternates;
+        t.Ordinals = dto.Ordinals;
+        t.Fractions = dto.Fractions;
+        t.FauxSmallCaps = dto.FauxSmallCaps;
+        t.FauxSuperscript = dto.FauxSuperscript;
+        t.FauxSubscript = dto.FauxSubscript;
 
         if (!string.IsNullOrEmpty(dto.WarpStyle) && Enum.TryParse<TextWarpStyle>(dto.WarpStyle, true, out var ws))
         {

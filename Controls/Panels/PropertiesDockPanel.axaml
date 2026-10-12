@@ -172,6 +172,62 @@
                                 <Button Classes="ps-tool-btn" Width="24" Height="20" Command="{Binding SetTextCaseCommand}" CommandParameter="Lowercase" ToolTip.Tip="Lowercase">
                                     <TextBlock Text="aa" FontSize="9" />
                                 </Button>
+
+                                <Rectangle Width="1" Height="14" Fill="{DynamicResource PsBorderSubtleBrush}" Margin="2,0" />
+
+                                <ToggleButton Classes="ps-tool-btn" Width="22" Height="20" IsChecked="{Binding FauxSmallCapsField, Mode=TwoWay}" ToolTip.Tip="Small Caps">
+                                    <TextBlock Text="Tt" FontSize="9" FontWeight="Bold" />
+                                </ToggleButton>
+                                <ToggleButton Classes="ps-tool-btn" Width="20" Height="20" IsChecked="{Binding FauxSuperscriptField, Mode=TwoWay}" ToolTip.Tip="Superscript (T¹)">
+                                    <TextBlock Text="T¹" FontSize="9" />
+                                </ToggleButton>
+                                <ToggleButton Classes="ps-tool-btn" Width="20" Height="20" IsChecked="{Binding FauxSubscriptField, Mode=TwoWay}" ToolTip.Tip="Subscript (T₁)">
+                                    <TextBlock Text="T₁" FontSize="9" />
+                                </ToggleButton>
+                            </StackPanel>
+
+                            <!-- 4. OpenType Typography Features (Photoshop standard) -->
+                            <StackPanel Orientation="Horizontal" Spacing="2">
+                                <ToggleButton Classes="ps-tool-btn" Width="22" Height="20"
+                                              IsChecked="{Binding StandardLigaturesField, Mode=TwoWay}"
+                                              ToolTip.Tip="Standard Ligatures (fi)">
+                                    <TextBlock Text="fi" FontSize="10" FontWeight="SemiBold" />
+                                </ToggleButton>
+                                <ToggleButton Classes="ps-tool-btn" Width="22" Height="20"
+                                              IsChecked="{Binding ContextualAlternatesField, Mode=TwoWay}"
+                                              ToolTip.Tip="Contextual Alternates (st)">
+                                    <TextBlock Text="st" FontSize="10" FontWeight="SemiBold" />
+                                </ToggleButton>
+                                <ToggleButton Classes="ps-tool-btn" Width="22" Height="20"
+                                              IsChecked="{Binding DiscretionaryLigaturesField, Mode=TwoWay}"
+                                              ToolTip.Tip="Discretionary Ligatures (ct)">
+                                    <TextBlock Text="ct" FontSize="10" />
+                                </ToggleButton>
+                                <ToggleButton Classes="ps-tool-btn" Width="22" Height="20"
+                                              IsChecked="{Binding SwashField, Mode=TwoWay}"
+                                              ToolTip.Tip="Swash (A~)">
+                                    <TextBlock Text="A~" FontSize="10" FontStyle="Italic" />
+                                </ToggleButton>
+                                <ToggleButton Classes="ps-tool-btn" Width="22" Height="20"
+                                              IsChecked="{Binding StylisticAlternatesField, Mode=TwoWay}"
+                                              ToolTip.Tip="Stylistic Alternates (aa)">
+                                    <TextBlock Text="aa" FontSize="10" />
+                                </ToggleButton>
+                                <ToggleButton Classes="ps-tool-btn" Width="22" Height="20"
+                                              IsChecked="{Binding TitlingAlternatesField, Mode=TwoWay}"
+                                              ToolTip.Tip="Titling Alternates (T)">
+                                    <TextBlock Text="T" FontSize="10" FontWeight="Bold" />
+                                </ToggleButton>
+                                <ToggleButton Classes="ps-tool-btn" Width="22" Height="20"
+                                              IsChecked="{Binding OrdinalsField, Mode=TwoWay}"
+                                              ToolTip.Tip="Ordinals (1st)">
+                                    <TextBlock Text="1ˢᵗ" FontSize="9" />
+                                </ToggleButton>
+                                <ToggleButton Classes="ps-tool-btn" Width="22" Height="20"
+                                              IsChecked="{Binding FractionsField, Mode=TwoWay}"
+                                              ToolTip.Tip="Fractions (½)">
+                                    <TextBlock Text="½" FontSize="10" />
+                                </ToggleButton>
                             </StackPanel>
 
                             <!-- 4. Paragraph Alignment & Text Wrap -->

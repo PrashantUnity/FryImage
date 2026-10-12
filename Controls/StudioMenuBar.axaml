@@ -37,6 +37,7 @@
                             <MenuItem Header="Save PSD..." InputGesture="Ctrl+S" Command="{Binding SavePsdFileCommand}" />
                             <MenuItem Header="Save Project JSON" Command="{Binding SaveProjectJsonCommand}" />
                             <MenuItem Header="Export As..." InputGesture="Ctrl+Shift+W" Command="{Binding OpenExportDialogCommand}" />
+                            <MenuItem Header="Export Layers As Files..." Command="{Binding OpenExportSelectedLayersDialogCommand}" />
                             <Separator />
                             <MenuItem Header="Automate">
                                 <MenuItem Header="Crop and Straighten Photos" Command="{Binding CropAndStraightenPhotosCommand}" />
@@ -114,7 +115,7 @@
                 <Button Classes="ps-menu-btn" Content="Layer">
                     <Button.Flyout>
                         <MenuFlyout Placement="BottomEdgeAlignedLeft">
-                            <MenuItem Header="New Layer" InputGesture="Ctrl+Shift+N" Command="{Binding InsertRectangleCommand}" />
+                            <MenuItem Header="New Layer..." InputGesture="Ctrl+Shift+N" Command="{Binding OpenNewLayerDialogCommand}" />
                             <MenuItem Header="Duplicate Layer..." Command="{Binding OpenDuplicateLayerDialogCommand}" />
                             <MenuItem Header="Quick Duplicate Layer" InputGesture="Ctrl+J" Command="{Binding DuplicateCommand}" />
                             <MenuItem Header="Delete Layer" Command="{Binding DeleteSelectedElementCommand}" />
@@ -203,6 +204,7 @@
                                 <MenuItem Header="Spherize..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Spherize" />
                                 <MenuItem Header="ZigZag..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="ZigZag" />
                                 <MenuItem Header="Shear..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Shear" />
+                                <MenuItem Header="Displace..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Displace" />
                             </MenuItem>
                             <MenuItem Header="Pixelate">
                                 <MenuItem Header="Color Halftone..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="ColorHalftone" />

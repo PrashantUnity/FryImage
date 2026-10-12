@@ -1480,6 +1480,19 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     [ObservableProperty] private Color _highlightColorField = Colors.Yellow;
     [ObservableProperty] private bool _isWrapEnabledField;
 
+    // OpenType feature properties (Photoshop standard)
+    [ObservableProperty] private bool _standardLigaturesField = true;
+    [ObservableProperty] private bool _contextualAlternatesField = true;
+    [ObservableProperty] private bool _discretionaryLigaturesField;
+    [ObservableProperty] private bool _swashField;
+    [ObservableProperty] private bool _stylisticAlternatesField;
+    [ObservableProperty] private bool _titlingAlternatesField;
+    [ObservableProperty] private bool _ordinalsField;
+    [ObservableProperty] private bool _fractionsField;
+    [ObservableProperty] private bool _fauxSmallCapsField;
+    [ObservableProperty] private bool _fauxSuperscriptField;
+    [ObservableProperty] private bool _fauxSubscriptField;
+
     /// <summary>Refreshes the Properties-tab fields to match the newly-selected element,
     /// without treating the refresh itself as a user edit.</summary>
     private void SyncStyleFieldsToSelection()
@@ -1535,6 +1548,18 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
                     HasHighlightField = text.BackgroundColor.HasValue;
                     HighlightColorField = text.BackgroundColor ?? Colors.Yellow;
                     IsWrapEnabledField = text.IsWrapEnabled;
+
+                    StandardLigaturesField = text.StandardLigatures;
+                    ContextualAlternatesField = text.ContextualAlternates;
+                    DiscretionaryLigaturesField = text.DiscretionaryLigatures;
+                    SwashField = text.Swash;
+                    StylisticAlternatesField = text.StylisticAlternates;
+                    TitlingAlternatesField = text.TitlingAlternates;
+                    OrdinalsField = text.Ordinals;
+                    FractionsField = text.Fractions;
+                    FauxSmallCapsField = text.FauxSmallCaps;
+                    FauxSuperscriptField = text.FauxSuperscript;
+                    FauxSubscriptField = text.FauxSubscript;
                 }
                 OpacityField = el.Opacity * 100;
                 BlendModeField = el.BlendMode;
@@ -1831,6 +1856,91 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     {
         if (_isSyncingStyleFields || SelectedTextElement is not { } target) return;
         ApplyStyleField(target, target.IsWrapEnabled, value, (t, v) => t.IsWrapEnabled = v, "Toggle text wrap");
+    }
+
+    partial void OnStandardLigaturesFieldChanged(bool value)
+    {
+        if (_isSyncingStyleFields || SelectedTextElement is not { } target) return;
+        ApplyStyleField(target, target.StandardLigatures, value, (t, v) => t.StandardLigatures = v, "Toggle Standard Ligatures");
+    }
+
+    partial void OnContextualAlternatesFieldChanged(bool value)
+    {
+        if (_isSyncingStyleFields || SelectedTextElement is not { } target) return;
+        ApplyStyleField(target, target.ContextualAlternates, value, (t, v) => t.ContextualAlternates = v, "Toggle Contextual Alternates");
+    }
+
+    partial void OnDiscretionaryLigaturesFieldChanged(bool value)
+    {
+        if (_isSyncingStyleFields || SelectedTextElement is not { } target) return;
+        ApplyStyleField(target, target.DiscretionaryLigatures, value, (t, v) => t.DiscretionaryLigatures = v, "Toggle Discretionary Ligatures");
+    }
+
+    partial void OnSwashFieldChanged(bool value)
+    {
+        if (_isSyncingStyleFields || SelectedTextElement is not { } target) return;
+        ApplyStyleField(target, target.Swash, value, (t, v) => t.Swash = v, "Toggle Swash");
+    }
+
+    partial void OnStylisticAlternatesFieldChanged(bool value)
+    {
+        if (_isSyncingStyleFields || SelectedTextElement is not { } target) return;
+        ApplyStyleField(target, target.StylisticAlternates, value, (t, v) => t.StylisticAlternates = v, "Toggle Stylistic Alternates");
+    }
+
+    partial void OnTitlingAlternatesFieldChanged(bool value)
+    {
+        if (_isSyncingStyleFields || SelectedTextElement is not { } target) return;
+        ApplyStyleField(target, target.TitlingAlternates, value, (t, v) => t.TitlingAlternates = v, "Toggle Titling Alternates");
+    }
+
+    partial void OnOrdinalsFieldChanged(bool value)
+    {
+        if (_isSyncingStyleFields || SelectedTextElement is not { } target) return;
+        ApplyStyleField(target, target.Ordinals, value, (t, v) => t.Ordinals = v, "Toggle Ordinals");
+    }
+
+    partial void OnFractionsFieldChanged(bool value)
+    {
+        if (_isSyncingStyleFields || SelectedTextElement is not { } target) return;
+        ApplyStyleField(target, target.Fractions, value, (t, v) => t.Fractions = v, "Toggle Fractions");
+    }
+
+    partial void OnFauxSmallCapsFieldChanged(bool value)
+    {
+        if (_isSyncingStyleFields || SelectedTextElement is not { } target) return;
+        ApplyStyleField(target, target.FauxSmallCaps, value, (t, v) => t.FauxSmallCaps = v, "Toggle Small Caps");
+    }
+
+    partial void OnFauxSuperscriptFieldChanged(bool value)
+    {
+        if (_isSyncingStyleFields || SelectedTextElement is not { } target) return;
+        ApplyStyleField(target, target.FauxSuperscript, value, (t, v) => t.FauxSuperscript = v, "Toggle Superscript");
+    }
+
+    partial void OnFauxSubscriptFieldChanged(bool value)
+    {
+        if (_isSyncingStyleFields || SelectedTextElement is not { } target) return;
+        ApplyStyleField(target, target.FauxSubscript, value, (t, v) => t.FauxSubscript = v, "Toggle Subscript");
+    }
+
+    [RelayCommand]
+    public void ToggleOpenTypeFeature(string tag)
+    {
+        switch (tag?.ToLowerInvariant())
+        {
+            case "liga": StandardLigaturesField = !StandardLigaturesField; break;
+            case "calt": ContextualAlternatesField = !ContextualAlternatesField; break;
+            case "dlig": DiscretionaryLigaturesField = !DiscretionaryLigaturesField; break;
+            case "swsh": SwashField = !SwashField; break;
+            case "salt": StylisticAlternatesField = !StylisticAlternatesField; break;
+            case "titl": TitlingAlternatesField = !TitlingAlternatesField; break;
+            case "ordn": OrdinalsField = !OrdinalsField; break;
+            case "frac": FractionsField = !FractionsField; break;
+            case "smcp": FauxSmallCapsField = !FauxSmallCapsField; break;
+            case "sups": FauxSuperscriptField = !FauxSuperscriptField; break;
+            case "subs": FauxSubscriptField = !FauxSubscriptField; break;
+        }
     }
 
     [RelayCommand]

@@ -95,6 +95,7 @@ public partial class ImageEditorViewModel
         AddCmd("filter.stylize.tracecontour", "Trace Contour...", "Filter", null, "VectorPolygon", () => OpenFilterDialog("TraceContour"));
         AddCmd("filter.distort.zigzag", "ZigZag...", "Filter", null, "Zigzag", () => OpenFilterDialog("ZigZag"));
         AddCmd("filter.distort.shear", "Shear...", "Filter", null, "ArrowTopRightBottomLeftBold", () => OpenFilterDialog("Shear"));
+        AddCmd("filter.distort.displace", "Displace...", "Filter", null, "VectorDifference", () => OpenFilterDialog("Displace"));
         AddCmd("filter.pixelate.mezzotint", "Mezzotint...", "Filter", null, "DotsHorizontalCircleOutline", () => OpenFilterDialog("Mezzotint"));
         AddCmd("filter.sketch.waterpaper", "Water Paper...", "Filter", null, "Water", () => OpenFilterDialog("WaterPaper"));
 
@@ -133,7 +134,9 @@ public partial class ImageEditorViewModel
         AddCmd("swatches.reset", "Reset Default Swatches", "Color", null, "Restore", ResetDefaultSwatches);
 
         // ── 4. Layers & Styling ──────────────────────────────
-        AddCmd("layer.duplicate", "Duplicate Layer", "Layer", "Ctrl+J", "ContentCopy", Duplicate);
+        AddCmd("layer.new", "New Layer...", "Layer", "Shift+Ctrl+N", "LayersPlus", OpenNewLayerDialog);
+        AddCmd("layer.duplicate.dialog", "Duplicate Layer...", "Layer", null, "ContentCopy", OpenDuplicateLayerDialog);
+        AddCmd("layer.duplicate", "Quick Duplicate Layer", "Layer", "Ctrl+J", "ContentCopy", Duplicate);
         AddCmd("layer.delete", "Delete Layer", "Layer", "Del", "DeleteOutline", DeleteSelectedElement);
         AddCmd("layer.style", "Layer Style (fx)...", "Layer", null, "StarFace", OpenLayerStyleDialog);
         AddCmd("layer.bringforward", "Bring Forward", "Layer", "Ctrl+]", "ArrangeBringForward", BringForward);

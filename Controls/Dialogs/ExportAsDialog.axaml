@@ -13,59 +13,88 @@
                 BorderBrush="{DynamicResource PsBorderLightBrush}"
                 BorderThickness="1"
                 CornerRadius="3"
-                Width="440" Height="360"
+                Width="460" Height="420"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 BoxShadow="0 10 30 #80000000">
-            <Grid RowDefinitions="32,*,42">
-                <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="10,0">
+            <Grid RowDefinitions="32,*,44">
+                <!-- Header -->
+                <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="12,0">
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Export As" FontWeight="SemiBold" FontSize="12" Foreground="#FFFFFF" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <materialIcons:MaterialIcon Kind="ExportVariant" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+                            <TextBlock Text="{Binding ExportDialogTitle}" FontWeight="SemiBold" FontSize="12" Foreground="#FFFFFF" VerticalAlignment="Center" />
+                        </StackPanel>
                         <Button Grid.Column="1" Classes="ps-opt-btn" Command="{Binding CancelExportCommand}">
                             <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14" />
                         </Button>
                     </Grid>
                 </Border>
 
-                <StackPanel Grid.Row="1" Margin="16" Spacing="12">
-                    <TextBlock Text="File Settings" Classes="ps-section-header" />
-                    <Grid ColumnDefinitions="Auto,*">
-                        <TextBlock Grid.Column="0" Text="Format:" Classes="ps-label" Width="70" />
-                        <ComboBox Grid.Column="1" Classes="ps-combo" Width="140"
-                                  SelectedValue="{Binding ExportFormat, Mode=TwoWay}"
-                                  SelectedValueBinding="{Binding (ComboBoxItem).Tag}">
-                            <ComboBoxItem Content="PNG" Tag="PNG" />
-                            <ComboBoxItem Content="JPEG" Tag="JPEG" />
-                            <ComboBoxItem Content="WebP" Tag="WEBP" />
-                            <ComboBoxItem Content="FITS" Tag="FITS" />
-                            <ComboBoxItem Content="BMP" Tag="BMP" />
-                        </ComboBox>
-                    </Grid>
+                <!-- Body Settings -->
+                <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Margin="16,12" Padding="0,0,8,0">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="File Settings" Classes="ps-section-header" />
 
-                    <Grid ColumnDefinitions="Auto,*">
-                        <TextBlock Grid.Column="0" Text="Scale:" Classes="ps-label" Width="70" />
-                        <ComboBox Grid.Column="1" Classes="ps-combo" Width="140"
-                                  SelectedValue="{Binding ExportScaleStr, Mode=TwoWay}"
-                                  SelectedValueBinding="{Binding (ComboBoxItem).Tag}">
-                            <ComboBoxItem Content="1x (Native)" Tag="1" />
-                            <ComboBoxItem Content="0.5x" Tag="0.5" />
-                            <ComboBoxItem Content="2x (@2x)" Tag="2" />
-                            <ComboBoxItem Content="3x (@3x)" Tag="3" />
-                        </ComboBox>
-                    </Grid>
-
-                    <Border Background="{DynamicResource PsFieldBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" Padding="10" Margin="0,8,0,0">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel Grid.Column="0" Spacing="2">
-                                <TextBlock Text="Image Size" Classes="ps-label" />
-                                <TextBlock Text="{Binding ExportDimensionsLabel}" FontSize="12" FontWeight="SemiBold" Foreground="#FFFFFF" />
-                            </StackPanel>
-                            <TextBlock Grid.Column="1" Text="{Binding ExportEstimatedSizeLabel}" FontSize="11" Foreground="{DynamicResource PsAccentBrush}" VerticalAlignment="Center" />
+                        <!-- Format -->
+                        <Grid ColumnDefinitions="Auto,*">
+                            <TextBlock Grid.Column="0" Text="Format:" Classes="ps-label" Width="80" VerticalAlignment="Center" />
+                            <ComboBox Grid.Column="1" Classes="ps-combo" Width="160"
+                                      SelectedValue="{Binding ExportFormat, Mode=TwoWay}"
+                                      SelectedValueBinding="{Binding (ComboBoxItem).Tag}">
+                                <ComboBoxItem Content="PNG" Tag="PNG" />
+                                <ComboBoxItem Content="JPEG" Tag="JPEG" />
+                                <ComboBoxItem Content="WebP" Tag="WEBP" />
+                                <ComboBoxItem Content="FITS" Tag="FITS" />
+                                <ComboBoxItem Content="BMP" Tag="BMP" />
+                            </ComboBox>
                         </Grid>
-                    </Border>
-                </StackPanel>
 
-                <Border Grid.Row="2" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="10,0">
+                        <!-- WebP Lossless Compression Toggle -->
+                        <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding IsWebpFormat}">
+                            <Border Grid.Column="0" Width="80" />
+                            <CheckBox Grid.Column="1" Content="Lossless Compression"
+                                      IsChecked="{Binding ExportWebpLossless, Mode=TwoWay}"
+                                      ToolTip.Tip="Save WebP without lossy compression artifacts" />
+                        </Grid>
+
+                        <!-- Quality Slider (JPEG / WebP lossy) -->
+                        <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding IsQualityVisible}">
+                            <TextBlock Grid.Column="0" Text="Quality:" Classes="ps-label" Width="80" VerticalAlignment="Center" />
+                            <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <Slider Grid.Column="0" Minimum="1" Maximum="100" Value="{Binding ExportQuality, Mode=TwoWay}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{Binding ExportQuality, StringFormat='{}{0}%'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" Width="36" />
+                            </Grid>
+                        </Grid>
+
+                        <!-- Scale -->
+                        <Grid ColumnDefinitions="Auto,*">
+                            <TextBlock Grid.Column="0" Text="Scale:" Classes="ps-label" Width="80" VerticalAlignment="Center" />
+                            <ComboBox Grid.Column="1" Classes="ps-combo" Width="160"
+                                      SelectedValue="{Binding ExportScaleStr, Mode=TwoWay}"
+                                      SelectedValueBinding="{Binding (ComboBoxItem).Tag}">
+                                <ComboBoxItem Content="1x (Native)" Tag="1" />
+                                <ComboBoxItem Content="0.5x" Tag="0.5" />
+                                <ComboBoxItem Content="2x (@2x)" Tag="2" />
+                                <ComboBoxItem Content="3x (@3x)" Tag="3" />
+                            </ComboBox>
+                        </Grid>
+
+                        <!-- Dimensions & Size Metric Card -->
+                        <Border Background="{DynamicResource PsFieldBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" CornerRadius="3" Padding="10" Margin="0,4,0,0">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Spacing="2">
+                                    <TextBlock Text="Target Dimensions" Classes="ps-label" />
+                                    <TextBlock Text="{Binding ExportDimensionsLabel}" FontSize="12" FontWeight="SemiBold" Foreground="#FFFFFF" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="1" Text="{Binding ExportEstimatedSizeLabel}" FontSize="11" Foreground="{DynamicResource PsAccentBrush}" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Footer Actions -->
+                <Border Grid.Row="2" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="12,0">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" VerticalAlignment="Center">
                         <Button Classes="ps-btn" Content="Cancel" Padding="14,5" Command="{Binding CancelExportCommand}" />
                         <Button Classes="ps-btn ps-btn-primary" Content="Export" Padding="18,5" Command="{Binding ConfirmExportCommand}" />

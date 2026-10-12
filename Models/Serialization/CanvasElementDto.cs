@@ -38,6 +38,7 @@ public abstract class CanvasElementDto
     public Guid? GroupId { get; set; }
     public bool AspectLocked { get; set; }
     public bool IsClippingMask { get; set; }
+    public string? LabelColor { get; set; }
     public byte BlendIfThisMin { get; set; } = 0;
     public byte BlendIfThisMax { get; set; } = 255;
     public byte BlendIfUnderMin { get; set; } = 0;
@@ -280,6 +281,19 @@ public sealed class TextElementDto : CanvasElementDto
     public double WarpHorizontalDistortion { get; set; }
     public double WarpVerticalDistortion { get; set; }
     public bool WarpIsHorizontal { get; set; } = true;
+
+    // OpenType feature flags
+    public bool StandardLigatures { get; set; } = true;
+    public bool ContextualAlternates { get; set; } = true;
+    public bool DiscretionaryLigatures { get; set; }
+    public bool Swash { get; set; }
+    public bool StylisticAlternates { get; set; }
+    public bool TitlingAlternates { get; set; }
+    public bool Ordinals { get; set; }
+    public bool Fractions { get; set; }
+    public bool FauxSmallCaps { get; set; }
+    public bool FauxSuperscript { get; set; }
+    public bool FauxSubscript { get; set; }
 }
 
 public sealed class ImageElementDto : CanvasElementDto

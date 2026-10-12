@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -484,6 +485,37 @@ public partial class ImageEditorViewModel
     // Gradient Map parameters
     [ObservableProperty] private string _adjGradientPreset = "BlackWhite";
     [ObservableProperty] private bool _adjGradientReverse;
+    [ObservableProperty] private bool _adjGradientDither = true;
+    [ObservableProperty] private ObservableCollection<GradientMapRampStop> _adjGradientStops = new();
+    [ObservableProperty] private int _adjGradientSelectedStopIndex = 0;
+
+    public double AdjGradientSelectedStopLocationPercent
+    {
+        get => (AdjGradientStops.Count > 0 && AdjGradientSelectedStopIndex >= 0 && AdjGradientSelectedStopIndex < AdjGradientStops.Count)
+            ? AdjGradientStops[AdjGradientSelectedStopIndex].Position * 100.0
+            : 0.0;
+        set
+        {
+            if (AdjGradientStops.Count > 0 && AdjGradientSelectedStopIndex >= 0 && AdjGradientSelectedStopIndex < AdjGradientStops.Count)
+            {
+                AdjGradientStops[AdjGradientSelectedStopIndex].Position = (float)Math.Clamp(value / 100.0, 0.0, 1.0);
+                OnPropertyChanged(nameof(AdjGradientSelectedStopLocationPercent));
+                ApplyAdjustmentPreview();
+            }
+        }
+    }
+
+    public IBrush AdjGradientSelectedStopColorBrush
+    {
+        get
+        {
+            if (AdjGradientStops.Count > 0 && AdjGradientSelectedStopIndex >= 0 && AdjGradientSelectedStopIndex < AdjGradientStops.Count)
+                return new SolidColorBrush(AdjGradientStops[AdjGradientSelectedStopIndex].Color);
+            return Brushes.Black;
+        }
+    }
+
+    public bool CanDeleteGradientStop => AdjGradientStops.Count > 2;
 
     // Photo Filter parameters
     [ObservableProperty] private string _adjPhotoFilterPreset = "Warming85";
@@ -560,6 +592,8 @@ public partial class ImageEditorViewModel
         AdjLutTetrahedral = true;
         AdjGradientPreset = "BlackWhite";
         AdjGradientReverse = false;
+        AdjGradientDither = true;
+        PopulateGradientStopsForPreset(AdjGradientPreset);
         AdjPhotoFilterPreset = "Warming85";
         AdjPhotoFilterColor = Color.FromRgb(0xEC, 0x8A, 0x28);
         AdjPhotoFilterDensity = 25;
@@ -687,8 +721,24 @@ public partial class ImageEditorViewModel
     partial void OnAdjLutPresetChanged(string value) => ApplyAdjustmentPreview();
     partial void OnAdjLutTetrahedralChanged(bool value) => ApplyAdjustmentPreview();
 
-    partial void OnAdjGradientPresetChanged(string value) => ApplyAdjustmentPreview();
+    partial void OnAdjGradientPresetChanged(string value)
+    {
+        if (value != "Custom")
+        {
+            PopulateGradientStopsForPreset(value);
+        }
+        ApplyAdjustmentPreview();
+    }
+
     partial void OnAdjGradientReverseChanged(bool value) => ApplyAdjustmentPreview();
+    partial void OnAdjGradientDitherChanged(bool value) => ApplyAdjustmentPreview();
+
+    partial void OnAdjGradientSelectedStopIndexChanged(int value)
+    {
+        OnPropertyChanged(nameof(AdjGradientSelectedStopLocationPercent));
+        OnPropertyChanged(nameof(AdjGradientSelectedStopColorBrush));
+        OnPropertyChanged(nameof(CanDeleteGradientStop));
+    }
 
     partial void OnAdjPhotoFilterPresetChanged(string value)
     {
@@ -788,43 +838,97 @@ public partial class ImageEditorViewModel
         return ImageAdjustmentEngine.ApplyColorLookup(bgra, size, data, AdjLutTetrahedral);
     }
 
-    private byte[] ExecuteGradientMap(byte[] bgra)
+    public void PopulateGradientStopsForPreset(string preset)
     {
-        Color[] colors;
-        float[] stops;
-
-        switch (AdjGradientPreset)
+        AdjGradientStops.Clear();
+        switch (preset)
         {
             case "WarmSunset":
-                colors = [Color.FromRgb(0x5E, 0x12, 0x24), Color.FromRgb(0xF9, 0x73, 0x16), Color.FromRgb(0xFE, 0xF0, 0x8A)];
-                stops = [0.0f, 0.5f, 1.0f];
+                AdjGradientStops.Add(new GradientMapRampStop(0.0f, Color.FromRgb(0x5E, 0x12, 0x24)));
+                AdjGradientStops.Add(new GradientMapRampStop(0.5f, Color.FromRgb(0xF9, 0x73, 0x16)));
+                AdjGradientStops.Add(new GradientMapRampStop(1.0f, Color.FromRgb(0xFE, 0xF0, 0x8A)));
                 break;
             case "OceanWaves":
-                colors = [Color.FromRgb(0x0B, 0x19, 0x2C), Color.FromRgb(0x06, 0xB6, 0xD4), Color.FromRgb(0xE0, 0xF2, 0xFE)];
-                stops = [0.0f, 0.5f, 1.0f];
+                AdjGradientStops.Add(new GradientMapRampStop(0.0f, Color.FromRgb(0x0B, 0x19, 0x2C)));
+                AdjGradientStops.Add(new GradientMapRampStop(0.5f, Color.FromRgb(0x06, 0xB6, 0xD4)));
+                AdjGradientStops.Add(new GradientMapRampStop(1.0f, Color.FromRgb(0xE0, 0xF2, 0xFE)));
                 break;
             case "VioletAurora":
-                colors = [Color.FromRgb(0x2E, 0x08, 0x54), Color.FromRgb(0xEC, 0x48, 0x99), Color.FromRgb(0xFD, 0xBA, 0x74)];
-                stops = [0.0f, 0.5f, 1.0f];
+                AdjGradientStops.Add(new GradientMapRampStop(0.0f, Color.FromRgb(0x2E, 0x08, 0x54)));
+                AdjGradientStops.Add(new GradientMapRampStop(0.5f, Color.FromRgb(0xEC, 0x48, 0x99)));
+                AdjGradientStops.Add(new GradientMapRampStop(1.0f, Color.FromRgb(0xFD, 0xBA, 0x74)));
                 break;
             case "SepiaVintage":
-                colors = [Color.FromRgb(0x2B, 0x18, 0x10), Color.FromRgb(0xA3, 0x70, 0x4C), Color.FromRgb(0xFB, 0xF5, 0xE6)];
-                stops = [0.0f, 0.5f, 1.0f];
+                AdjGradientStops.Add(new GradientMapRampStop(0.0f, Color.FromRgb(0x2B, 0x18, 0x10)));
+                AdjGradientStops.Add(new GradientMapRampStop(0.5f, Color.FromRgb(0xA3, 0x70, 0x4C)));
+                AdjGradientStops.Add(new GradientMapRampStop(1.0f, Color.FromRgb(0xFB, 0xF5, 0xE6)));
                 break;
             case "Cyberpunk":
-                colors = [Color.FromRgb(0x0A, 0x0A, 0x1A), Color.FromRgb(0x00, 0xFF, 0xFF), Color.FromRgb(0xFF, 0x00, 0x7F)];
-                stops = [0.0f, 0.5f, 1.0f];
+                AdjGradientStops.Add(new GradientMapRampStop(0.0f, Color.FromRgb(0x0A, 0x0A, 0x1A)));
+                AdjGradientStops.Add(new GradientMapRampStop(0.5f, Color.FromRgb(0x00, 0xFF, 0xFF)));
+                AdjGradientStops.Add(new GradientMapRampStop(1.0f, Color.FromRgb(0xFF, 0x00, 0x7F)));
+                break;
+            case "Rainbow":
+                AdjGradientStops.Add(new GradientMapRampStop(0.0f, Color.FromRgb(0xFF, 0x00, 0x00)));
+                AdjGradientStops.Add(new GradientMapRampStop(0.17f, Color.FromRgb(0xFF, 0xA5, 0x00)));
+                AdjGradientStops.Add(new GradientMapRampStop(0.33f, Color.FromRgb(0xFF, 0xFF, 0x00)));
+                AdjGradientStops.Add(new GradientMapRampStop(0.50f, Color.FromRgb(0x00, 0x80, 0x00)));
+                AdjGradientStops.Add(new GradientMapRampStop(0.67f, Color.FromRgb(0x00, 0x00, 0xFF)));
+                AdjGradientStops.Add(new GradientMapRampStop(0.83f, Color.FromRgb(0x4B, 0x00, 0x82)));
+                AdjGradientStops.Add(new GradientMapRampStop(1.0f, Color.FromRgb(0xEE, 0x82, 0xEE)));
                 break;
             case "BlackWhite":
             default:
-                colors = [Colors.Black, Colors.White];
-                stops = [0.0f, 1.0f];
+                AdjGradientStops.Add(new GradientMapRampStop(0.0f, Colors.Black));
+                AdjGradientStops.Add(new GradientMapRampStop(1.0f, Colors.White));
                 break;
         }
+        AdjGradientSelectedStopIndex = 0;
+        OnPropertyChanged(nameof(AdjGradientSelectedStopLocationPercent));
+        OnPropertyChanged(nameof(AdjGradientSelectedStopColorBrush));
+        OnPropertyChanged(nameof(CanDeleteGradientStop));
+    }
+
+    [RelayCommand]
+    public void DeleteSelectedGradientStop()
+    {
+        if (AdjGradientStops.Count > 2 && AdjGradientSelectedStopIndex >= 0 && AdjGradientSelectedStopIndex < AdjGradientStops.Count)
+        {
+            AdjGradientStops.RemoveAt(AdjGradientSelectedStopIndex);
+            AdjGradientSelectedStopIndex = Math.Clamp(AdjGradientSelectedStopIndex, 0, AdjGradientStops.Count - 1);
+            OnPropertyChanged(nameof(AdjGradientSelectedStopLocationPercent));
+            OnPropertyChanged(nameof(AdjGradientSelectedStopColorBrush));
+            OnPropertyChanged(nameof(CanDeleteGradientStop));
+            ApplyAdjustmentPreview();
+        }
+    }
+
+    [RelayCommand]
+    public void PickSelectedGradientStopColor()
+    {
+        if (AdjGradientStops.Count > 0 && AdjGradientSelectedStopIndex >= 0 && AdjGradientSelectedStopIndex < AdjGradientStops.Count)
+        {
+            AdjGradientStops[AdjGradientSelectedStopIndex].Color = PrimaryColor;
+            OnPropertyChanged(nameof(AdjGradientSelectedStopColorBrush));
+            ApplyAdjustmentPreview();
+        }
+    }
+
+    private byte[] ExecuteGradientMap(byte[] bgra)
+    {
+        if (AdjGradientStops.Count == 0)
+        {
+            PopulateGradientStopsForPreset(AdjGradientPreset);
+        }
+
+        var sorted = AdjGradientStops.OrderBy(s => s.Position).ToList();
+        Color[] colors = sorted.Select(s => s.Color).ToArray();
+        float[] stops = sorted.Select(s => s.Position).ToArray();
 
         if (AdjGradientReverse)
         {
             colors = colors.Reverse().ToArray();
+            stops = stops.Select(p => 1.0f - p).Reverse().ToArray();
         }
 
         return ImageAdjustmentEngine.ApplyGradientMap(bgra, colors, stops);
@@ -1269,6 +1373,41 @@ public partial class ImageEditorViewModel
     [ObservableProperty] private double _filterColorToAlphaTransparency = 0.0;
     [ObservableProperty] private double _filterColorToAlphaOpacity = 1.0;
 
+    // Distort > Displace Filter Properties
+    [ObservableProperty] private double _filterDisplaceHorizScale = 10.0;
+    [ObservableProperty] private double _filterDisplaceVertScale = 10.0;
+    [ObservableProperty] private bool _filterDisplaceIsTile = false; // false = Stretch to Fit, true = Tile
+    [ObservableProperty] private bool _filterDisplaceIsWrap = false; // false = Repeat Edge Pixels, true = Wrap Around
+    [ObservableProperty] private int _filterDisplacePresetIndex = 0; // 0=Ripple, 1=Waves, 2=Fabric, 3=Glass, 4=Custom
+    [ObservableProperty] private string _filterDisplaceMapFileName = "Ripple (Procedural)";
+    private byte[]? _filterDisplaceCustomBytes;
+    private int _filterDisplaceCustomWidth;
+    private int _filterDisplaceCustomHeight;
+
+    // In-Dialog Filter Preview (Photoshop standard)
+    [ObservableProperty] private Bitmap? _filterDialogPreviewBitmap;
+    [ObservableProperty] private Bitmap? _filterDialogOriginalBitmap;
+    [ObservableProperty] private double _filterDialogPreviewZoom = 1.0;
+    [ObservableProperty] private Point _filterDialogPreviewPan = new Point(0, 0);
+
+    public string FilterDialogPreviewZoomPercentText => $"{Math.Round(FilterDialogPreviewZoom * 100):0}%";
+
+    [RelayCommand]
+    public void ZoomInFilterPreview()
+    {
+        FilterDialogPreviewZoom = Controls.FilterPreviewControl.StepZoom(FilterDialogPreviewZoom, true);
+        OnPropertyChanged(nameof(FilterDialogPreviewZoomPercentText));
+    }
+
+    [RelayCommand]
+    public void ZoomOutFilterPreview()
+    {
+        FilterDialogPreviewZoom = Controls.FilterPreviewControl.StepZoom(FilterDialogPreviewZoom, false);
+        OnPropertyChanged(nameof(FilterDialogPreviewZoomPercentText));
+    }
+
+    partial void OnFilterDialogPreviewZoomChanged(double value) => OnPropertyChanged(nameof(FilterDialogPreviewZoomPercentText));
+
     private ImageElement? _filterTargetImageElement;
     private byte[]? _filterOriginalBytes;
 
@@ -1318,6 +1457,7 @@ public partial class ImageEditorViewModel
             "TraceContour" => "Trace Contour",
             "WaterPaper" => "Water Paper",
             "ColorToAlpha" => "Color to Alpha",
+            "Displace" => "Displace",
             _ => "Filter"
         };
 
@@ -1325,7 +1465,23 @@ public partial class ImageEditorViewModel
         if (_filterTargetImageElement != null)
         {
             _filterOriginalBytes = _filterTargetImageElement.OriginalImageBytes;
+            if (_filterOriginalBytes != null)
+            {
+                using var ms = new MemoryStream(_filterOriginalBytes);
+                FilterDialogOriginalBitmap?.Dispose();
+                FilterDialogOriginalBitmap = new Bitmap(ms);
+            }
         }
+        else
+        {
+            FilterDialogOriginalBitmap?.Dispose();
+            FilterDialogOriginalBitmap = null;
+        }
+
+        FilterDialogPreviewZoom = 1.0;
+        FilterDialogPreviewPan = new Point(0, 0);
+        FilterDialogPreviewBitmap?.Dispose();
+        FilterDialogPreviewBitmap = null;
 
         FilterBlurRadius = 5.0;
         FilterSharpenAmount = 100.0;
@@ -1413,9 +1569,82 @@ public partial class ImageEditorViewModel
         FilterColorToAlphaKeyColor = Colors.White;
         FilterColorToAlphaTransparency = 0.0;
         FilterColorToAlphaOpacity = 1.0;
+
+        FilterDisplaceHorizScale = 10.0;
+        FilterDisplaceVertScale = 10.0;
+        FilterDisplaceIsTile = false;
+        FilterDisplaceIsWrap = false;
+        FilterDisplacePresetIndex = 0;
+        FilterDisplaceMapFileName = "Ripple (Procedural)";
+        _filterDisplaceCustomBytes = null;
+        _filterDisplaceCustomWidth = 0;
+        _filterDisplaceCustomHeight = 0;
+
         FilterPreviewEnabled = true;
 
         IsFilterDialogOpen = true;
+    }
+
+    partial void OnFilterDisplaceHorizScaleChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterDisplaceVertScaleChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterDisplaceIsTileChanged(bool value) => ApplyFilterPreview();
+    partial void OnFilterDisplaceIsWrapChanged(bool value) => ApplyFilterPreview();
+    partial void OnFilterDisplacePresetIndexChanged(int value)
+    {
+        FilterDisplaceMapFileName = value switch
+        {
+            0 => "Ripple (Procedural)",
+            1 => "Waves (Procedural)",
+            2 => "Fabric (Procedural)",
+            3 => "Glass (Procedural)",
+            _ => string.IsNullOrEmpty(FilterDisplaceMapFileName) || FilterDisplaceMapFileName.Contains("Procedural") ? "Custom Map" : FilterDisplaceMapFileName
+        };
+        ApplyFilterPreview();
+    }
+
+    [RelayCommand]
+    public async Task LoadDisplaceMapFileAsync()
+    {
+        try
+        {
+            var topLevel = GetTopLevel();
+            if (topLevel?.StorageProvider is not { } storage) return;
+            var files = await storage.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
+            {
+                Title = "Select Displacement Map Image",
+                AllowMultiple = false,
+                FileTypeFilter =
+                [
+                    new Avalonia.Platform.Storage.FilePickerFileType("Images") { Patterns = ["*.png", "*.jpg", "*.jpeg", "*.bmp", "*.webp"] }
+                ]
+            });
+            if (files != null && files.Count > 0)
+            {
+                var file = files[0];
+                await using var stream = await file.OpenReadAsync();
+                using var ms = new MemoryStream();
+                await stream.CopyToAsync(ms);
+                byte[] raw = ms.ToArray();
+                using var bmp = SKBitmap.Decode(raw);
+                if (bmp != null)
+                {
+                    using var bgra = new SKBitmap(bmp.Width, bmp.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
+                    using var canvas = new SKCanvas(bgra);
+                    canvas.DrawBitmap(bmp, 0, 0);
+                    canvas.Flush();
+                    _filterDisplaceCustomBytes = bgra.Bytes;
+                    _filterDisplaceCustomWidth = bgra.Width;
+                    _filterDisplaceCustomHeight = bgra.Height;
+                    FilterDisplacePresetIndex = 4;
+                    FilterDisplaceMapFileName = file.Name;
+                    ApplyFilterPreview();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[DisplaceMap] load error: {ex}");
+        }
     }
 
     partial void OnFilterColorToAlphaKeyColorChanged(Color value) => ApplyFilterPreview();
@@ -1561,6 +1790,23 @@ public partial class ImageEditorViewModel
             "TraceContour" => ImageAdjustmentEngine.ApplyTraceContour(bgra, width, height, FilterTraceContourLevel, FilterTraceContourEdge == 1),
             "WaterPaper" => ImageAdjustmentEngine.ApplyWaterPaper(bgra, width, height, FilterWaterPaperFiberLength, FilterWaterPaperBrightness, FilterWaterPaperContrast),
             "ColorToAlpha" => ImageAdjustmentEngine.ApplyColorToAlpha(bgra, FilterColorToAlphaKeyColor, FilterColorToAlphaTransparency, FilterColorToAlphaOpacity),
+            "Displace" => ImageAdjustmentEngine.ApplyDisplace(
+                bgra, width, height,
+                FilterDisplaceHorizScale,
+                FilterDisplaceVertScale,
+                FilterDisplaceIsTile,
+                FilterDisplaceIsWrap,
+                FilterDisplacePresetIndex switch
+                {
+                    0 => "Ripple",
+                    1 => "Waves",
+                    2 => "Fabric",
+                    3 => "Glass",
+                    _ => "Ripple"
+                },
+                _filterDisplaceCustomBytes,
+                _filterDisplaceCustomWidth,
+                _filterDisplaceCustomHeight),
             _ => bgra
         };
     }
@@ -1585,9 +1831,16 @@ public partial class ImageEditorViewModel
                 filteredBmp.InstallPixels(filteredBmp.Info, pin.AddrOfPinnedObject());
                 using var image = SKImage.FromBitmap(filteredBmp);
                 using var encoded = image.Encode(SKEncodedImageFormat.Png, 100);
-                using var ms = new MemoryStream(encoded.ToArray());
+                byte[] encodedBytes = encoded.ToArray();
+                using var ms = new MemoryStream(encodedBytes);
                 _filterTargetImageElement.AdjustedSource?.Dispose();
                 _filterTargetImageElement.AdjustedSource = new Bitmap(ms);
+
+                // Update in-dialog preview bitmap as well
+                using var previewMs = new MemoryStream(encodedBytes);
+                FilterDialogPreviewBitmap?.Dispose();
+                FilterDialogPreviewBitmap = new Bitmap(previewMs);
+
                 RefreshCanvas();
             }
             finally
@@ -1651,6 +1904,11 @@ public partial class ImageEditorViewModel
                 System.Diagnostics.Debug.WriteLine($"[ConfirmFilter] error: {ex}");
             }
         }
+        FilterDialogPreviewBitmap?.Dispose();
+        FilterDialogPreviewBitmap = null;
+        FilterDialogOriginalBitmap?.Dispose();
+        FilterDialogOriginalBitmap = null;
+
         StatusMessage = $"Applied {ActiveFilterTitle}.";
         IsFilterDialogOpen = false;
         RefreshCanvas();
@@ -1666,6 +1924,10 @@ public partial class ImageEditorViewModel
             _filterTargetImageElement.AdjustedSource = null;
             RefreshCanvas();
         }
+        FilterDialogPreviewBitmap?.Dispose();
+        FilterDialogPreviewBitmap = null;
+        FilterDialogOriginalBitmap?.Dispose();
+        FilterDialogOriginalBitmap = null;
         IsFilterDialogOpen = false;
     }
 

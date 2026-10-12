@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using PdfEditorApp.Plugins.ImageEditor.Models;
 using PdfEditorApp.Plugins.ImageEditor.UISnapshots.Core;
 
 namespace PdfEditorApp.Plugins.ImageEditor.UISnapshots.Suites;
@@ -11,6 +13,14 @@ public static class DialogSnapshotSuite
     {
         var vm = ctx.ViewModel;
 
+        // 0. Photoshop-Grade New Layer Dialog (with Label Color & Mode-neutral color prompt)
+        vm.OpenNewLayerDialogCommand.Execute(null);
+        vm.NewLayerName = "Highlights Layer";
+        vm.NewLayerColorIndex = (int)LayerLabelColor.Violet;
+        vm.NewLayerBlendModeStr = "Screen";
+        ctx.Capture("dialog_new_layer.png");
+        vm.CancelNewLayerDialogCommand.Execute(null);
+
         // 1. Color Range Selection Workspace
         vm.OpenColorRangeDialogCommand.Execute(null);
         ctx.Capture("dialog_color_range.png");
@@ -19,6 +29,21 @@ public static class DialogSnapshotSuite
         // 2. Filter - Dust & Scratches
         vm.OpenFilterDialogCommand.Execute("DustAndScratches");
         ctx.Capture("dialog_filter_dust_scratches.png");
+        vm.CancelFilterDialogCommand.Execute(null);
+
+        // 2b. Filter - Motion Blur (with AngleDialControl & FilterPreviewControl)
+        vm.OpenFilterDialogCommand.Execute("MotionBlur");
+        vm.FilterMotionAngle = 45.0;
+        vm.FilterMotionDistance = 25.0;
+        ctx.Capture("dialog_filter_motion_blur_angle.png");
+        vm.CancelFilterDialogCommand.Execute(null);
+
+        // 2c. Filter - Displace (Distort › Displace)
+        vm.OpenFilterDialogCommand.Execute("Displace");
+        vm.FilterDisplaceHorizScale = 15.0;
+        vm.FilterDisplaceVertScale = 15.0;
+        vm.FilterDisplacePresetIndex = 0; // Ripple
+        ctx.Capture("dialog_filter_displace.png");
         vm.CancelFilterDialogCommand.Execute(null);
 
         // 3. Filter - Camera Raw Filter
@@ -36,19 +61,35 @@ public static class DialogSnapshotSuite
         ctx.Capture("dialog_adjustment_curves.png");
         vm.CancelAdjustmentDialogCommand.Execute(null);
 
+        // 4b. Adjustment - Gradient Map (Interactive ramp editor with draggable color stops)
+        vm.OpenAdjustmentDialogCommand.Execute("GradientMap");
+        ctx.Capture("dialog_adjustment_gradient_map.png");
+        vm.CancelAdjustmentDialogCommand.Execute(null);
+
         // 5. Adjustment - Hue / Saturation
         vm.OpenAdjustmentDialogCommand.Execute("HueSaturation");
         ctx.Capture("dialog_adjustment_hue_saturation.png");
         vm.CancelAdjustmentDialogCommand.Execute(null);
 
-        // 6. Layer Style (fx) Workspace
+        // 6. Layer Style (fx) Workspace (Drop Shadow with rotary AngleDialControl)
         vm.OpenLayerStyleDialogCommand.Execute(null);
+        vm.FxDropShadowAngle = 120.0;
         ctx.Capture("dialog_layer_style.png");
         vm.CloseLayerStyleDialogCommand.Execute(null);
 
-        // 7. Export As Studio Dialog
+        // 7. Export As Studio Dialog (WebP, Quality, Lossless)
         vm.OpenExportDialogCommand.Execute(null);
+        vm.ExportFormat = "WEBP";
+        vm.ExportQuality = 85;
+        vm.ExportWebpLossless = true;
         ctx.Capture("dialog_export_as.png");
+        vm.CancelExportCommand.Execute(null);
+
+        // 7b. Export As Batch Multi-Layer Dialog
+        var dummyLayer1 = new RectangleElement { Name = "Hero Banner", Width = 800, Height = 400 };
+        var dummyLayer2 = new TextElement { Name = "Headline Text", Width = 400, Height = 80 };
+        vm.OpenExportLayersDialog(new CanvasElement[] { dummyLayer1, dummyLayer2 });
+        ctx.Capture("dialog_export_as_batch_layers.png");
         vm.CancelExportCommand.Execute(null);
 
         // 8. New Document Studio Preset Dialog

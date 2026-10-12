@@ -88,6 +88,19 @@ public class TextElement : CanvasElement
     /// <summary>0 = natural line height.</summary>
     public double LineHeight { get; set; }
 
+    // OpenType feature flags (Photoshop TYPE-218-5)
+    public bool StandardLigatures { get; set; } = true;    // liga (fi)
+    public bool ContextualAlternates { get; set; } = true; // calt (st)
+    public bool DiscretionaryLigatures { get; set; }        // dlig (ct)
+    public bool Swash { get; set; }                         // swsh (A~)
+    public bool StylisticAlternates { get; set; }          // salt (aa)
+    public bool TitlingAlternates { get; set; }            // titl (T)
+    public bool Ordinals { get; set; }                     // ordn (1st)
+    public bool Fractions { get; set; }                    // frac (1/2)
+    public bool FauxSmallCaps { get; set; }                // smcp (TT)
+    public bool FauxSuperscript { get; set; }              // sups (T¹)
+    public bool FauxSubscript { get; set; }                // subs (T₁)
+
     public TextElement()
     {
         Width = 160;
@@ -238,6 +251,18 @@ public class TextElement : CanvasElement
         clone.ForegroundColor = ForegroundColor; clone.BackgroundColor = BackgroundColor;
         clone.Alignment = Alignment; clone.IsUnderline = IsUnderline; clone.IsStrikethrough = IsStrikethrough;
         clone.IsWrapEnabled = IsWrapEnabled; clone.LineHeight = LineHeight;
+
+        clone.StandardLigatures = StandardLigatures;
+        clone.ContextualAlternates = ContextualAlternates;
+        clone.DiscretionaryLigatures = DiscretionaryLigatures;
+        clone.Swash = Swash;
+        clone.StylisticAlternates = StylisticAlternates;
+        clone.TitlingAlternates = TitlingAlternates;
+        clone.Ordinals = Ordinals;
+        clone.Fractions = Fractions;
+        clone.FauxSmallCaps = FauxSmallCaps;
+        clone.FauxSuperscript = FauxSuperscript;
+        clone.FauxSubscript = FauxSubscript;
 
         clone.IsWidthAutoFitEnabled = IsWidthAutoFitEnabled;
         clone.IsHeightAutoFitEnabled = IsHeightAutoFitEnabled;

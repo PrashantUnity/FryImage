@@ -1,0 +1,101 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:models="using:PdfEditorApp.Plugins.ImageEditor.Models"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Dialogs.NewLayerDialog"
+             x:DataType="local:ImageEditorViewModel">
+
+    <!-- Modal Backdrop -->
+    <Border Background="#99000000"
+            IsVisible="{Binding IsNewLayerDialogOpen}"
+            ZIndex="500">
+        <Border Background="{DynamicResource PsPanelBrush}"
+                BorderBrush="{DynamicResource PsBorderLightBrush}"
+                BorderThickness="1"
+                CornerRadius="3"
+                Width="420"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                BoxShadow="0 10 30 #80000000">
+            <Grid RowDefinitions="32,*,44">
+                <!-- Header -->
+                <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="10,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <materialIcons:MaterialIcon Kind="LayersPlus" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+                            <TextBlock Text="New Layer" FontWeight="SemiBold" FontSize="12" Foreground="#FFFFFF" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="ps-opt-btn" Command="{Binding CancelNewLayerDialogCommand}">
+                            <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Body -->
+                <StackPanel Grid.Row="1" Margin="16" Spacing="11">
+                    <!-- Layer Name -->
+                    <Grid ColumnDefinitions="75,*">
+                        <TextBlock Grid.Column="0" Text="Name:" Classes="ps-label" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Classes="ps-txt"
+                                 Text="{Binding NewLayerName, Mode=TwoWay}"
+                                 PlaceholderText="Layer name" />
+                    </Grid>
+
+                    <!-- Use Previous Layer to Create Clipping Mask -->
+                    <CheckBox Content="Use Previous Layer to Create Clipping Mask"
+                              IsChecked="{Binding NewLayerIsClippingMask, Mode=TwoWay}"
+                              Margin="75,0,0,0" />
+
+                    <!-- Color Tag -->
+                    <Grid ColumnDefinitions="75,*">
+                        <TextBlock Grid.Column="0" Text="Color:" Classes="ps-label" VerticalAlignment="Center" />
+                        <ComboBox Grid.Column="1" Classes="ps-combo"
+                                  SelectedIndex="{Binding NewLayerColorIndex, Mode=TwoWay}"
+                                  HorizontalAlignment="Stretch">
+                            <ComboBoxItem Content="None" />
+                            <ComboBoxItem Content="Red" />
+                            <ComboBoxItem Content="Orange" />
+                            <ComboBoxItem Content="Yellow" />
+                            <ComboBoxItem Content="Green" />
+                            <ComboBoxItem Content="Blue" />
+                            <ComboBoxItem Content="Violet" />
+                            <ComboBoxItem Content="Gray" />
+                        </ComboBox>
+                    </Grid>
+
+                    <!-- Blend Mode & Opacity -->
+                    <Grid ColumnDefinitions="75,*,Auto,*">
+                        <TextBlock Grid.Column="0" Text="Mode:" Classes="ps-label" VerticalAlignment="Center" />
+                        <ComboBox Grid.Column="1" Classes="ps-combo"
+                                  ItemsSource="{Binding AvailableBlendModes}"
+                                  SelectedItem="{Binding NewLayerBlendModeStr, Mode=TwoWay}"
+                                  HorizontalAlignment="Stretch" />
+
+                        <TextBlock Grid.Column="2" Text="Opacity:" Classes="ps-label" VerticalAlignment="Center" Margin="10,0,6,0" />
+                        <NumericUpDown Grid.Column="3" Classes="ps-num"
+                                       Minimum="0" Maximum="100" Increment="5"
+                                       Value="{Binding NewLayerOpacityPercent, Mode=TwoWay}"
+                                       FormatString="{}{0:0}%"
+                                       HorizontalAlignment="Stretch" />
+                    </Grid>
+
+                    <!-- Fill with Mode-neutral color -->
+                    <StackPanel Spacing="3" Margin="75,2,0,0">
+                        <CheckBox Content="{Binding NewLayerNeutralColorPrompt}"
+                                  IsEnabled="{Binding NewLayerHasNeutralColor}"
+                                  IsChecked="{Binding NewLayerFillWithNeutral, Mode=TwoWay}" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Footer -->
+                <Border Grid.Row="2" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="10,0">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" VerticalAlignment="Center">
+                        <Button Classes="ps-btn" Content="Cancel" Padding="14,5" Command="{Binding CancelNewLayerDialogCommand}" />
+                        <Button Classes="ps-btn ps-btn-primary" Content="OK" Padding="18,5" Command="{Binding ConfirmNewLayerDialogCommand}" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Border>
+</UserControl>

@@ -68,6 +68,12 @@ public abstract class CanvasElement
     /// <summary>When true, this layer acts as a Photoshop clipping mask, clipped to the layer directly below it.</summary>
     public bool IsClippingMask { get; set; }
 
+    /// <summary>Photoshop layer label color tag (None, Red, Orange, Yellow, Green, Blue, Violet, Gray).</summary>
+    public LayerLabelColor LabelColor { get; set; } = LayerLabelColor.None;
+
+    /// <summary>Convenience brush for UI layer row binding.</summary>
+    public IBrush LabelColorBrush => LabelColor.ToBrush();
+
     /// <summary>Photoshop Blend If: This Layer luminance range (0..255).</summary>
     public byte BlendIfThisMin { get; set; } = 0;
     public byte BlendIfThisMax { get; set; } = 255;
@@ -97,6 +103,7 @@ public abstract class CanvasElement
         target.GroupId = GroupId;
         target.AspectLocked = AspectLocked;
         target.IsClippingMask = IsClippingMask;
+        target.LabelColor = LabelColor;
         target.BlendIfThisMin = BlendIfThisMin;
         target.BlendIfThisMax = BlendIfThisMax;
         target.BlendIfUnderMin = BlendIfUnderMin;

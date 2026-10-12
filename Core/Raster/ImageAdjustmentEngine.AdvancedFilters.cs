@@ -2366,5 +2366,127 @@ public static partial class ImageAdjustmentEngine
         return result;
     }
 
+    /// <summary>
+    /// Applies Photoshop-compatible Displace filter (Distort › Displace).
+    /// Uses sub-pixel bilinear interpolation guided by horizontal and vertical displacement components.
+    /// Supports Stretch to Fit vs Tile, Repeat Edge Pixels vs Wrap Around,
+    /// and built-in procedural displacement maps (Ripple, Waves, Fabric Folds, Glass) or custom maps.
+    /// </summary>
+    public static byte[] ApplyDisplace(
+        byte[] bgra,
+        int width,
+        int height,
+        double horizontalScale = 10.0,
+        double verticalScale = 10.0,
+        bool isTile = false,
+        bool isWrap = false,
+        string mapPreset = "Ripple",
+        byte[]? customMapBgra = null,
+        int customMapWidth = 0,
+        int customMapHeight = 0)
+    {
+        if (width <= 0 || height <= 0 || bgra.Length < width * height * 4)
+            return (byte[])bgra.Clone();
+
+        byte[] result = new byte[bgra.Length];
+        double cx = width / 2.0;
+        double cy = height / 2.0;
+        bool hasCustomMap = customMapBgra != null && customMapWidth > 0 && customMapHeight > 0;
+
+        Parallel.For(0, height, y =>
+        {
+            int rowOffset = y * width * 4;
+
+            for (int x = 0; x < width; x++)
+            {
+                double dh;
+                double dv;
+
+                if (hasCustomMap)
+                {
+                    int mx = isTile ? (((x % customMapWidth) + customMapWidth) % customMapWidth) : (int)Math.Clamp((double)x / width * customMapWidth, 0, customMapWidth - 1);
+                    int my = isTile ? (((y % customMapHeight) + customMapHeight) % customMapHeight) : (int)Math.Clamp((double)y / height * customMapHeight, 0, customMapHeight - 1);
+                    int mIdx = (my * customMapWidth + mx) * 4;
+
+                    // Photoshop displacement maps: Red = Horizontal shift, Green = Vertical shift (128 is neutral 0)
+                    dh = (customMapBgra![mIdx + 2] - 128.0) / 128.0;
+                    dv = (customMapBgra![mIdx + 1] - 128.0) / 128.0;
+                }
+                else
+                {
+                    switch (mapPreset)
+                    {
+                        case "Waves":
+                            dh = Math.Sin(y * 0.04 + x * 0.015);
+                            dv = Math.Cos(x * 0.04 + y * 0.015);
+                            break;
+                        case "Fabric":
+                            dh = Math.Sin(x * 0.025 + Math.Sin(y * 0.02) * 1.8);
+                            dv = Math.Cos(y * 0.025 + Math.Cos(x * 0.02) * 1.8);
+                            break;
+                        case "Glass":
+                            dh = Math.Sin(x * 0.06) * Math.Cos(y * 0.06);
+                            dv = Math.Cos(x * 0.06) * Math.Sin(y * 0.06);
+                            break;
+                        case "Ripple":
+                        default:
+                            double dx = x - cx;
+                            double dy = y - cy;
+                            double r = Math.Sqrt(dx * dx + dy * dy);
+                            double angle = Math.Atan2(dy, dx);
+                            double wave = Math.Sin(r * 0.07);
+                            dh = Math.Cos(angle) * wave;
+                            dv = Math.Sin(angle) * wave;
+                            break;
+                    }
+                }
+
+                // Compute target source position
+                double srcX = x + dh * (horizontalScale / 100.0) * (width * 0.20);
+                double srcY = y + dv * (verticalScale / 100.0) * (height * 0.20);
+
+                double sampleX;
+                double sampleY;
+
+                if (isWrap)
+                {
+                    sampleX = ((srcX % width) + width) % width;
+                    sampleY = ((srcY % height) + height) % height;
+                }
+                else
+                {
+                    sampleX = Math.Clamp(srcX, 0.0, width - 1.0001);
+                    sampleY = Math.Clamp(srcY, 0.0, height - 1.0001);
+                }
+
+                // Subpixel bilinear interpolation
+                int x0 = (int)Math.Floor(sampleX);
+                int y0 = (int)Math.Floor(sampleY);
+                int x1 = isWrap ? ((x0 + 1) % width) : Math.Min(x0 + 1, width - 1);
+                int y1 = isWrap ? ((y0 + 1) % height) : Math.Min(y0 + 1, height - 1);
+
+                double fx = sampleX - x0;
+                double fy = sampleY - y0;
+                double w00 = (1.0 - fx) * (1.0 - fy);
+                double w10 = fx * (1.0 - fy);
+                double w01 = (1.0 - fx) * fy;
+                double w11 = fx * fy;
+
+                int idx00 = (y0 * width + x0) * 4;
+                int idx10 = (y0 * width + x1) * 4;
+                int idx01 = (y1 * width + x0) * 4;
+                int idx11 = (y1 * width + x1) * 4;
+
+                int dstIdx = rowOffset + x * 4;
+                result[dstIdx]     = (byte)Math.Clamp(bgra[idx00] * w00 + bgra[idx10] * w10 + bgra[idx01] * w01 + bgra[idx11] * w11, 0, 255);
+                result[dstIdx + 1] = (byte)Math.Clamp(bgra[idx00 + 1] * w00 + bgra[idx10 + 1] * w10 + bgra[idx01 + 1] * w01 + bgra[idx11 + 1] * w11, 0, 255);
+                result[dstIdx + 2] = (byte)Math.Clamp(bgra[idx00 + 2] * w00 + bgra[idx10 + 2] * w10 + bgra[idx01 + 2] * w01 + bgra[idx11 + 2] * w11, 0, 255);
+                result[dstIdx + 3] = (byte)Math.Clamp(bgra[idx00 + 3] * w00 + bgra[idx10 + 3] * w10 + bgra[idx01 + 3] * w01 + bgra[idx11 + 3] * w11, 0, 255);
+            }
+        });
+
+        return result;
+    }
+
     #endregion
 }

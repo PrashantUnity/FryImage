@@ -1,9 +1,10 @@
 {
   "id": "frypdf.overlay.imageeditor",
   "name": "Image Editor",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "author": "FryPDF Team",
-  "description": "Canva-style layered design editor: fill/stroke/gradient styling, layers panel, grouping, free rotation, smart alignment guides, inline text editing, eyedropper, image adjustments (hue/temp/tint/blur/sharpen/9 filter presets), an 8-template gallery, and project save/load.",
+  "description": "Professional layered design and photo editing studio: inpainting Remove tool, Curves, Liquify, Shadows/Highlights, Black & White adjustments, text warp, Adobe Grd/Abr/Patterns and FITS/PCX/KRA codecs, OpenType typography, layers panel, and template gallery.",
+  "releaseNotes": "Adds inpainting Remove tool, Shadows/Highlights and Black & White adjustments, Curves and Liquify engines, text warp Bezier distortion, expanded codecs (Adobe Grd/Abr/Patterns, FITS, PCX, KRA), OpenType typography features, color range selection, and enhanced studio workflows.",
   "entryPoint": "ImageEditorPlugin.dll",
   "icon": "ImageEditOutline",
   "dependencies": [],

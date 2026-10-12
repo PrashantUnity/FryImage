@@ -9,7 +9,7 @@
     <AssemblyName>ImageEditorPlugin</AssemblyName>
     <PackageId>FryPdf.Plugin.ImageEditor</PackageId>
     <RootNamespace>PdfEditorApp.Plugins.ImageEditor</RootNamespace>
-    <Version>3.0.0</Version>
+    <Version>3.1.0</Version>
     <Company>FryPDF Team</Company>
     <Description>Canva-style layered design editor overlay plugin for FryPDF</Description>
     <DefaultItemExcludes>$(DefaultItemExcludes);Runner/**;UISnapshots/**;IdeaSample/**</DefaultItemExcludes>

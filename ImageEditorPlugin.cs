@@ -19,7 +19,7 @@ public class ImageEditorPlugin : IFryPlugin
 {
     public string Id => "frypdf.overlay.imageeditor";
     public string Name => "Image Editor";
-    public Version Version => new(3, 0, 0);
+    public Version Version => new(3, 1, 0);
     public bool AutoOpenOverlay => false;
     public IReadOnlyList<Type> RequiredServices => Array.Empty<Type>();
 

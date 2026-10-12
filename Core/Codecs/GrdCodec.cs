@@ -60,7 +60,22 @@ public static class GrdCodec
         // If no sections found, synthesize fallback preset gradients
         if (results.Count == 0)
         {
-            results.Add(new ParsedGradient
+            results.AddRange(GetDefaultPresets());
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    /// Gets the built-in library of default Photoshop-compatible gradient presets.
+    /// </summary>
+    public static List<ParsedGradient> DefaultPresets => GetDefaultPresets();
+
+    public static List<ParsedGradient> GetDefaultPresets()
+    {
+        var results = new List<ParsedGradient>
+        {
+            new()
             {
                 Name = "Foreground to Background",
                 Stops = new List<GradientColorStop>
@@ -68,8 +83,8 @@ public static class GrdCodec
                     new(0.0, Colors.Black),
                     new(1.0, Colors.White)
                 }
-            });
-            results.Add(new ParsedGradient
+            },
+            new()
             {
                 Name = "Chrome Reflection",
                 Stops = new List<GradientColorStop>
@@ -79,24 +94,60 @@ public static class GrdCodec
                     new(0.52, Color.FromRgb(240, 180, 50)),
                     new(1.0, Color.FromRgb(255, 255, 255))
                 }
-            });
-            results.Add(new ParsedGradient
+            },
+            new()
             {
-                Name = "Spectrum Rainbow",
+                Name = "Rainbow",
+                Stops = MakeStops("#ec1313", "#ec6d13", "#ecc813", "#b6ec13", "#5bec13", "#13ec25", "#13ec80", "#13ecda", "#13a4ec", "#1349ec", "#3713ec", "#9213ec", "#ec13ec")
+            },
+            new()
+            {
+                Name = "Pastel Rainbow",
+                Stops = MakeStops("#f4afaf", "#f4cbaf", "#f4e8af", "#e2f4af", "#c6f4af", "#aff4b4", "#aff4d1", "#aff4ee", "#afddf4", "#afc0f4", "#baaff4", "#d7aff4", "#f4aff4")
+            },
+            new()
+            {
+                Name = "Neon Rainbow",
+                Stops = MakeStops("#ff0000", "#ff6a00", "#ffd400", "#bfff00", "#55ff00", "#00ff15", "#00ff80", "#00ffea", "#00aaff", "#0040ff", "#2a00ff", "#9500ff", "#ff00ff")
+            },
+            new()
+            {
+                Name = "Oil Slick",
+                Stops = MakeStops("#0b0f1a", "#1b2a4a", "#0f6f6f", "#1fae8a", "#5ac8a8", "#7a5cff", "#b13bd6", "#e04a8f", "#f2a65a", "#3a2a6b", "#0b0f1a")
+            },
+            new()
+            {
+                Name = "Rainbow Fade",
                 Stops = new List<GradientColorStop>
                 {
-                    new(0.0, Colors.Red),
-                    new(0.17, Colors.Orange),
-                    new(0.33, Colors.Yellow),
-                    new(0.50, Colors.Green),
-                    new(0.67, Colors.Cyan),
-                    new(0.83, Colors.Blue),
-                    new(1.0, Colors.Magenta)
+                    new(0.0, Color.FromArgb(0, 0xec, 0x13, 0x13)),
+                    new(0.125, Color.FromRgb(0xec, 0xc8, 0x13)),
+                    new(0.5, Color.FromRgb(0x13, 0xec, 0x80)),
+                    new(0.875, Color.FromRgb(0x37, 0x13, 0xec)),
+                    new(1.0, Color.FromArgb(0, 0xec, 0x13, 0xec))
                 }
-            });
-        }
+            }
+        };
 
         return results;
+    }
+
+    private static List<GradientColorStop> MakeStops(params string[] hexColors)
+    {
+        var list = new List<GradientColorStop>();
+        if (hexColors.Length == 0) return list;
+        if (hexColors.Length == 1)
+        {
+            list.Add(new GradientColorStop(0.0, Color.Parse(hexColors[0])));
+            list.Add(new GradientColorStop(1.0, Color.Parse(hexColors[0])));
+            return list;
+        }
+        for (int i = 0; i < hexColors.Length; i++)
+        {
+            double t = (double)i / (hexColors.Length - 1);
+            list.Add(new GradientColorStop(t, Color.Parse(hexColors[i])));
+        }
+        return list;
     }
 
     private static ParsedGradient? ParseDescriptorGradient(BigEndianBinaryReader reader, long sectionEnd)

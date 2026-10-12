@@ -558,6 +558,34 @@ public partial class EditorCanvasControl : Control
         InvalidateVisual();
     }
 
+    /// <summary>
+    /// Fits the specified layer element bounds on screen with comfortable padding, centered in the viewport.
+    /// (Photoshop Alt-Click thumbnail / View › Fit Layer(s) on Screen).
+    /// </summary>
+    public void FitElementToWindow(Rect elementBounds)
+    {
+        if (Bounds.Width <= 0 || Bounds.Height <= 0 || elementBounds.Width <= 0 || elementBounds.Height <= 0) return;
+
+        const double padding = 36;
+        double availableW = Math.Max(Bounds.Width - padding * 2, 10);
+        double availableH = Math.Max(Bounds.Height - padding * 2, 10);
+        double fitZoom = Math.Min(availableW / elementBounds.Width, availableH / elementBounds.Height);
+
+        _zoom = Math.Clamp(Math.Round(fitZoom, 3), MinZoom, MaxZoom);
+        _isFitModeActive = false;
+
+        double centerOffsetX = (Bounds.Width - _logicalWidth * _zoom) / 2;
+        double centerOffsetY = (Bounds.Height - _logicalHeight * _zoom) / 2;
+        var center = elementBounds.Center;
+        _panOffset = new Point(
+            (Bounds.Width / 2.0) - center.X * _zoom - centerOffsetX,
+            (Bounds.Height / 2.0) - center.Y * _zoom - centerOffsetY);
+
+        ClampPanOffset();
+        ZoomChanged?.Invoke(_zoom);
+        InvalidateVisual();
+    }
+
     // ── Viewport transform ─────────────────────────────────────────────────
     private Matrix GetViewportMatrix()
     {

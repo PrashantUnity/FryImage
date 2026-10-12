@@ -55,8 +55,11 @@ public static class Program
         Console.WriteLine("\n[10/11] Running Magic Wand Flood-Fill Tolerance Suite...");
         MagicWandSnapshotSuite.Run(ctx);
 
-        Console.WriteLine("\n[11/11] Running Oriented Transform & Handles Suite...");
+        Console.WriteLine("\n[11/12] Running Oriented Transform & Handles Suite...");
         TransformSnapshotSuite.Run(ctx);
+
+        Console.WriteLine("\n[12/12] Running Photoshop Parity & Codecs Suite...");
+        ParityFeatureSnapshotSuite.Run(ctx);
 
         Console.WriteLine("\n==================================================");
         Console.WriteLine(" All Visual Audit Snapshots Captured Successfully!");

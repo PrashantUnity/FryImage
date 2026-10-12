@@ -90,7 +90,9 @@
                         <Grid ColumnDefinitions="Auto,*,Auto">
                             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
                                 <TextBlock Text="Lock:" Classes="ps-label" Margin="0,0,2,0" />
-                                <Button Classes="ps-tool-btn" Width="18" Height="18" ToolTip.Tip="Lock transparent pixels">
+                                <Button Classes="ps-tool-btn" Width="18" Height="18"
+                                        Command="{Binding ToggleLockTransparencyCommand}"
+                                        ToolTip.Tip="Lock transparent pixels (/)">
                                     <materialIcons:MaterialIcon Kind="Checkerboard" Width="11" Height="11" />
                                 </Button>
                                 <Button Classes="ps-tool-btn" Width="18" Height="18" ToolTip.Tip="Lock image pixels">
@@ -99,7 +101,10 @@
                                 <Button Classes="ps-tool-btn" Width="18" Height="18" ToolTip.Tip="Lock position">
                                     <materialIcons:MaterialIcon Kind="ArrowAll" Width="11" Height="11" />
                                 </Button>
-                                <Button Classes="ps-tool-btn" Width="18" Height="18" ToolTip.Tip="Lock all">
+                                <Button Classes="ps-tool-btn" Width="18" Height="18"
+                                        Command="{Binding ToggleLayerLockCommand}"
+                                        CommandParameter="{Binding SelectedElement}"
+                                        ToolTip.Tip="Lock all">
                                     <materialIcons:MaterialIcon Kind="LockOutline" Width="11" Height="11" />
                                 </Button>
                             </StackPanel>
@@ -135,6 +140,22 @@
                                                   Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).DuplicateCommand}" />
                                         <MenuItem Header="Delete Layer"
                                                   Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).DeleteSelectedElementCommand}" />
+                                        <MenuItem Header="Rename Layer..."
+                                                  Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).OpenRenameLayerDialogCommand}"
+                                                  CommandParameter="{Binding}" />
+                                        <Separator />
+                                        <MenuItem Header="Layer from Background..."
+                                                  Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ConvertBackgroundToLayerCommand}"
+                                                  CommandParameter="{Binding}" />
+                                        <MenuItem Header="Background from Layer"
+                                                  Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ConvertLayerToBackgroundCommand}"
+                                                  CommandParameter="{Binding}" />
+                                        <MenuItem Header="Lock Transparent Pixels" InputGesture="Divide"
+                                                  Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleLockTransparencyCommand}"
+                                                  CommandParameter="{Binding}" />
+                                        <MenuItem Header="Fit Layer on Screen"
+                                                  Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).FitLayerToScreenCommand}"
+                                                  CommandParameter="{Binding}" />
                                         <Separator />
                                         <MenuItem Header="Create Clipping Mask" InputGesture="Ctrl+Alt+G"
                                                   Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleClippingMaskCommand}"
@@ -142,7 +163,7 @@
                                         <MenuItem Header="Toggle Lock"
                                                   Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleLayerLockCommand}"
                                                   CommandParameter="{Binding}" />
-                                        <MenuItem Header="Toggle Visibility"
+                                        <MenuItem Header="Toggle Visibility" InputGesture="Ctrl+OemComma"
                                                   Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleLayerVisibilityCommand}"
                                                   CommandParameter="{Binding}" />
                                         <Separator />
@@ -199,13 +220,18 @@
                                                                 Foreground="{DynamicResource PsAccentBrush}"
                                                                 IsVisible="{Binding IsClippingMask}"
                                                                 VerticalAlignment="Center" />
-                                    <Border Width="22" Height="20"
-                                            Background="#FFFFFF"
-                                            BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1"
-                                            CornerRadius="1" HorizontalAlignment="Center">
-                                        <materialIcons:MaterialIcon Kind="{Binding ElementType, Converter={StaticResource ElementTypeToIconConverter}}"
-                                                                    Width="12" Height="12" Foreground="#333333" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    </Border>
+                                    <Button Classes="ps-tool-btn" Width="24" Height="22" Padding="0"
+                                            Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).FitLayerToScreenCommand}"
+                                            CommandParameter="{Binding}"
+                                            ToolTip.Tip="Alt-click thumbnail to fit layer on screen">
+                                        <Border Width="22" Height="20"
+                                                Background="#FFFFFF"
+                                                BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1"
+                                                CornerRadius="1" HorizontalAlignment="Center">
+                                            <materialIcons:MaterialIcon Kind="{Binding ElementType, Converter={StaticResource ElementTypeToIconConverter}}"
+                                                                        Width="12" Height="12" Foreground="#333333" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                    </Button>
                                 </StackPanel>
 
                                 <!-- Layer Name -->
@@ -393,74 +419,82 @@
             <!-- Mode C: Channels View -->
             <Grid Grid.Row="1" RowDefinitions="*,26"
                   IsVisible="{Binding ActiveLayersDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Channels'}">
-                <StackPanel Grid.Row="0" Margin="4,4" Spacing="2">
-                    <!-- RGB Composite -->
-                    <Border Background="{DynamicResource PsActiveTabBrush}" CornerRadius="2" Padding="4,3">
-                        <Grid ColumnDefinitions="Auto,Auto,*,Auto">
-                            <Button Grid.Column="0" Classes="ps-tool-btn" Width="18" Height="18" ToolTip.Tip="Channel Visibility">
-                                <materialIcons:MaterialIcon Kind="EyeOutline" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
-                            </Button>
-                            <Border Grid.Column="1" Width="26" Height="20" Background="#333333" BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1" CornerRadius="1" Margin="4,0">
-                                <materialIcons:MaterialIcon Kind="Palette" Width="13" Height="13" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <TextBlock Grid.Column="2" Text="RGB" FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" Margin="4,0,0,0" />
-                            <TextBlock Grid.Column="3" Text="Ctrl+2" FontSize="10" Foreground="{DynamicResource PsTextFaintBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
-                        </Grid>
-                    </Border>
-                    <!-- Red Channel -->
-                    <Border Background="Transparent" CornerRadius="2" Padding="4,3">
-                        <Grid ColumnDefinitions="Auto,Auto,*,Auto">
-                            <Button Grid.Column="0" Classes="ps-tool-btn" Width="18" Height="18" ToolTip.Tip="Channel Visibility">
-                                <materialIcons:MaterialIcon Kind="EyeOutline" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
-                            </Button>
-                            <Border Grid.Column="1" Width="26" Height="20" Background="#2A1515" BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1" CornerRadius="1" Margin="4,0">
-                                <TextBlock Text="R" FontSize="10" FontWeight="Bold" Foreground="#EC5B62" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <TextBlock Grid.Column="2" Text="Red" FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" Margin="4,0,0,0" />
-                            <TextBlock Grid.Column="3" Text="Ctrl+3" FontSize="10" Foreground="{DynamicResource PsTextFaintBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
-                        </Grid>
-                    </Border>
-                    <!-- Green Channel -->
-                    <Border Background="Transparent" CornerRadius="2" Padding="4,3">
-                        <Grid ColumnDefinitions="Auto,Auto,*,Auto">
-                            <Button Grid.Column="0" Classes="ps-tool-btn" Width="18" Height="18" ToolTip.Tip="Channel Visibility">
-                                <materialIcons:MaterialIcon Kind="EyeOutline" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
-                            </Button>
-                            <Border Grid.Column="1" Width="26" Height="20" Background="#152A15" BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1" CornerRadius="1" Margin="4,0">
-                                <TextBlock Text="G" FontSize="10" FontWeight="Bold" Foreground="#22C55E" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <TextBlock Grid.Column="2" Text="Green" FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" Margin="4,0,0,0" />
-                            <TextBlock Grid.Column="3" Text="Ctrl+4" FontSize="10" Foreground="{DynamicResource PsTextFaintBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
-                        </Grid>
-                    </Border>
-                    <!-- Blue Channel -->
-                    <Border Background="Transparent" CornerRadius="2" Padding="4,3">
-                        <Grid ColumnDefinitions="Auto,Auto,*,Auto">
-                            <Button Grid.Column="0" Classes="ps-tool-btn" Width="18" Height="18" ToolTip.Tip="Channel Visibility">
-                                <materialIcons:MaterialIcon Kind="EyeOutline" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
-                            </Button>
-                            <Border Grid.Column="1" Width="26" Height="20" Background="#151A2A" BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1" CornerRadius="1" Margin="4,0">
-                                <TextBlock Text="B" FontSize="10" FontWeight="Bold" Foreground="#3B82F6" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <TextBlock Grid.Column="2" Text="Blue" FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" Margin="4,0,0,0" />
-                            <TextBlock Grid.Column="3" Text="Ctrl+5" FontSize="10" Foreground="{DynamicResource PsTextFaintBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
-                        </Grid>
-                    </Border>
-                </StackPanel>
+                <ListBox Grid.Row="0" Classes="ps-layers"
+                         ItemsSource="{Binding DocumentChannels}"
+                         SelectedItem="{Binding SelectedChannel, Mode=TwoWay}"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         Margin="2,2">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="models:DocumentChannelItem">
+                            <Grid ColumnDefinitions="Auto,Auto,*,Auto" Height="26" VerticalAlignment="Center">
+                                <Grid.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Select Channel"
+                                                  Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SelectChannelCommand}"
+                                                  CommandParameter="{Binding}" />
+                                        <MenuItem Header="Load Channel as Selection"
+                                                  Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).LoadChannelAsSelectionCommand}"
+                                                  CommandParameter="{Binding}" />
+                                        <MenuItem Header="Duplicate Channel"
+                                                  Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SaveSelectionAsChannelCommand}"
+                                                  CommandParameter="{Binding Name}" />
+                                        <Separator />
+                                        <MenuItem Header="Delete Channel"
+                                                  IsEnabled="{Binding IsAlpha}"
+                                                  Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).DeleteChannelCommand}"
+                                                  CommandParameter="{Binding}" />
+                                    </ContextMenu>
+                                </Grid.ContextMenu>
+
+                                <!-- Eye Visibility Toggle Button -->
+                                <Button Grid.Column="0" Classes="ps-tool-btn" Width="18" Height="18" Margin="2,0"
+                                        Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SelectChannelCommand}"
+                                        CommandParameter="{Binding}"
+                                        ToolTip.Tip="Channel Visibility">
+                                    <materialIcons:MaterialIcon Kind="EyeOutline" Width="11" Height="11"
+                                                                Foreground="{DynamicResource PsTextDimBrush}" />
+                                </Button>
+
+                                <!-- Channel Color Badge / Icon -->
+                                <Border Grid.Column="1" Width="26" Height="20"
+                                        Background="{Binding ColorBadgeBrush}"
+                                        BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1"
+                                        CornerRadius="1" Margin="4,0">
+                                    <materialIcons:MaterialIcon Kind="Palette" Width="12" Height="12"
+                                                                Foreground="#FFFFFF"
+                                                                IsVisible="{Binding IsComposite}"
+                                                                HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+
+                                <!-- Channel Name -->
+                                <TextBlock Grid.Column="2" Text="{Binding Name}" FontSize="11"
+                                           Foreground="{DynamicResource PsTextBrush}"
+                                           VerticalAlignment="Center" Margin="4,0,0,0"
+                                           TextTrimming="CharacterEllipsis" />
+
+                                <!-- Channel Shortcut badge -->
+                                <TextBlock Grid.Column="3" Text="{Binding Shortcut}" FontSize="10"
+                                           Foreground="{DynamicResource PsTextFaintBrush}"
+                                           VerticalAlignment="Center" Margin="0,0,6,0" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
 
                 <!-- Channels Action Footer -->
                 <Border Grid.Row="1" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="4,0">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="4" VerticalAlignment="Center">
-                        <Button Classes="ps-footer-btn" Command="{Binding LoadChannelAsSelectionCommand}" CommandParameter="{Binding ActiveChannelMode}" ToolTip.Tip="Load channel as selection">
+                        <Button Classes="ps-footer-btn" Command="{Binding LoadChannelAsSelectionCommand}" CommandParameter="{Binding SelectedChannel}" ToolTip.Tip="Load channel as selection">
                             <materialIcons:MaterialIcon Kind="SelectCompare" Width="12" Height="12" />
                         </Button>
                         <Button Classes="ps-footer-btn" Command="{Binding SaveSelectionAsChannelCommand}" ToolTip.Tip="Save selection as channel">
                             <materialIcons:MaterialIcon Kind="SelectionDrag" Width="12" Height="12" />
                         </Button>
-                        <Button Classes="ps-footer-btn" ToolTip.Tip="Create new channel">
+                        <Button Classes="ps-footer-btn" Command="{Binding SaveSelectionAsChannelCommand}" ToolTip.Tip="Create new channel">
                             <materialIcons:MaterialIcon Kind="Plus" Width="13" Height="13" />
                         </Button>
-                        <Button Classes="ps-footer-btn" ToolTip.Tip="Delete channel">
+                        <Button Classes="ps-footer-btn" Command="{Binding DeleteChannelCommand}" CommandParameter="{Binding SelectedChannel}" ToolTip.Tip="Delete channel">
                             <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="12" Height="12" />
                         </Button>
                     </StackPanel>

@@ -64,6 +64,7 @@
                             <Separator />
                             <MenuItem Header="Content-Aware Fill..." Command="{Binding ApplyContentAwareFillCommand}" />
                             <MenuItem Header="Content-Aware Scale..." InputGesture="Alt+Shift+Ctrl+C" Command="{Binding OpenContentAwareScaleDialogCommand}" />
+                            <MenuItem Header="Fill from History" InputGesture="Ctrl+Alt+Back" Command="{Binding FillFromHistoryCommand}" />
                             <Separator />
                             <MenuItem Header="Free Transform" InputGesture="Ctrl+T" Command="{Binding BeginFreeTransformCommand}" />
                             <MenuItem Header="Rotate 90° CW" Command="{Binding RotateArtboardClockwiseCommand}" />
@@ -119,6 +120,13 @@
                             <MenuItem Header="Duplicate Layer..." Command="{Binding OpenDuplicateLayerDialogCommand}" />
                             <MenuItem Header="Quick Duplicate Layer" InputGesture="Ctrl+J" Command="{Binding DuplicateCommand}" />
                             <MenuItem Header="Delete Layer" Command="{Binding DeleteSelectedElementCommand}" />
+                            <MenuItem Header="Rename Layer..." Command="{Binding OpenRenameLayerDialogCommand}" />
+                            <Separator />
+                            <MenuItem Header="Toggle Visibility" InputGesture="Ctrl+OemComma" Command="{Binding ToggleLayerVisibilityCommand}" />
+                            <MenuItem Header="Lock Transparent Pixels" InputGesture="Divide" Command="{Binding ToggleLockTransparencyCommand}" />
+                            <Separator />
+                            <MenuItem Header="Layer from Background..." Command="{Binding ConvertBackgroundToLayerCommand}" />
+                            <MenuItem Header="Background from Layer" Command="{Binding ConvertLayerToBackgroundCommand}" />
                             <Separator />
                             <MenuItem Header="New Adjustment Layer">
                                 <MenuItem Header="Brightness / Contrast..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="BrightnessContrast" />
@@ -172,6 +180,9 @@
                             <MenuItem Header="Select and Mask..." InputGesture="Ctrl+Alt+R" Command="{Binding OpenSelectAndMaskDialogCommand}" />
                             <Separator />
                             <MenuItem Header="Make Work Path from Selection..." Command="{Binding MakeWorkPathFromSelectionCommand}" />
+                            <Separator />
+                            <MenuItem Header="Load Luminosity" InputGesture="Ctrl+Alt+2" Command="{Binding LoadLuminositySelectionCommand}" />
+                            <MenuItem Header="Save Selection as Channel..." Command="{Binding SaveSelectionAsChannelCommand}" />
                         </MenuFlyout>
                     </Button.Flyout>
                 </Button>
@@ -252,6 +263,7 @@
                     <Button.Flyout>
                         <MenuFlyout Placement="BottomEdgeAlignedLeft">
                             <MenuItem Header="Fit on Screen" Command="{Binding FitToWindowCommand}" />
+                            <MenuItem Header="Fit Layer(s) on Screen" Command="{Binding FitLayerToScreenCommand}" />
                             <MenuItem Header="100%" Command="{Binding ResetZoomCommand}" />
                             <MenuItem Header="Zoom In" Command="{Binding ZoomInCommand}" />
                             <MenuItem Header="Zoom Out" Command="{Binding ZoomOutCommand}" />

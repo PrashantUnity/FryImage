@@ -637,4 +637,172 @@ public partial class ImageEditorViewModel
             StatusMessage = $"Remove Background error: {ex.Message}";
         }
     }
+
+    // ── Photoshop Luminosity Selection & History Fill ───────────────────────
+    [RelayCommand]
+    public void LoadLuminositySelection()
+    {
+        int docW = (int)Math.Max(1, CanvasWidth);
+        int docH = (int)Math.Max(1, CanvasHeight);
+
+        using var surface = SKSurface.Create(new SKImageInfo(docW, docH, SKColorType.Bgra8888, SKAlphaType.Premul));
+        if (surface == null) return;
+
+        var canvas = surface.Canvas;
+        canvas.Clear(new SKColor(BackgroundColor.R, BackgroundColor.G, BackgroundColor.B, BackgroundColor.A));
+
+        foreach (var elem in Elements.Where(e => e.IsVisible).OrderBy(e => e.ZIndex))
+        {
+            if (elem is ImageElement img && img.OriginalImageBytes != null)
+            {
+                using var bmp = SKBitmap.Decode(img.OriginalImageBytes);
+                if (bmp != null)
+                {
+                    var destRect = new SKRect((float)img.X, (float)img.Y, (float)(img.X + img.Width), (float)(img.Y + img.Height));
+                    using var paint = new SKPaint
+                    {
+                        Color = new SKColor(255, 255, 255, (byte)(elem.Opacity * 255)),
+                        IsAntialias = true
+                    };
+                    canvas.DrawBitmap(bmp, destRect, paint);
+                }
+            }
+        }
+
+        using var snap = surface.Snapshot();
+        using var snapBmp = SKBitmap.FromImage(snap);
+        if (snapBmp == null) return;
+
+        byte[] bgra = snapBmp.Bytes;
+        byte[] mask = new byte[docW * docH];
+
+        for (int i = 0; i < mask.Length; i++)
+        {
+            byte b = bgra[i * 4];
+            byte g = bgra[i * 4 + 1];
+            byte r = bgra[i * 4 + 2];
+            // Standard composite luminosity: L = 0.299*R + 0.587*G + 0.114*B
+            mask[i] = (byte)Math.Clamp(Math.Round(0.299 * r + 0.587 * g + 0.114 * b), 0, 255);
+        }
+
+        if (CanvasControl != null)
+        {
+            CanvasControl.QuickMaskBuffer = mask;
+            CanvasControl.IsQuickMaskMode = true;
+            CanvasControl.InvalidateVisual();
+        }
+
+        StatusMessage = "Loaded Luminosity as selection (Ctrl+Alt+2).";
+    }
+
+    [RelayCommand]
+    public void FillFromHistory()
+    {
+        var target = SelectedElement as ImageElement ?? Elements.OfType<ImageElement>().LastOrDefault();
+        if (target == null || target.OriginalImageBytes == null)
+        {
+            StatusMessage = "No raster layer to fill from history.";
+            return;
+        }
+
+        byte[]? historyBytes = _historyBrushSnapshotBytes;
+        if (historyBytes == null || historyBytes.Length == 0)
+        {
+            if (Snapshots.Count > 0 && !string.IsNullOrEmpty(Snapshots[0].ElementsJson))
+            {
+                try
+                {
+                    var dtos = System.Text.Json.JsonSerializer.Deserialize<List<Models.Serialization.CanvasElementDto>>(Snapshots[0].ElementsJson, ProjectJsonOptions);
+                    if (dtos != null)
+                    {
+                        var imgDto = dtos.OfType<Models.Serialization.ImageElementDto>().FirstOrDefault(d => d.Name == target.Name)
+                                     ?? dtos.OfType<Models.Serialization.ImageElementDto>().FirstOrDefault();
+                        if (imgDto?.ImageBytesBase64 is { Length: > 0 } b64)
+                        {
+                            historyBytes = Convert.FromBase64String(b64);
+                        }
+                    }
+                }
+                catch
+                {
+                    // Fall back
+                }
+            }
+        }
+
+        if (historyBytes == null || historyBytes.Length == 0)
+        {
+            StatusMessage = "No historical source state found to fill from.";
+            return;
+        }
+
+        byte[] oldBytes = target.OriginalImageBytes;
+        using var curBmp = SKBitmap.Decode(oldBytes);
+        using var histBmp = SKBitmap.Decode(historyBytes);
+        if (curBmp == null || histBmp == null) return;
+
+        int w = curBmp.Width;
+        int h = curBmp.Height;
+        byte[] curPixels = curBmp.Bytes;
+        byte[] histPixels = histBmp.Bytes;
+        byte[] outPixels = new byte[curPixels.Length];
+        Array.Copy(curPixels, outPixels, curPixels.Length);
+
+        byte[]? selectionMask = CanvasControl?.QuickMaskBuffer;
+
+        if (selectionMask != null && selectionMask.Length >= w * h)
+        {
+            for (int y = 0; y < h; y++)
+            {
+                for (int x = 0; x < w; x++)
+                {
+                    int mIdx = y * w + x;
+                    byte m = selectionMask[mIdx];
+                    if (m > 0)
+                    {
+                        int pIdx = (y * w + x) * 4;
+                        double alpha = m / 255.0;
+                        if (pIdx + 3 < histPixels.Length && pIdx + 3 < outPixels.Length)
+                        {
+                            outPixels[pIdx] = (byte)(curPixels[pIdx] * (1 - alpha) + histPixels[pIdx] * alpha);
+                            outPixels[pIdx + 1] = (byte)(curPixels[pIdx + 1] * (1 - alpha) + histPixels[pIdx + 1] * alpha);
+                            outPixels[pIdx + 2] = (byte)(curPixels[pIdx + 2] * (1 - alpha) + histPixels[pIdx + 2] * alpha);
+                            outPixels[pIdx + 3] = (byte)(curPixels[pIdx + 3] * (1 - alpha) + histPixels[pIdx + 3] * alpha);
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            Array.Copy(histPixels, outPixels, Math.Min(histPixels.Length, outPixels.Length));
+        }
+
+        using var resultBmp = new SKBitmap();
+        var info = new SKImageInfo(w, h, SKColorType.Bgra8888, SKAlphaType.Premul);
+        var gcHandle = GCHandle.Alloc(outPixels, GCHandleType.Pinned);
+        try
+        {
+            resultBmp.InstallPixels(info, gcHandle.AddrOfPinnedObject(), info.RowBytes);
+            using var image = SKImage.FromBitmap(resultBmp);
+            using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+            byte[] newPngBytes = data.ToArray();
+
+            History.Push(new RetouchImageCommand(target, oldBytes, newPngBytes, "Fill from History", (el, b) =>
+            {
+                el.OriginalImageBytes = b;
+                el.Source = new Bitmap(new MemoryStream(b));
+                CanvasControl?.InvalidateVisual();
+            }));
+
+            target.OriginalImageBytes = newPngBytes;
+            target.Source = new Bitmap(new MemoryStream(newPngBytes));
+            CanvasControl?.InvalidateVisual();
+            StatusMessage = "Filled from history source (Ctrl+Alt+Backspace).";
+        }
+        finally
+        {
+            gcHandle.Free();
+        }
+    }
 }

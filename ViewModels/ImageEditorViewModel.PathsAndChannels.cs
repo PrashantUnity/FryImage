@@ -190,18 +190,60 @@ public partial class ImageEditorViewModel
         CanvasControl?.InvalidateVisual();
     }
 
-    // ── Live Channels Commands ──────────────────────────────────────────────
+    // ── Live Color & Alpha Channels System ──────────────────────────────────
+    public ObservableCollection<DocumentChannelItem> DocumentChannels { get; } =
+    [
+        new DocumentChannelItem { Name = "RGB", Shortcut = "Ctrl+2", IsComposite = true, IsAlpha = false, IsVisible = true },
+        new DocumentChannelItem { Name = "Red", Shortcut = "Ctrl+3", IsComposite = false, IsAlpha = false, IsVisible = true },
+        new DocumentChannelItem { Name = "Green", Shortcut = "Ctrl+4", IsComposite = false, IsAlpha = false, IsVisible = true },
+        new DocumentChannelItem { Name = "Blue", Shortcut = "Ctrl+5", IsComposite = false, IsAlpha = false, IsVisible = true }
+    ];
+
+    [ObservableProperty]
+    private DocumentChannelItem? _selectedChannel;
+
     [RelayCommand]
-    public void SelectChannel(string channel)
+    public void SelectChannel(object? parameter)
     {
-        ActiveChannelMode = channel;
-        StatusMessage = $"Active Channel: {channel}";
+        string channelName = parameter switch
+        {
+            DocumentChannelItem item => item.Name,
+            string str => str,
+            _ => "RGB"
+        };
+
+        ActiveChannelMode = channelName;
+        StatusMessage = $"Active Channel: {channelName}";
         CanvasControl?.InvalidateVisual();
     }
 
     [RelayCommand]
-    public void LoadChannelAsSelection(string channel)
+    public void LoadChannelAsSelection(object? parameter)
     {
+        int docW = (int)Math.Max(1, CanvasWidth);
+        int docH = (int)Math.Max(1, CanvasHeight);
+
+        if (parameter is DocumentChannelItem { IsAlpha: true, MaskData: { } maskData })
+        {
+            if (CanvasControl != null)
+            {
+                byte[] mask = new byte[docW * docH];
+                Array.Copy(maskData, mask, Math.Min(maskData.Length, mask.Length));
+                CanvasControl.QuickMaskBuffer = mask;
+                CanvasControl.IsQuickMaskMode = true;
+                CanvasControl.InvalidateVisual();
+            }
+            StatusMessage = $"Loaded channel '{parameter}' as selection.";
+            return;
+        }
+
+        string channel = parameter switch
+        {
+            DocumentChannelItem item => item.Name,
+            string str => str,
+            _ => ActiveChannelMode
+        };
+
         var target = SelectedElement as ImageElement ?? Elements.OfType<ImageElement>().LastOrDefault();
         if (target != null && target.OriginalImageBytes != null)
         {
@@ -211,36 +253,103 @@ public partial class ImageEditorViewModel
                 int w = bmp.Width;
                 int h = bmp.Height;
                 byte[] bgra = bmp.Bytes;
-                byte[] mask = new byte[w * h];
+                byte[] mask = new byte[docW * docH];
 
-                for (int i = 0; i < mask.Length; i++)
+                int originX = (int)Math.Round(target.X);
+                int originY = (int)Math.Round(target.Y);
+
+                for (int ly = 0; ly < h; ly++)
                 {
-                    byte b = bgra[i * 4];
-                    byte g = bgra[i * 4 + 1];
-                    byte r = bgra[i * 4 + 2];
+                    int dy = originY + ly;
+                    if (dy < 0 || dy >= docH) continue;
 
-                    mask[i] = channel switch
+                    int srcRow = ly * w;
+                    int dstRow = dy * docW;
+
+                    for (int lx = 0; lx < w; lx++)
                     {
-                        "Red" => r,
-                        "Green" => g,
-                        "Blue" => b,
-                        _ => (byte)(0.299 * r + 0.587 * g + 0.114 * b) // RGB Luminance
-                    };
+                        int dx = originX + lx;
+                        if (dx < 0 || dx >= docW) continue;
+
+                        int pIdx = (srcRow + lx) * 4;
+                        byte b = bgra[pIdx];
+                        byte g = bgra[pIdx + 1];
+                        byte r = bgra[pIdx + 2];
+
+                        mask[dstRow + dx] = channel switch
+                        {
+                            "Red" => r,
+                            "Green" => g,
+                            "Blue" => b,
+                            _ => (byte)Math.Clamp(Math.Round(0.299 * r + 0.587 * g + 0.114 * b), 0, 255)
+                        };
+                    }
                 }
 
-                StatusMessage = $"Loaded '{channel}' channel as selection ({w}x{h}).";
-                CanvasControl?.InvalidateVisual();
+                if (CanvasControl != null)
+                {
+                    CanvasControl.QuickMaskBuffer = mask;
+                    CanvasControl.IsQuickMaskMode = true;
+                    CanvasControl.InvalidateVisual();
+                }
+
+                StatusMessage = $"Loaded '{channel}' channel as selection ({docW}x{docH}).";
                 return;
             }
         }
 
-        StatusMessage = $"Selected channel '{channel}' as selection.";
+        // Composite Luminosity fallback
+        LoadLuminositySelection();
     }
 
     [RelayCommand]
-    public void SaveSelectionAsChannel()
+    public void SaveSelectionAsChannel(string? channelName = null)
     {
-        StatusMessage = "Saved selection as Alpha channel.";
+        int docW = (int)Math.Max(1, CanvasWidth);
+        int docH = (int)Math.Max(1, CanvasHeight);
+
+        byte[] maskToSave;
+        if (CanvasControl?.QuickMaskBuffer != null && CanvasControl.QuickMaskBuffer.Length >= docW * docH)
+        {
+            maskToSave = (byte[])CanvasControl.QuickMaskBuffer.Clone();
+        }
+        else
+        {
+            // If no active selection, create a full white reveal selection
+            maskToSave = new byte[docW * docH];
+            Array.Fill(maskToSave, (byte)255);
+        }
+
+        int alphaCount = DocumentChannels.Count(c => c.IsAlpha) + 1;
+        string name = string.IsNullOrWhiteSpace(channelName) ? $"Alpha {alphaCount}" : channelName.Trim();
+
+        var channelItem = new DocumentChannelItem
+        {
+            Name = name,
+            Shortcut = $"Ctrl+{Math.Min(9, 5 + alphaCount)}",
+            IsComposite = false,
+            IsAlpha = true,
+            IsVisible = true,
+            Width = docW,
+            Height = docH,
+            MaskData = maskToSave
+        };
+
+        DocumentChannels.Add(channelItem);
+        SelectedChannel = channelItem;
+        StatusMessage = $"Saved active selection as channel '{name}'.";
+    }
+
+    [RelayCommand]
+    public void DeleteChannel(DocumentChannelItem? channel = null)
+    {
+        var target = channel ?? SelectedChannel;
+        if (target != null && target.IsAlpha)
+        {
+            DocumentChannels.Remove(target);
+            SelectedChannel = DocumentChannels.FirstOrDefault();
+            StatusMessage = $"Deleted channel '{target.Name}'.";
+        }
     }
 
     // ── History Brush Snapshot Management ───────────────────────────────────

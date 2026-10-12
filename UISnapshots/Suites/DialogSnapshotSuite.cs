@@ -21,6 +21,13 @@ public static class DialogSnapshotSuite
         ctx.Capture("dialog_new_layer.png");
         vm.CancelNewLayerDialogCommand.Execute(null);
 
+        // 0b. Photoshop-Grade Layer Properties / Rename Layer Dialog
+        vm.OpenRenameLayerDialogCommand.Execute(null);
+        vm.RenameLayerName = "Foreground Elements";
+        vm.RenameLayerColorIndex = (int)LayerLabelColor.Orange;
+        ctx.Capture("dialog_rename_layer.png");
+        vm.CancelRenameLayerDialogCommand.Execute(null);
+
         // 1. Color Range Selection Workspace
         vm.OpenColorRangeDialogCommand.Execute(null);
         ctx.Capture("dialog_color_range.png");

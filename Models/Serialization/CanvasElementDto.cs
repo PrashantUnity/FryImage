@@ -34,6 +34,9 @@ public abstract class CanvasElementDto
     public LayerStyleEffectsDto? Effects { get; set; }
     public bool IsVisible { get; set; } = true;
     public bool IsLocked { get; set; }
+    public bool IsTransparencyLocked { get; set; }
+    public bool IsPositionLocked { get; set; }
+    public bool IsBackground { get; set; }
     public string? Name { get; set; }
     public Guid? GroupId { get; set; }
     public bool AspectLocked { get; set; }

@@ -233,4 +233,258 @@ public partial class ImageEditorViewModel
 
         _ => (false, Colors.Transparent, "none")
     };
+
+    // ── Layer Keys & Structural Background Parity ───────────────────────────
+    [ObservableProperty] private bool _isLayerMaskTargeted;
+
+    public CanvasElement? BackgroundLayer =>
+        Elements.FirstOrDefault(e => e.IsBackground || (Elements.Count > 0 && e == Elements[0] && e.HasBackgroundTraits));
+
+    public bool IsSelectedElementBackground =>
+        SelectedElement != null && (SelectedElement.IsBackground || (Elements.Count > 0 && SelectedElement == Elements[0] && SelectedElement.HasBackgroundTraits));
+
+    [RelayCommand]
+    public void ToggleLockTransparency(CanvasElement? element = null)
+    {
+        var targets = element != null
+            ? [element]
+            : (SelectedElements.Count > 0
+                ? SelectedElements.ToList()
+                : (SelectedElement != null ? [SelectedElement] : (Elements.Count > 0 ? [Elements[^1]] : [])));
+
+        // Background cannot lock transparency
+        targets.RemoveAll(t => t.IsBackground || (Elements.Count > 0 && t == Elements[0] && t.HasBackgroundTraits));
+
+        if (targets.Count == 0)
+        {
+            StatusMessage = "The Background layer cannot lock transparent pixels.";
+            return;
+        }
+
+        bool allLocked = targets.All(t => t.IsTransparencyLocked);
+        bool newLock = !allLocked;
+
+        foreach (var t in targets)
+        {
+            t.IsTransparencyLocked = newLock;
+        }
+
+        RefreshCanvas();
+        OnPropertyChanged(nameof(LayersDescendingZ));
+        OnPropertyChanged(nameof(SelectedElement));
+        StatusMessage = newLock ? "Locked transparent pixels." : "Unlocked transparent pixels.";
+    }
+
+    [RelayCommand]
+    public void TargetLayerMask()
+    {
+        var target = SelectedElement ?? Elements.LastOrDefault();
+        if (target == null) return;
+
+        IsLayerMaskTargeted = !IsLayerMaskTargeted;
+        StatusMessage = IsLayerMaskTargeted ? $"Targeted layer mask on '{target.DisplayName}'." : $"Targeted composite on '{target.DisplayName}'.";
+        OnPropertyChanged(nameof(IsLayerMaskTargeted));
+    }
+
+    [RelayCommand]
+    public void FitLayerToScreen(CanvasElement? element = null)
+    {
+        var target = element ?? SelectedElement ?? Elements.LastOrDefault();
+        if (target == null)
+        {
+            StatusMessage = "No layer to fit on screen.";
+            return;
+        }
+
+        var bounds = target.GetRotatedBounds();
+        if (bounds.Width > 0 && bounds.Height > 0)
+        {
+            CanvasControl?.FitElementToWindow(bounds);
+            StatusMessage = $"Fitted '{target.DisplayName}' on screen.";
+        }
+    }
+
+    [RelayCommand]
+    public void ConvertBackgroundToLayer(CanvasElement? element = null)
+    {
+        var target = element ?? BackgroundLayer ?? (Elements.Count > 0 ? Elements[0] : null);
+        if (target == null) return;
+
+        target.IsBackground = false;
+        target.IsPositionLocked = false;
+        target.IsTransparencyLocked = false;
+        if (string.Equals(target.Name, "Background", StringComparison.OrdinalIgnoreCase) || string.IsNullOrEmpty(target.Name))
+        {
+            target.Name = "Layer 0";
+        }
+
+        RefreshCanvas();
+        OnPropertyChanged(nameof(LayersDescendingZ));
+        OnPropertyChanged(nameof(SelectedElement));
+        OnPropertyChanged(nameof(IsSelectedElementBackground));
+        StatusMessage = $"Converted Background to '{target.DisplayName}'.";
+    }
+
+    [RelayCommand]
+    public void ConvertLayerToBackground(CanvasElement? element = null)
+    {
+        var target = element ?? SelectedElement ?? (Elements.Count > 0 ? Elements[0] : null);
+        if (target == null) return;
+
+        foreach (var el in Elements)
+        {
+            if (el != target && el.IsBackground) el.IsBackground = false;
+        }
+
+        target.IsBackground = true;
+        target.IsPositionLocked = true;
+        target.IsTransparencyLocked = true;
+        target.ZIndex = 0;
+
+        Elements.Remove(target);
+        Elements.Insert(0, target);
+        for (int i = 0; i < Elements.Count; i++)
+        {
+            Elements[i].ZIndex = i;
+        }
+
+        RefreshCanvas();
+        OnPropertyChanged(nameof(LayersDescendingZ));
+        OnPropertyChanged(nameof(SelectedElement));
+        OnPropertyChanged(nameof(IsSelectedElementBackground));
+        StatusMessage = $"Converted '{target.DisplayName}' to Background.";
+    }
+
+    /// <summary>
+    /// Navigates to the adjacent layer in Z-order for keyboard layer navigation.
+    /// cycleUp=false selects next layer down; cycleUp=true selects next layer up.
+    /// </summary>
+    public CanvasElement? GetAdjacentLayer(CanvasElement current, bool cycleUp)
+    {
+        var list = LayersDescendingZ.ToList();
+        int idx = list.IndexOf(current);
+        if (idx < 0) return null;
+
+        int targetIdx = cycleUp ? idx - 1 : idx + 1;
+        if (targetIdx < 0 || targetIdx >= list.Count) return null;
+
+        var next = list[targetIdx];
+        if (next.IsBackground || (Elements.Count > 0 && next == Elements[0] && next.HasBackgroundTraits))
+        {
+            // Background ends inline renaming
+            return null;
+        }
+
+        return next;
+    }
+
+    // ── Rename Layer Dialog (Photoshop Parity) ──────────────────────────────
+    [ObservableProperty] private bool _isRenameLayerDialogOpen;
+    [ObservableProperty] private string _renameLayerName = "";
+    [ObservableProperty] private int _renameLayerColorIndex = 0;
+    private CanvasElement? _renameLayerTargetElement;
+
+    [RelayCommand]
+    public void OpenRenameLayerDialog(CanvasElement? target = null)
+    {
+        var element = target ?? SelectedElement ?? Elements.LastOrDefault();
+        if (element == null)
+        {
+            StatusMessage = "No layer to rename.";
+            return;
+        }
+
+        if (element.HasBackgroundTraits)
+        {
+            ConvertBackgroundToLayer(element);
+            return;
+        }
+
+        _renameLayerTargetElement = element;
+        RenameLayerName = element.DisplayName;
+        RenameLayerColorIndex = (int)element.LabelColor;
+        IsRenameLayerDialogOpen = true;
+    }
+
+    [RelayCommand]
+    public void CancelRenameLayerDialog()
+    {
+        IsRenameLayerDialogOpen = false;
+        _renameLayerTargetElement = null;
+    }
+
+    [RelayCommand]
+    public void ConfirmRenameLayerDialog()
+    {
+        if (_renameLayerTargetElement != null)
+        {
+            if (!string.IsNullOrWhiteSpace(RenameLayerName))
+            {
+                _renameLayerTargetElement.Name = RenameLayerName.Trim();
+            }
+            if (RenameLayerColorIndex >= 0 && RenameLayerColorIndex <= 7)
+            {
+                _renameLayerTargetElement.LabelColor = (LayerLabelColor)RenameLayerColorIndex;
+            }
+            RefreshCanvas();
+            OnPropertyChanged(nameof(LayersDescendingZ));
+            OnPropertyChanged(nameof(SelectedElement));
+            StatusMessage = $"Renamed layer to '{_renameLayerTargetElement.DisplayName}'.";
+        }
+
+        IsRenameLayerDialogOpen = false;
+        _renameLayerTargetElement = null;
+    }
+
+    public void RenameNextLayer(bool cycleUp)
+    {
+        if (_renameLayerTargetElement == null) return;
+
+        if (!string.IsNullOrWhiteSpace(RenameLayerName))
+        {
+            _renameLayerTargetElement.Name = RenameLayerName.Trim();
+        }
+        if (RenameLayerColorIndex >= 0 && RenameLayerColorIndex <= 7)
+        {
+            _renameLayerTargetElement.LabelColor = (LayerLabelColor)RenameLayerColorIndex;
+        }
+        RefreshCanvas();
+        OnPropertyChanged(nameof(LayersDescendingZ));
+
+        var next = GetAdjacentLayer(_renameLayerTargetElement, cycleUp);
+        if (next != null)
+        {
+            SelectedElement = next;
+            _renameLayerTargetElement = next;
+            RenameLayerName = next.DisplayName;
+            RenameLayerColorIndex = (int)next.LabelColor;
+            StatusMessage = $"Editing layer '{next.DisplayName}'.";
+        }
+        else
+        {
+            IsRenameLayerDialogOpen = false;
+            _renameLayerTargetElement = null;
+        }
+    }
+
+    [RelayCommand]
+    public void CycleBlendMode(bool forward)
+    {
+        if (SelectedElement == null) return;
+        var modes = AvailableBlendModes;
+        if (modes.Count == 0) return;
+        int idx = -1;
+        for (int i = 0; i < modes.Count; i++)
+        {
+            if (modes[i] == BlendModeField)
+            {
+                idx = i;
+                break;
+            }
+        }
+        if (idx < 0) idx = 0;
+        int nextIdx = forward ? (idx + 1) % modes.Count : (idx - 1 + modes.Count) % modes.Count;
+        BlendModeField = modes[nextIdx];
+        StatusMessage = $"Blend Mode: {BlendModeField}";
+    }
 }

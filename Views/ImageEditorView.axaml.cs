@@ -397,6 +397,50 @@ public partial class ImageEditorView : UserControl
             return;
         }
 
+        // Photoshop Layer & Selection Parity Keys
+        if (ctrl && !shift && !alt && (e.Key == Key.OemComma || e.Key == Key.Oem1))
+        {
+            vm.ToggleLayerVisibilityCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+        if (!ctrl && !alt && !shift && (e.Key == Key.OemQuestion || e.Key == Key.Divide))
+        {
+            vm.ToggleLockTransparencyCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+        if (ctrl && !shift && !alt && (e.Key == Key.OemPipe || e.Key == Key.OemBackslash))
+        {
+            vm.TargetLayerMaskCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+        if (ctrl && alt && !shift && (e.Key == Key.D2 || e.Key == Key.NumPad2))
+        {
+            vm.LoadLuminositySelectionCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+        if (ctrl && alt && !shift && (e.Key == Key.Back || e.Key == Key.Delete))
+        {
+            vm.FillFromHistoryCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+        if (!ctrl && !alt && shift && (e.Key == Key.OemPlus || e.Key == Key.Add))
+        {
+            vm.CycleBlendModeCommand.Execute(true);
+            e.Handled = true;
+            return;
+        }
+        if (!ctrl && !alt && shift && (e.Key == Key.OemMinus || e.Key == Key.Subtract))
+        {
+            vm.CycleBlendModeCommand.Execute(false);
+            e.Handled = true;
+            return;
+        }
+
         // Layer Arrangement
         if (ctrl && (e.Key == Key.OemOpenBrackets || e.Key == Key.Oem4))
         {

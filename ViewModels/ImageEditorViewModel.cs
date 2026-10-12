@@ -243,11 +243,28 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     public bool HasSelection => SelectedElement != null || HasMultiSelection;
 
     [RelayCommand]
-    private void ToggleLayerVisibility(CanvasElement element)
+    public void ToggleLayerVisibility(CanvasElement? element = null)
     {
-        element.IsVisible = !element.IsVisible;
+        var targets = element != null
+            ? [element]
+            : (SelectedElements.Count > 0
+                ? SelectedElements.ToList()
+                : (SelectedElement != null ? [SelectedElement] : (Elements.Count > 0 ? [Elements[^1]] : [])));
+
+        if (targets.Count == 0) return;
+
+        bool allHidden = targets.All(t => !t.IsVisible);
+        bool newVisibility = allHidden; // if all are hidden, reveal; else hide all
+
+        foreach (var t in targets)
+        {
+            t.IsVisible = newVisibility;
+        }
+
         RefreshCanvas();
         OnPropertyChanged(nameof(LayersDescendingZ));
+        OnPropertyChanged(nameof(SelectedElement));
+        StatusMessage = newVisibility ? "Show Layers" : "Hide Layers";
     }
 
     [RelayCommand]

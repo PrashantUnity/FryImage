@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Media;
@@ -2072,11 +2073,13 @@ public partial class ImageEditorViewModel
                 AllowMultiple = true,
                 FileTypeFilter =
                 [
-                    new FilePickerFileType("Supported Studio Formats (*.psd, *.abr, *.aco, *.ase, *.grd, *.pat, *.fits, images)")
+                    new FilePickerFileType("Supported Studio Formats (*.psd, *.abr, *.aco, *.ase, *.grd, *.pat, *.fits, *.pcx, *.kra, images)")
                     {
-                        Patterns = ["*.psd", "*.abr", "*.aco", "*.ase", "*.grd", "*.pat", "*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp", "*.gif", "*.tif", "*.tiff", "*.fits", "*.fit", "*.fts"]
+                        Patterns = ["*.psd", "*.abr", "*.aco", "*.ase", "*.grd", "*.pat", "*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp", "*.gif", "*.tif", "*.tiff", "*.fits", "*.fit", "*.fts", "*.pcx", "*.kra"]
                     },
                     new FilePickerFileType("Layered Document (*.psd)") { Patterns = ["*.psd"] },
+                    new FilePickerFileType("Krita Document (*.kra)") { Patterns = ["*.kra"] },
+                    new FilePickerFileType("ZSoft PCX Image (*.pcx)") { Patterns = ["*.pcx"] },
                     new FilePickerFileType("Adobe Photoshop Brushes (*.abr)") { Patterns = ["*.abr"] },
                     new FilePickerFileType("Adobe Swatches (*.aco, *.ase)") { Patterns = ["*.aco", "*.ase"] },
                     new FilePickerFileType("Adobe Gradients (*.grd)") { Patterns = ["*.grd"] },
@@ -2226,6 +2229,86 @@ public partial class ImageEditorViewModel
                         pin.Free();
                     }
 
+                    openedCount++;
+                }
+                else if (ext == ".pcx")
+                {
+                    var pcx = PcxCodec.Decode(stream);
+                    if (Elements.Count == 0)
+                    {
+                        ClearCanvas();
+                        CanvasWidth = Math.Max(200, pcx.Width);
+                        CanvasHeight = Math.Max(150, pcx.Height);
+                        DocumentTitle = file.Name;
+                    }
+
+                    using var skBmp = new SKBitmap(pcx.Width, pcx.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
+                    var pin = GCHandle.Alloc(pcx.BgraPixels, GCHandleType.Pinned);
+                    try
+                    {
+                        skBmp.InstallPixels(skBmp.Info, pin.AddrOfPinnedObject());
+                        using var img = SKImage.FromBitmap(skBmp);
+                        using var data = img.Encode(SKEncodedImageFormat.Png, 100);
+                        byte[] pngBytes = data.ToArray();
+
+                        using var ms = new MemoryStream(pngBytes);
+                        var avaloniaBmp = new Bitmap(ms);
+
+                        var el = new ImageElement
+                        {
+                            Name = Path.GetFileNameWithoutExtension(file.Name),
+                            X = (CanvasWidth - pcx.Width) / 2.0,
+                            Y = (CanvasHeight - pcx.Height) / 2.0,
+                            Width = pcx.Width,
+                            Height = pcx.Height,
+                            NaturalPixelWidth = pcx.Width,
+                            NaturalPixelHeight = pcx.Height,
+                            Source = avaloniaBmp,
+                            OriginalImageBytes = pngBytes,
+                            ZIndex = Elements.Count + 1
+                        };
+
+                        Elements.Add(el);
+                        SelectedElement = el;
+                    }
+                    finally
+                    {
+                        pin.Free();
+                    }
+
+                    openedCount++;
+                }
+                else if (ext == ".kra")
+                {
+                    var kra = KraCodec.Decode(stream);
+                    if (Elements.Count == 0)
+                    {
+                        ClearCanvas();
+                        CanvasWidth = Math.Max(200, kra.Width);
+                        CanvasHeight = Math.Max(150, kra.Height);
+                        DocumentTitle = file.Name;
+                    }
+
+                    using var ms = new MemoryStream(kra.PngBytes);
+                    var avaloniaBmp = new Bitmap(ms);
+
+                    var el = new ImageElement
+                    {
+                        Name = Path.GetFileNameWithoutExtension(file.Name),
+                        X = (CanvasWidth - kra.Width) / 2.0,
+                        Y = (CanvasHeight - kra.Height) / 2.0,
+                        Width = kra.Width,
+                        Height = kra.Height,
+                        NaturalPixelWidth = kra.Width,
+                        NaturalPixelHeight = kra.Height,
+                        Source = avaloniaBmp,
+                        OriginalImageBytes = kra.PngBytes,
+                        ZIndex = Elements.Count + 1
+                    };
+
+                    Elements.Add(el);
+                    SelectedElement = el;
+                    StatusMessage = kra.Warning;
                     openedCount++;
                 }
                 else if (ext == ".abr")

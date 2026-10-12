@@ -143,6 +143,14 @@ public partial class ImageEditorViewModel
         AddCmd("layer.sendbackward", "Send Backward", "Layer", "Ctrl+[", "ArrangeSendBackward", SendBackward);
         AddCmd("layer.bringtofront", "Bring to Front", "Layer", "Ctrl+Shift+]", "ArrangeBringToFront", BringToFront);
         AddCmd("layer.sendtoback", "Send to Back", "Layer", "Ctrl+Shift+[", "ArrangeSendToBack", SendToBack);
+        AddCmd("layer.visibility.toggle", "Toggle Layer Visibility (Hide / Show)", "Layer", "Ctrl+,", "EyeOutline", () => ToggleLayerVisibility());
+        AddCmd("layer.lock.transparency", "Lock Transparent Pixels", "Layer", "/", "Checkerboard", () => ToggleLockTransparency());
+        AddCmd("layer.target.mask", "Target Layer Mask", "Layer", "Ctrl+\\", "ShieldHalfFull", TargetLayerMask);
+        AddCmd("layer.from.background", "Layer from Background...", "Layer", null, "LayersOutline", () => ConvertBackgroundToLayer());
+        AddCmd("layer.to.background", "Background from Layer", "Layer", null, "LockOutline", () => ConvertLayerToBackground());
+        AddCmd("layer.rename", "Rename Layer...", "Layer", null, "RenameBox", () => OpenRenameLayerDialog());
+        AddCmd("layer.blendmode.next", "Next Blend Mode", "Layer", "Shift++", "SwapVertical", () => CycleBlendMode(true));
+        AddCmd("layer.blendmode.prev", "Previous Blend Mode", "Layer", "Shift+-", "SwapVertical", () => CycleBlendMode(false));
 
         // ── 5. Brush Settings & Panels ───────────────────────
         AddCmd("window.brushsettings", "Brush Settings Panel", "Window", "F5", "BrushVariant", () => SelectRightDockTab("Brushes"));
@@ -161,10 +169,14 @@ public partial class ImageEditorViewModel
         AddCmd("edit.cut", "Cut", "Edit", "Ctrl+X", "ContentCut", DeleteSelectedElement);
         AddCmd("edit.copy", "Copy", "Edit", "Ctrl+C", "ContentCopy", CopyElements);
         AddCmd("edit.paste", "Paste", "Edit", "Ctrl+V", "ContentPaste", PasteElements);
+        AddCmd("edit.fill.history", "Fill from History", "Edit", "Ctrl+Alt+Backspace", "History", FillFromHistory);
         AddCmd("edit.clear", "Clear Canvas", "Edit", null, "DeleteSweep", RequestClearCanvas);
 
         // ── 7. View & Document ───────────────────────────────
         AddCmd("view.fit", "Fit on Screen", "View", "Ctrl+0", "FitToScreenOutline", FitToWindow);
+        AddCmd("view.fit.layer", "Fit Layer(s) on Screen", "View", null, "FitToPageOutline", () => FitLayerToScreen());
+        AddCmd("select.luminosity", "Load Luminosity Selection", "Select", "Ctrl+Alt+2", "SelectCompare", LoadLuminositySelection);
+        AddCmd("select.save", "Save Selection as Channel...", "Select", null, "SelectionDrag", () => SaveSelectionAsChannel());
         AddCmd("view.actual", "Actual Pixels 100%", "View", "Ctrl+1", "MagnifyScan", ResetZoom);
         AddCmd("view.zoomin", "Zoom In", "View", "Ctrl++", "MagnifyPlusOutline", ZoomIn);
         AddCmd("view.zoomout", "Zoom Out", "View", "Ctrl+-", "MagnifyMinusOutline", ZoomOut);

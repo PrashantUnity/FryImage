@@ -82,6 +82,21 @@ public abstract class CanvasElement
     public byte BlendIfUnderMin { get; set; } = 0;
     public byte BlendIfUnderMax { get; set; } = 255;
 
+    /// <summary>When true, transparency of this layer is locked against modification (Photoshop Lock Transparent Pixels, '/').</summary>
+    public bool IsTransparencyLocked { get; set; }
+
+    /// <summary>When true, spatial position and transforms of this layer are locked.</summary>
+    public bool IsPositionLocked { get; set; }
+
+    /// <summary>Whether this element serves structurally as the document's Background layer.</summary>
+    public bool IsBackground { get; set; }
+
+    /// <summary>
+    /// Whether this layer has Photoshop Background traits: an unclipped layer at the bottom with
+    /// position and transparency locked, regardless of its localized name.
+    /// </summary>
+    public bool HasBackgroundTraits => IsBackground || (IsTransparencyLocked && IsPositionLocked && !IsClippingMask && this is ImageElement);
+
     /// <summary>Copies common base properties to a newly cloned element.</summary>
     protected void CopyBasePropertiesTo(CanvasElement target)
     {
@@ -99,6 +114,9 @@ public abstract class CanvasElement
         target.Effects = Effects.Clone();
         target.IsVisible = IsVisible;
         target.IsLocked = IsLocked;
+        target.IsTransparencyLocked = IsTransparencyLocked;
+        target.IsPositionLocked = IsPositionLocked;
+        target.IsBackground = IsBackground;
         target.Name = Name;
         target.GroupId = GroupId;
         target.AspectLocked = AspectLocked;

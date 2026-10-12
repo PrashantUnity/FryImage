@@ -14,7 +14,18 @@ public partial class LayersDockPanel : UserControl
     {
         if (DataContext is ImageEditorViewModel vm)
         {
-            vm.OpenLayerStyleDialogCommand.Execute(null);
+            var target = vm.SelectedElement;
+            if (target != null)
+            {
+                if (target.HasBackgroundTraits)
+                {
+                    vm.ConvertBackgroundToLayerCommand.Execute(target);
+                }
+                else
+                {
+                    vm.OpenRenameLayerDialogCommand.Execute(target);
+                }
+            }
         }
     }
 }

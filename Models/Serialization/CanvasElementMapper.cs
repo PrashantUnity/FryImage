@@ -43,6 +43,9 @@ public static class CanvasElementMapper
         dto.ZIndex = el.ZIndex;
         dto.RotationDegrees = el.RotationDegrees; dto.FlipX = el.FlipX; dto.FlipY = el.FlipY;
         dto.Opacity = el.Opacity; dto.IsVisible = el.IsVisible; dto.IsLocked = el.IsLocked;
+        dto.IsTransparencyLocked = el.IsTransparencyLocked;
+        dto.IsPositionLocked = el.IsPositionLocked;
+        dto.IsBackground = el.IsBackground;
         dto.Name = el.Name; dto.GroupId = el.GroupId; dto.AspectLocked = el.AspectLocked;
         dto.FillOpacity = el.FillOpacity;
         dto.BlendMode = el.BlendMode.ToString();
@@ -61,6 +64,9 @@ public static class CanvasElementMapper
         el.ZIndex = dto.ZIndex;
         el.RotationDegrees = dto.RotationDegrees; el.FlipX = dto.FlipX; el.FlipY = dto.FlipY;
         el.Opacity = dto.Opacity; el.IsVisible = dto.IsVisible; el.IsLocked = dto.IsLocked;
+        el.IsTransparencyLocked = dto.IsTransparencyLocked;
+        el.IsPositionLocked = dto.IsPositionLocked;
+        el.IsBackground = dto.IsBackground;
         el.Name = dto.Name; el.GroupId = dto.GroupId; el.AspectLocked = dto.AspectLocked;
         el.FillOpacity = dto.FillOpacity;
         el.BlendMode = Enum.TryParse<LayerBlendMode>(dto.BlendMode, true, out var bm) ? bm : LayerBlendMode.Normal;

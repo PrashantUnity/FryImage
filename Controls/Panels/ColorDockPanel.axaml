@@ -72,6 +72,8 @@
                     <!-- Vertical Rainbow Hue Slider -->
                     <Border Grid.Column="2" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" CornerRadius="1">
                         <colorPrimitives:ColorSlider Color="{Binding PrimaryColor, Mode=TwoWay}"
+                                                     ColorModel="Hsva"
+                                                     ColorComponent="Component1"
                                                      Orientation="Vertical"
                                                      Width="16" />
                     </Border>

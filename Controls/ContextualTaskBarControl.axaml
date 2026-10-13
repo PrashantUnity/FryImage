@@ -4,7 +4,7 @@
              xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.ContextualTaskBarControl"
              x:DataType="local:ImageEditorViewModel"
-             IsVisible="{Binding IsContextualTaskBarVisible}">
+             IsVisible="{Binding IsContextualTaskBarEffectivelyVisible}">
 
     <UserControl.Resources>
         <local:ColorToBrushConverter x:Key="ColorToBrushConverter" />
@@ -83,6 +83,40 @@
                 </Button>
                 <Button Classes="ps-opt-btn" Command="{Binding DuplicateCommand}" ToolTip.Tip="Duplicate Layer (Ctrl+J)">
                     <materialIcons:MaterialIcon Kind="ContentCopy" Width="13" Height="13" />
+                </Button>
+            </StackPanel>
+
+            <!-- MODE 3.5: Shape / Vector / Other Element Selected -->
+            <StackPanel Orientation="Horizontal" Spacing="4"
+                        IsVisible="{Binding HasSelectedOtherElement}">
+                <Button Classes="ps-opt-btn" Command="{Binding OpenColorPickerCommand}" CommandParameter="Foreground" ToolTip.Tip="Fill Color">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Border Width="14" Height="14" CornerRadius="2"
+                                Background="{Binding PrimaryColor, Converter={StaticResource ColorToBrushConverter}}"
+                                BorderBrush="#FFFFFF" BorderThickness="1" />
+                        <TextBlock Text="Fill" FontSize="11" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button Classes="ps-opt-btn" Command="{Binding OpenColorPickerCommand}" CommandParameter="Background" ToolTip.Tip="Stroke Color">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Border Width="14" Height="14" CornerRadius="2"
+                                Background="{Binding SecondaryColor, Converter={StaticResource ColorToBrushConverter}}"
+                                BorderBrush="#FFFFFF" BorderThickness="1" />
+                        <TextBlock Text="Stroke" FontSize="11" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <NumericUpDown Classes="ps-num" Width="64" Height="22" Minimum="0" Maximum="50"
+                               Value="{Binding StrokeThicknessField, Mode=TwoWay}"
+                               FormatString="{}{0:0} px" ToolTip.Tip="Stroke Width" />
+                <Rectangle Width="1" Height="14" Fill="{DynamicResource PsBorderSubtleBrush}" Margin="2,0" />
+                <Button Classes="ps-opt-btn" Command="{Binding OpenLayerStyleDialogCommand}" ToolTip.Tip="Layer Style (fx)">
+                    <TextBlock Text="fx" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource PsAccentBrush}" />
+                </Button>
+                <Button Classes="ps-opt-btn" Command="{Binding DuplicateCommand}" ToolTip.Tip="Duplicate Layer (Ctrl+J)">
+                    <materialIcons:MaterialIcon Kind="ContentCopy" Width="13" Height="13" />
+                </Button>
+                <Button Classes="ps-opt-btn" Command="{Binding DeleteSelectedElementCommand}" ToolTip.Tip="Delete (Del)">
+                    <materialIcons:MaterialIcon Kind="DeleteOutline" Width="13" Height="13" Foreground="#EC5B62" />
                 </Button>
             </StackPanel>
 

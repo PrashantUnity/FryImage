@@ -233,6 +233,52 @@ public partial class ImageEditorViewModel
     private Color _colorPickerWorkingColor = Colors.Black;
 
     [ObservableProperty]
+    private HsvColor _colorPickerHsvColor = new(1.0, 0.0, 0.0, 0.0);
+
+    private bool _isUpdatingColorHsv;
+
+    partial void OnColorPickerHsvColorChanged(HsvColor value)
+    {
+        if (_isUpdatingColorHsv) return;
+        _isUpdatingColorHsv = true;
+        try
+        {
+            var rgb = value.ToRgb();
+            ColorPickerWorkingColor = ColorPickerOnlyWebColors ? ColorConversions.SnapToWebSafe(rgb) : rgb;
+        }
+        finally
+        {
+            _isUpdatingColorHsv = false;
+        }
+    }
+
+    partial void OnColorPickerWorkingColorChanged(Color value)
+    {
+        if (_isUpdatingColorHsv) return;
+        _isUpdatingColorHsv = true;
+        try
+        {
+            var hsv = value.ToHsv();
+            if (hsv.S < 0.001 && hsv.V < 0.001)
+            {
+                ColorPickerHsvColor = new HsvColor(hsv.A, ColorPickerHsvColor.H, 0.0, 0.0);
+            }
+            else if (hsv.S < 0.001)
+            {
+                ColorPickerHsvColor = new HsvColor(hsv.A, ColorPickerHsvColor.H, 0.0, hsv.V);
+            }
+            else
+            {
+                ColorPickerHsvColor = hsv;
+            }
+        }
+        finally
+        {
+            _isUpdatingColorHsv = false;
+        }
+    }
+
+    [ObservableProperty]
     private Color _colorPickerOriginalColor = Colors.Black;
 
     [ObservableProperty]
@@ -263,6 +309,10 @@ public partial class ImageEditorViewModel
             ? SecondaryColor
             : PrimaryColor;
         ColorPickerWorkingColor = ColorPickerOriginalColor;
+        var hsv = ColorPickerOriginalColor.ToHsv();
+        ColorPickerHsvColor = (hsv.S < 0.001 && hsv.V < 0.001)
+            ? new HsvColor(1.0, 0.0, 0.0, 0.0)
+            : hsv;
         IsColorPickerVisible = true;
     }
 

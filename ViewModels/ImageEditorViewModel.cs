@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -170,7 +171,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     private void ToggleRulers() => ShowRulers = !ShowRulers;
 
     [ObservableProperty]
-    private bool _showGrid = true;
+    private bool _showGrid = false;
 
     [RelayCommand]
     private void ToggleGrid()
@@ -485,6 +486,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(HasSelectedTextElement))]
     [NotifyPropertyChangedFor(nameof(HasSelectedImageElement))]
     [NotifyPropertyChangedFor(nameof(HasSelectedShapeElement))]
+    [NotifyPropertyChangedFor(nameof(HasSelectedOtherElement))]
     [NotifyPropertyChangedFor(nameof(HasSelectedElements))]
     [NotifyPropertyChangedFor(nameof(HasSelection))]
     private CanvasElement? _selectedElement;
@@ -509,6 +511,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(HasMultiSelection))]
     [NotifyPropertyChangedFor(nameof(HasTripleSelection))]
     [NotifyPropertyChangedFor(nameof(HasSelectedElements))]
+    [NotifyPropertyChangedFor(nameof(HasSelectedOtherElement))]
     [NotifyPropertyChangedFor(nameof(HasSelection))]
     [NotifyPropertyChangedFor(nameof(CanAlignSelectedElements))]
     private ObservableCollection<CanvasElement> _selectedElements = [];
@@ -520,6 +523,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     public bool HasSelectedTextElement => SelectedElement is TextElement;
     public bool HasSelectedImageElement => SelectedElement is ImageElement;
     public bool HasSelectedShapeElement => SelectedElement is RectangleElement or EllipseElement or PolygonElement or StarElement or ArrowElement;
+    public bool HasSelectedOtherElement => HasSelectedElements && !HasSelectedTextElement && !HasSelectedImageElement;
 
     /// <summary>Statically-typed convenience for XAML bindings that need ImageElement-only
     /// members (e.g. AspectLocked) — SelectedElement itself is CanvasElement-typed.</summary>
@@ -3562,6 +3566,47 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     public bool IsDirty => Elements.Count > 0 || History.CanUndo;
     public bool HasUnsavedWork => IsDirty;
     public bool HasUnsavedChanges => IsDirty;
+
+    public bool HasAnyActiveModal =>
+        IsLayerStyleDialogOpen ||
+        IsExportDialogOpen ||
+        IsNewDocumentDialogOpen ||
+        IsAdjustmentDialogOpen ||
+        IsFilterDialogOpen ||
+        IsSelectAndMaskDialogOpen ||
+        IsColorRangeDialogOpen ||
+        IsLiquifyDialogOpen ||
+        IsContentAwareScaleDialogOpen ||
+        IsNewGuideDialogOpen ||
+        IsNewGuideLayoutDialogOpen ||
+        IsWarpTextDialogOpen ||
+        IsDuplicateLayerDialogOpen ||
+        IsNewLayerDialogOpen ||
+        IsRenameLayerDialogOpen ||
+        IsColorPickerVisible ||
+        IsConfirmingDiscard ||
+        IsCommandPaletteOpen ||
+        IsLoadFilesIntoStackDialogOpen ||
+        IsFitImageDialogOpen ||
+        IsApplyImageDialogOpen ||
+        IsNewBrushPresetDialogOpen;
+
+    public bool IsContextualTaskBarEffectivelyVisible =>
+        IsContextualTaskBarVisible && !HasAnyActiveModal;
+
+    protected override void OnPropertyChanged(PropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+        if (e.PropertyName != null && (
+            e.PropertyName.EndsWith("DialogOpen") ||
+            e.PropertyName == nameof(IsColorPickerVisible) ||
+            e.PropertyName == nameof(IsConfirmingDiscard) ||
+            e.PropertyName == nameof(IsCommandPaletteOpen) ||
+            e.PropertyName == nameof(IsContextualTaskBarVisible)))
+        {
+            OnPropertyChanged(nameof(IsContextualTaskBarEffectivelyVisible));
+        }
+    }
 
     // Continuous RGB Ribbon Histogram moved to ViewModels/ImageEditorViewModel.Histogram.cs
     // Layer Style Modal Dialog (fx) moved to ViewModels/ImageEditorViewModel.Modals.cs

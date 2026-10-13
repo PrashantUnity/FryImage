@@ -79,19 +79,19 @@
                             <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="3">
                                 <!-- W & X -->
                                 <TextBlock Grid.Row="0" Grid.Column="0" Text="W" Classes="ps-label" Width="16" VerticalAlignment="Center" />
-                                <TextBox Grid.Row="0" Grid.Column="1" Classes="ps-input" Text="{Binding SelectedElement.Width, StringFormat='{}{0:0} px', FallbackValue='0 px'}" Margin="0,0,4,0" IsReadOnly="True" />
+                                <TextBox Grid.Row="0" Grid.Column="1" Classes="ps-input" Text="{Binding ElementWidthField, StringFormat='{}{0:0} px'}" Margin="0,0,4,0" IsReadOnly="True" />
                                 <TextBlock Grid.Row="0" Grid.Column="2" Text="X" Classes="ps-label" Width="16" VerticalAlignment="Center" />
-                                <TextBox Grid.Row="0" Grid.Column="3" Classes="ps-input" Text="{Binding SelectedElement.X, StringFormat='{}{0:0} px', FallbackValue='0 px'}" IsReadOnly="True" />
+                                <TextBox Grid.Row="0" Grid.Column="3" Classes="ps-input" Text="{Binding ElementXField, StringFormat='{}{0:0} px'}" IsReadOnly="True" />
 
                                 <!-- H & Y -->
                                 <TextBlock Grid.Row="1" Grid.Column="0" Text="H" Classes="ps-label" Width="16" VerticalAlignment="Center" />
-                                <TextBox Grid.Row="1" Grid.Column="1" Classes="ps-input" Text="{Binding SelectedElement.Height, StringFormat='{}{0:0} px', FallbackValue='0 px'}" Margin="0,0,4,0" IsReadOnly="True" />
+                                <TextBox Grid.Row="1" Grid.Column="1" Classes="ps-input" Text="{Binding ElementHeightField, StringFormat='{}{0:0} px'}" Margin="0,0,4,0" IsReadOnly="True" />
                                 <TextBlock Grid.Row="1" Grid.Column="2" Text="Y" Classes="ps-label" Width="16" VerticalAlignment="Center" />
-                                <TextBox Grid.Row="1" Grid.Column="3" Classes="ps-input" Text="{Binding SelectedElement.Y, StringFormat='{}{0:0} px', FallbackValue='0 px'}" IsReadOnly="True" />
+                                <TextBox Grid.Row="1" Grid.Column="3" Classes="ps-input" Text="{Binding ElementYField, StringFormat='{}{0:0} px'}" IsReadOnly="True" />
 
                                 <!-- Angle & Flip Controls -->
                                 <TextBlock Grid.Row="2" Grid.Column="0" Text="∠" Classes="ps-label" Width="16" VerticalAlignment="Center" />
-                                <TextBox Grid.Row="2" Grid.Column="1" Classes="ps-input" Text="{Binding SelectedElement.RotationDegrees, StringFormat='{}{0:0}°', FallbackValue='0°'}" Margin="0,0,4,0" IsReadOnly="True" />
+                                <TextBox Grid.Row="2" Grid.Column="1" Classes="ps-input" Text="{Binding ElementRotationField, StringFormat='{}{0:0}°'}" Margin="0,0,4,0" IsReadOnly="True" />
                                 <StackPanel Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
                                     <Button Classes="ps-opt-btn" Width="22" Height="20" Command="{Binding FlipHorizontalCommand}" ToolTip.Tip="Flip Horizontally">
                                         <materialIcons:MaterialIcon Kind="FlipHorizontal" Width="12" Height="12" />

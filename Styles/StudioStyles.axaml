@@ -147,7 +147,7 @@
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{StaticResource PsTextDimBrush}" />
         <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Padding" Value="8,4" />
+        <Setter Property="Padding" Value="4,3" />
         <Setter Property="FontSize" Value="11" />
         <Setter Property="CornerRadius" Value="0" />
         <Setter Property="Height" Value="26" />
@@ -209,11 +209,24 @@
         <Setter Property="BorderBrush" Value="#4C4C4C" />
     </Style>
     <Style Selector="NumericUpDown /template/ ButtonSpinner, ButtonSpinner">
-        <Setter Property="Background" Value="#202020" />
-        <Setter Property="BorderBrush" Value="#2E2E2E" />
-        <Setter Property="BorderThickness" Value="1,0,0,0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Padding" Value="0" />
-        <Setter Property="Width" Value="15" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="NumericUpDown /template/ TextBox#PART_TextBox, NumericUpDown /template/ TextBox">
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Height" Value="20" />
+        <Setter Property="Padding" Value="4,0" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource PsTextBrush}" />
     </Style>
     <Style Selector="ButtonSpinner /template/ RepeatButton">
         <Setter Property="Background" Value="#202020" />
@@ -221,6 +234,8 @@
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="Margin" Value="0" />
+        <Setter Property="Width" Value="16" />
+        <Setter Property="MinWidth" Value="16" />
     </Style>
     <Style Selector="ButtonSpinner /template/ RepeatButton:pointerover">
         <Setter Property="Background" Value="#333333" />

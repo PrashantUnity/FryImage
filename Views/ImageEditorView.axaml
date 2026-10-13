@@ -29,7 +29,7 @@
         <controls:ToolOptionsBar Grid.Row="1" />
 
         <!-- Row 2: Main Studio Workspace -->
-        <Grid Grid.Row="2" ColumnDefinitions="Auto,*,3,290">
+        <Grid Grid.Row="2" ColumnDefinitions="Auto,*,3,310">
             <!-- Left Tool Palette (36px or 68px depending on 1-column / 2-column mode) -->
             <controls:ToolPaletteControl Grid.Column="0" />
 
@@ -104,7 +104,7 @@
                                 CornerRadius="2"
                                 Padding="2"
                                 BoxShadow="0 2 8 #40000000"
-                                IsVisible="{Binding HasSelectedElements}">
+                                IsVisible="False">
                             <StackPanel Orientation="Horizontal" Spacing="2">
                                 <Button Classes="ps-opt-btn" Command="{Binding OpenLayerStyleDialogCommand}" ToolTip.Tip="Layer Style (fx)">
                                     <TextBlock Text="fx" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource PsAccentBrush}" />

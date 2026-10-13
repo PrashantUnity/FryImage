@@ -38,7 +38,7 @@
                     <!-- Column 0: 2D Saturation / Value Box -->
                     <Border Grid.Column="0" Width="240" Height="240"
                             BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" CornerRadius="2">
-                        <colorPrimitives:ColorSpectrum Color="{Binding ColorPickerWorkingColor, Mode=TwoWay}"
+                        <colorPrimitives:ColorSpectrum HsvColor="{Binding ColorPickerHsvColor, Mode=TwoWay}"
                                                        Components="SaturationValue"
                                                        Shape="Box"
                                                        HorizontalAlignment="Stretch"
@@ -48,7 +48,9 @@
                     <!-- Column 2: Rainbow Hue Slider -->
                     <Border Grid.Column="2" Width="24" Height="240"
                             BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" CornerRadius="2">
-                        <colorPrimitives:ColorSlider Color="{Binding ColorPickerWorkingColor, Mode=TwoWay}"
+                        <colorPrimitives:ColorSlider HsvColor="{Binding ColorPickerHsvColor, Mode=TwoWay}"
+                                                     ColorModel="Hsva"
+                                                     ColorComponent="Component1"
                                                      Orientation="Vertical"
                                                      Width="24"
                                                      HorizontalAlignment="Stretch"

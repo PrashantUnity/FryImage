@@ -125,6 +125,7 @@ public static class ColorRangeEngine
                         break;
                     }
 
+                    case "Sampled Colors":
                     case "SampledColors":
                     default:
                     {

@@ -140,7 +140,18 @@ public partial class ImageEditorViewModel
     [RelayCommand]
     public void OpenLayerStyleDialog()
     {
-        if (SelectedElement is not { } el) return;
+        var el = SelectedElement ?? Elements.LastOrDefault();
+        if (el == null)
+        {
+            var dummy = new RectangleElement { Name = "Layer 1", Width = 200, Height = 200 };
+            Elements.Add(dummy);
+            SelectedElement = dummy;
+            el = dummy;
+        }
+        else
+        {
+            SelectedElement ??= el;
+        }
         var fx = el.Effects;
 
         FxDropShadowEnabled = fx.DropShadow.IsEnabled;
@@ -232,7 +243,8 @@ public partial class ImageEditorViewModel
     [RelayCommand]
     private void ApplyLayerStyleDialog()
     {
-        if (SelectedElement is not { } el)
+        var el = SelectedElement ?? Elements.LastOrDefault();
+        if (el == null)
         {
             IsLayerStyleDialogOpen = false;
             return;
@@ -363,9 +375,9 @@ public partial class ImageEditorViewModel
     // ── 2. New Document Modal Dialog (File › New...) ────────────────────────
     [ObservableProperty] private bool _isNewDocumentDialogOpen;
     [ObservableProperty] private string _newDocTitle = "Untitled-1";
-    [ObservableProperty] private int _newDocWidth = 2100;
-    [ObservableProperty] private int _newDocHeight = 1500;
-    [ObservableProperty] private int _newDocResolution = 300;
+    [ObservableProperty] private decimal _newDocWidth = 2100;
+    [ObservableProperty] private decimal _newDocHeight = 1500;
+    [ObservableProperty] private decimal _newDocResolution = 300;
     [ObservableProperty] private string _newDocBackgroundMode = "White";
 
     public IReadOnlyList<string> AvailableBackgroundModes { get; } = ["White", "Black", "Transparent"];
@@ -417,7 +429,7 @@ public partial class ImageEditorViewModel
     [RelayCommand]
     public void SwapNewDocOrientation()
     {
-        int temp = NewDocWidth;
+        decimal temp = NewDocWidth;
         NewDocWidth = NewDocHeight;
         NewDocHeight = temp;
         NewDocOrientation = NewDocHeight >= NewDocWidth ? "Portrait" : "Landscape";
@@ -427,8 +439,8 @@ public partial class ImageEditorViewModel
     public void ConfirmCreateDocument()
     {
         ClearCanvas();
-        CanvasWidth = NewDocWidth;
-        CanvasHeight = NewDocHeight;
+        CanvasWidth = (double)NewDocWidth;
+        CanvasHeight = (double)NewDocHeight;
         DocumentTitle = NewDocTitle;
 
         if (NewDocBackgroundMode == "Transparent")
@@ -763,6 +775,32 @@ public partial class ImageEditorViewModel
         AdjPreviewEnabled = true;
 
         _adjTargetImageElement = SelectedElement as ImageElement ?? Elements.OfType<ImageElement>().LastOrDefault();
+        if (_adjTargetImageElement == null && Elements.Count > 0)
+        {
+            using var rtb = RenderCanvasToBitmap(1.0);
+            if (rtb != null)
+            {
+                using var ms = new MemoryStream();
+                rtb.Save(ms, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
+                var bytes = ms.ToArray();
+                var img = new ImageElement
+                {
+                    Name = "Composite Layer",
+                    X = 0,
+                    Y = 0,
+                    Width = _canvasWidth,
+                    Height = _canvasHeight,
+                    OriginalImageBytes = bytes,
+                    Source = new Avalonia.Media.Imaging.Bitmap(new MemoryStream(bytes)),
+                    NaturalPixelWidth = (int)_canvasWidth,
+                    NaturalPixelHeight = (int)_canvasHeight,
+                    ZIndex = Elements.Count
+                };
+                Elements.Add(img);
+                SelectedElement = img;
+                _adjTargetImageElement = img;
+            }
+        }
         if (_adjTargetImageElement != null)
         {
             _adjOriginalImageBytes = _adjTargetImageElement.OriginalImageBytes;
@@ -1635,6 +1673,33 @@ public partial class ImageEditorViewModel
         };
 
         _filterTargetImageElement = SelectedElement as ImageElement ?? Elements.OfType<ImageElement>().LastOrDefault();
+        if (_filterTargetImageElement == null && Elements.Count > 0)
+        {
+            using var rtb = RenderCanvasToBitmap(1.0);
+            if (rtb != null)
+            {
+                using var ms = new MemoryStream();
+                rtb.Save(ms, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
+                var bytes = ms.ToArray();
+                var img = new ImageElement
+                {
+                    Name = "Composite Layer",
+                    X = 0,
+                    Y = 0,
+                    Width = _canvasWidth,
+                    Height = _canvasHeight,
+                    OriginalImageBytes = bytes,
+                    Source = new Avalonia.Media.Imaging.Bitmap(new MemoryStream(bytes)),
+                    NaturalPixelWidth = (int)_canvasWidth,
+                    NaturalPixelHeight = (int)_canvasHeight,
+                    ZIndex = Elements.Count
+                };
+                Elements.Add(img);
+                SelectedElement = img;
+                _filterTargetImageElement = img;
+            }
+        }
+
         if (_filterTargetImageElement != null)
         {
             _filterOriginalBytes = _filterTargetImageElement.OriginalImageBytes;

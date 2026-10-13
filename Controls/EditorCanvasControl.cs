@@ -282,7 +282,7 @@ public partial class EditorCanvasControl : Control
     public double CanvasOriginScreenY => (Bounds.Height - _logicalHeight * _zoom) / 2 + _panOffset.Y;
     public event Action<Point>? CursorPositionChanged;
 
-    private bool _isGridVisible = true;
+    private bool _isGridVisible = false;
     public bool IsGridVisible
     {
         get => _isGridVisible;

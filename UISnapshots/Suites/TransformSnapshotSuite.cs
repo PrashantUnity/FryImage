@@ -38,13 +38,15 @@ public static class TransformSnapshotSuite
         rectEl.Width = 320;
         rectEl.Height = 180;
 
-        // We can simulate resize state on the canvas
-        // Trigger live dimension badge
+        // Simulate resize state on the canvas to trigger live dimension HUD badge
+        canvas.SetTransformInteractionState(true, false, new Point(rectEl.X + rectEl.Width, rectEl.Y + rectEl.Height));
         canvas.InvalidateVisual();
         ctx.FlushUi();
 
-        // 4. Capture resized state
+        // 4. Capture resized state with HUD badge
         ctx.Capture("34_transform_dimension_hud_badge.png");
+
+        canvas.SetTransformInteractionState(false, false);
 
         // Restore original rotation and size
         rectEl.RotationDegrees = origRot;

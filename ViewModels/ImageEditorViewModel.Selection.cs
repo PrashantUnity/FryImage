@@ -361,13 +361,13 @@ public partial class ImageEditorViewModel
 
     // ── Color Range Workspace State ─────────────────────────────────────────
     [ObservableProperty] private bool _isColorRangeDialogOpen;
-    [ObservableProperty] private string _colorRangeSelectMode = "SampledColors";
+    [ObservableProperty] private string _colorRangeSelectMode = "Sampled Colors";
     [ObservableProperty] private double _colorRangeFuzziness = 40.0;
     [ObservableProperty] private bool _colorRangeInvert = false;
 
     public IReadOnlyList<string> AvailableColorRangeModes { get; } =
     [
-        "SampledColors",
+        "Sampled Colors",
         "Reds",
         "Yellows",
         "Greens",

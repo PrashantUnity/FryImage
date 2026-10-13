@@ -183,7 +183,7 @@
                                         <NumericUpDown Classes="ps-num" Value="{Binding NewDocResolution, Mode=TwoWay}" Minimum="1" Maximum="1200" Increment="1" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Spacing="3" Margin="4,0,0,0">
-                                        <TextBlock Text="Rate" Classes="ps-label" />
+                                        <TextBlock Text="Units" Classes="ps-label" />
                                         <ComboBox Classes="ps-combo" SelectedIndex="0">
                                             <ComboBoxItem Content="Pixels/Inch" />
                                             <ComboBoxItem Content="Pixels/Centimeter" />

@@ -564,11 +564,11 @@
                             IsVisible="{Binding IsCropToolActive}">
                     <TextBlock Text="Ratio:" Classes="ps-label" />
                     <ComboBox Classes="ps-combo" Width="105" Height="22" SelectedItem="{Binding CropAspectRatio, Mode=TwoWay}">
-                        <ComboBoxItem Content="Original" />
-                        <ComboBoxItem Content="1:1 (Square)" />
-                        <ComboBoxItem Content="16:9" />
-                        <ComboBoxItem Content="4:3" />
-                        <ComboBoxItem Content="Free" />
+                        <x:String>Original</x:String>
+                        <x:String>1:1 (Square)</x:String>
+                        <x:String>16:9</x:String>
+                        <x:String>4:3</x:String>
+                        <x:String>Free</x:String>
                     </ComboBox>
 
                     <Button Classes="ps-opt-btn" Width="24" Height="22" Command="{Binding StraightenCanvasCommand}" ToolTip.Tip="Straighten Horizon">
@@ -576,9 +576,9 @@
                     </Button>
 
                     <ComboBox Classes="ps-combo" Width="110" Height="22" SelectedItem="{Binding CropOverlayGrid, Mode=TwoWay}">
-                        <ComboBoxItem Content="Rule of Thirds" />
-                        <ComboBoxItem Content="Grid" />
-                        <ComboBoxItem Content="Golden Ratio" />
+                        <x:String>Rule of Thirds</x:String>
+                        <x:String>Grid</x:String>
+                        <x:String>Golden Ratio</x:String>
                     </ComboBox>
 
                     <CheckBox Content="Delete Cropped Pixels" IsChecked="{Binding CropDeleteCroppedPixels, Mode=TwoWay}" />
@@ -843,8 +843,8 @@
                             IsVisible="{Binding IsSubObjectSelectionActive}">
                     <TextBlock Text="Mode:" Classes="ps-label" />
                     <ComboBox Classes="ps-combo" Width="95" Height="22" SelectedItem="{Binding ObjectSelectionMode, Mode=TwoWay}">
-                        <ComboBoxItem Content="Rectangle" />
-                        <ComboBoxItem Content="Lasso" />
+                        <x:String>Rectangle</x:String>
+                        <x:String>Lasso</x:String>
                     </ComboBox>
                     <CheckBox Content="Sample All Layers" IsChecked="{Binding ObjectSelectionSampleAllLayers, Mode=TwoWay}" />
                     <CheckBox Content="Auto-Enhance" IsChecked="{Binding ObjectSelectionAutoEnhance, Mode=TwoWay}" />

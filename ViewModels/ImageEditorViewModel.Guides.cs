@@ -180,7 +180,7 @@ public partial class ImageEditorViewModel
             return false;
         }
 
-        double dpi = NewDocResolution > 0 ? NewDocResolution : 300.0;
+        double dpi = NewDocResolution > 0 ? (double)NewDocResolution : 300.0;
         double extent = isVertical ? (CanvasWidth > 0 ? CanvasWidth : 1000.0) : (CanvasHeight > 0 ? CanvasHeight : 1000.0);
 
         switch (suffix)

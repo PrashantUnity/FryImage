@@ -131,6 +131,25 @@ public partial class EditorCanvasControl
     }
 
     /// <summary>
+    /// Programmatically sets live transform interaction state for testing and HUD badge verification.
+    /// </summary>
+    public void SetTransformInteractionState(bool isResizing, bool isRotating, Point? cursorCanvasPos = null)
+    {
+        _isResizing = isResizing;
+        _isRotating = isRotating;
+        if (cursorCanvasPos.HasValue)
+        {
+            _cursorCanvasPos = cursorCanvasPos.Value;
+        }
+        else if (_selection.Count > 0)
+        {
+            var target = _selection[0];
+            _cursorCanvasPos = new Point(target.X + target.Width, target.Y + target.Height);
+        }
+        InvalidateVisual();
+    }
+
+    /// <summary>
     /// Draws floating HUD badge showing live dimensions or rotation angle during transform operations.
     /// </summary>
     public void DrawTransformHudBadge(DrawingContext dc)

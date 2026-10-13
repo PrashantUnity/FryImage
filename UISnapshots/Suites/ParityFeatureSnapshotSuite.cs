@@ -15,6 +15,7 @@ using SkiaSharp;
 using PdfEditorApp.Plugins.ImageEditor.Core.Codecs;
 using PdfEditorApp.Plugins.ImageEditor.Core.Actions;
 using PdfEditorApp.Plugins.ImageEditor.Core.Canvas;
+using PdfEditorApp.Plugins.ImageEditor.Core.Printing;
 using PdfEditorApp.Plugins.ImageEditor.Models;
 using PdfEditorApp.Plugins.ImageEditor.UISnapshots.Core;
 
@@ -1150,6 +1151,292 @@ public static class ParityFeatureSnapshotSuite
             throw new InvalidOperationException("FilterBatchSteps failed to remove Quick Export and Save commands (#4747).");
         }
         Console.WriteLine("  ✓ Batch action playback skips recorded Quick Export steps (#4747) verified.");
+
+        // 73. Test Channel Options Dialog & Spot Color Channels (#3761, #3784)
+        vm.OpenNewSpotChannelDialog();
+        if (!vm.IsNewSpotChannelDialogOpen)
+            throw new InvalidOperationException("OpenNewSpotChannelDialog failed.");
+        vm.NewSpotChannelName = "PANTONE 185 C";
+        vm.NewSpotChannelColor = Color.FromRgb(230, 30, 40);
+        vm.NewSpotChannelSolidity = 85.0;
+        vm.ConfirmNewSpotChannel();
+        if (vm.IsNewSpotChannelDialogOpen)
+            throw new InvalidOperationException("ConfirmNewSpotChannel failed to close dialog.");
+        var spotChannel = vm.DocumentChannels.FirstOrDefault(c => c.Name == "PANTONE 185 C");
+        if (spotChannel == null || !spotChannel.IsSpot || spotChannel.ColorIndicates != "spot" || Math.Abs(spotChannel.Solidity - 85.0) > 0.01)
+        {
+            throw new InvalidOperationException("Spot channel properties not correctly configured.");
+        }
+        // Test Channel Options editing on existing channel
+        vm.OpenChannelOptions(spotChannel);
+        if (!vm.IsChannelOptionsDialogOpen)
+            throw new InvalidOperationException("OpenChannelOptions failed.");
+        vm.ChannelOptionsName = "PANTONE 185 C Edited";
+        vm.ChannelOptionsOpacity = 90.0;
+        vm.ConfirmChannelOptions();
+        if (spotChannel.Name != "PANTONE 185 C Edited" || Math.Abs(spotChannel.Solidity - 90.0) > 0.01)
+        {
+            throw new InvalidOperationException("Channel Options editing failed.");
+        }
+        vm.DocumentChannels.Remove(spotChannel);
+        Console.WriteLine("  ✓ Channel Options dialog and Spot Color channels (#3761, #3784) verified.");
+
+        // 74. Test Brush Settings Minimum Inputs Disabled When Control is Off (#4775)
+        vm.BrushSizeControl = "Off";
+        vm.BrushSizeMinimum = 20.0;
+        if (vm.IsBrushSizeMinimumEnabled)
+            throw new InvalidOperationException("BrushSizeMinimum should be disabled when Control is Off (#4775).");
+        // Changing to Pen Pressure enables editing
+        vm.BrushSizeControl = "Pen Pressure";
+        if (!vm.IsBrushSizeMinimumEnabled)
+            throw new InvalidOperationException("BrushSizeMinimum should be enabled when Control is Pen Pressure (#4775).");
+        // Verify value was retained across control changes
+        if (Math.Abs(vm.BrushSizeMinimum - 20.0) > 0.01)
+            throw new InvalidOperationException("BrushSizeMinimum did not retain value across Control changes.");
+        // Test Roundness minimum
+        vm.BrushRoundnessControl = "Off";
+        vm.BrushRoundnessMinimum = 35.0;
+        if (vm.IsBrushRoundnessMinimumEnabled)
+            throw new InvalidOperationException("BrushRoundnessMinimum should be disabled when Control is Off.");
+        vm.BrushRoundnessControl = "Pen Tilt";
+        if (!vm.IsBrushRoundnessMinimumEnabled)
+            throw new InvalidOperationException("BrushRoundnessMinimum should be enabled when Control is Pen Tilt.");
+        // Test all Transfer minimums
+        vm.BrushOpacityControl = "Off";
+        vm.BrushFlowControl = "Off";
+        vm.BrushWetnessControl = "Off";
+        vm.BrushMixControl = "Off";
+        if (vm.IsBrushOpacityMinimumEnabled || vm.IsBrushFlowMinimumEnabled || vm.IsBrushWetnessMinimumEnabled || vm.IsBrushMixMinimumEnabled)
+            throw new InvalidOperationException("All four Transfer minimum inputs should be disabled when Control is Off.");
+        vm.BrushOpacityControl = "Pen Pressure";
+        vm.BrushFlowControl = "Fade";
+        vm.BrushWetnessControl = "Stylus Wheel";
+        vm.BrushMixControl = "Rotation";
+        if (!vm.IsBrushOpacityMinimumEnabled || !vm.IsBrushFlowMinimumEnabled || !vm.IsBrushWetnessMinimumEnabled || !vm.IsBrushMixMinimumEnabled)
+            throw new InvalidOperationException("Transfer minimum inputs should be enabled when their Control is not Off.");
+        Console.WriteLine("  ✓ Brush Settings minimum inputs disabled when Control is Off (#4775) verified.");
+
+        // 75. Test Export As ICO Dimension Limit and Warning (#4744)
+        double savedW = vm.CanvasWidth;
+        double savedH = vm.CanvasHeight;
+        vm.CanvasWidth = 512;
+        vm.CanvasHeight = 512;
+        vm.OpenExportDialog();
+        vm.ExportScale = 1.0;
+        vm.ExportFormat = "ICO";
+        if (!vm.IsIcoOversized)
+            throw new InvalidOperationException("IsIcoOversized should be true for 512x512.");
+        if (vm.CanConfirmExport)
+            throw new InvalidOperationException("CanConfirmExport should be false when ICO is oversized.");
+        if (!vm.IcoWarningMessage.Contains("256"))
+            throw new InvalidOperationException($"IcoWarningMessage mismatch: {vm.IcoWarningMessage}");
+        vm.ExportScale = 0.5; // 256x256
+        if (vm.IsIcoOversized || !vm.CanConfirmExport)
+            throw new InvalidOperationException("ICO 256x256 should be valid for export.");
+        vm.CloseExportDialogCommand.Execute(null);
+        vm.CanvasWidth = savedW;
+        vm.CanvasHeight = savedH;
+        // Encode synthetic 64x64 ICO
+        using var testSkBmp = new SKBitmap(64, 64);
+        byte[] icoData = IcoCodec.Encode(testSkBmp);
+        if (icoData.Length < 22 || icoData[0] != 0 || icoData[1] != 0 || icoData[2] != 1 || icoData[3] != 0)
+            throw new InvalidOperationException("IcoCodec failed to produce valid ICO binary header.");
+        Console.WriteLine("  ✓ Export As ICO format dimension limits (<=256x256) and warning (#4744) verified.");
+
+        // 76. Test Print Dialog & PrintEngine Layout (#4748)
+        vm.OpenPrintDialog();
+        if (!vm.IsPrintDialogOpen)
+            throw new InvalidOperationException("OpenPrintDialog failed.");
+        if (vm.AvailablePrinters.Count == 0)
+            throw new InvalidOperationException("AvailablePrinters must enumerate at least default or system printers.");
+        vm.SelectedPaper = "Letter";
+        vm.PrintOrientation = "Portrait";
+        vm.PrintScaleToFit = true;
+        var printLayout = PrintEngine.ComputeLayout(
+            1000, 800, 300.0, "Letter", "Portrait", center: true, 0, 0, 100.0, scaleToFit: true, false,
+            new PrintMarks(true, false, true, false, true)
+        );
+        if (printLayout.PaperWidthPt <= 0 || printLayout.PaperHeightPt <= 0)
+            throw new InvalidOperationException("PrintEngine failed to calculate paper bounds.");
+        if (printLayout.ImageWidthPt <= 0 || printLayout.ImageHeightPt <= 0)
+            throw new InvalidOperationException("PrintEngine scale-to-fit calculation failed.");
+        byte[] syntheticPdf = PrintEngine.RenderPrintPdf(testSkBmp, printLayout, "TestParityDoc");
+        if (syntheticPdf.Length < 50 || syntheticPdf[0] != (byte)'%' || syntheticPdf[1] != (byte)'P' || syntheticPdf[2] != (byte)'D' || syntheticPdf[3] != (byte)'F')
+            throw new InvalidOperationException("PrintEngine failed to render PDF document.");
+        vm.CancelPrint();
+        if (vm.IsPrintDialogOpen)
+            throw new InvalidOperationException("CancelPrint failed to close dialog.");
+        Console.WriteLine("  ✓ Print dialog, printer enumeration, layout engine and PDF rasterization (#4748) verified.");
+
+        // 77. Test New Document ISO B3 & B4 Presets (#4784)
+        vm.ApplyDocumentPreset("4169,5906,300,B3");
+        if ((int)vm.NewDocWidth != 4169 || (int)vm.NewDocHeight != 5906 || (int)vm.NewDocResolution != 300 || vm.NewDocTitle != "B3" || vm.NewDocOrientation != "Portrait")
+        {
+            throw new InvalidOperationException($"ISO B3 preset values mismatch: {vm.NewDocWidth}x{vm.NewDocHeight} @ {vm.NewDocResolution}");
+        }
+        vm.ApplyDocumentPreset("2953,4169,300,B4");
+        if ((int)vm.NewDocWidth != 2953 || (int)vm.NewDocHeight != 4169 || (int)vm.NewDocResolution != 300 || vm.NewDocTitle != "B4" || vm.NewDocOrientation != "Portrait")
+        {
+            throw new InvalidOperationException($"ISO B4 preset values mismatch: {vm.NewDocWidth}x{vm.NewDocHeight} @ {vm.NewDocResolution}");
+        }
+        Console.WriteLine("  ✓ New Document ISO B3 and B4 presets (#4784) verified.");
+
+        // 78. Test Brush & Pencil Mode dropdown blend modes (#4537)
+        vm.ActiveToolMode = "brush";
+        if (!vm.IsBrushToolActive)
+            throw new InvalidOperationException("IsBrushToolActive must be true for brush.");
+        vm.ActiveToolMode = "pencil";
+        if (!vm.IsBrushToolActive)
+            throw new InvalidOperationException("IsBrushToolActive must be true for pencil.");
+        vm.BlendModeField = LayerBlendMode.Normal;
+        var blendModesList = vm.AvailableBlendModes;
+        if (!blendModesList.Contains(LayerBlendMode.Normal) || !blendModesList.Contains(LayerBlendMode.Dissolve) || !blendModesList.Contains(LayerBlendMode.Multiply))
+            throw new InvalidOperationException("AvailableBlendModes list missing standard blend modes.");
+        Console.WriteLine("  ✓ Brush and Pencil Mode dropdown blend modes (#4537) verified.");
+
+        // 79. Real PSD Integration Test (behance-642fbe2bdc391.psd, 297MB, 61 layers)
+        string psdPath = "/Users/codefrydev/Desktop/SourceCode/FryImage/IdeaSample/behance-642fbe2bdc391.psd";
+        if (File.Exists(psdPath))
+        {
+            using (var psdStream = File.OpenRead(psdPath))
+            {
+                var realPsdDoc = PsdCodec.Decode(psdStream);
+                if (realPsdDoc.Width != 1800 || realPsdDoc.Height != 1071)
+                    throw new InvalidOperationException($"Real PSD dimensions mismatch: {realPsdDoc.Width}x{realPsdDoc.Height}");
+                if (realPsdDoc.Layers.Count != 61)
+                    throw new InvalidOperationException($"Real PSD layer count mismatch: {realPsdDoc.Layers.Count}");
+
+                // Validate decoded layer pixels
+                int layersWithPixels = 0;
+                foreach (var l in realPsdDoc.Layers)
+                {
+                    if (l.Width > 0 && l.Height > 0)
+                    {
+                        if (l.BgraPixels == null || l.BgraPixels.Length != l.Width * l.Height * 4)
+                            throw new InvalidOperationException($"Layer '{l.Name}' pixel buffer missing or malformed.");
+                        layersWithPixels++;
+                    }
+                }
+                if (layersWithPixels < 50)
+                    throw new InvalidOperationException($"Expected at least 50 layers with pixels, found {layersWithPixels}");
+
+                // Load document into ViewModel
+                vm.Elements.Clear();
+                vm.CanvasWidth = realPsdDoc.Width;
+                vm.CanvasHeight = realPsdDoc.Height;
+                vm.DocumentTitle = Path.GetFileName(psdPath);
+
+                int z = 1;
+                foreach (var l in realPsdDoc.Layers)
+                {
+                    if (l.BgraPixels != null && l.Width > 0 && l.Height > 0)
+                    {
+                        using var skBmp = new SKBitmap(l.Width, l.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
+                        var pin = System.Runtime.InteropServices.GCHandle.Alloc(l.BgraPixels, System.Runtime.InteropServices.GCHandleType.Pinned);
+                        try
+                        {
+                            skBmp.InstallPixels(skBmp.Info, pin.AddrOfPinnedObject());
+                            using var img = SKImage.FromBitmap(skBmp);
+                            using var data = img.Encode(SKEncodedImageFormat.Png, 90);
+                            byte[] pngBytes = data.ToArray();
+                            using var ms = new MemoryStream(pngBytes);
+                            var avaloniaBmp = new Bitmap(ms);
+
+                            var el = new ImageElement
+                            {
+                                Name = l.Name,
+                                X = l.Left,
+                                Y = l.Top,
+                                Width = l.Width,
+                                Height = l.Height,
+                                NaturalPixelWidth = l.Width,
+                                NaturalPixelHeight = l.Height,
+                                Source = avaloniaBmp,
+                                OriginalImageBytes = pngBytes,
+                                Opacity = l.Opacity / 255.0,
+                                BlendMode = LayerBlendMode.Normal,
+                                IsVisible = l.IsVisible,
+                                ZIndex = z++
+                            };
+                            vm.Elements.Add(el);
+                        }
+                        finally
+                        {
+                            pin.Free();
+                        }
+                    }
+                }
+
+                if (vm.Elements.Count == 0)
+                    throw new InvalidOperationException("Failed to populate ViewModel elements from real PSD.");
+
+                // Test Editing on Real PSD:
+                var targetEl = vm.Elements.FirstOrDefault(e => (e.Name?.Contains("Rectangle") ?? false) || (e.Name?.Contains("Layer") ?? false));
+                if (targetEl != null)
+                {
+                    vm.SelectedElements.Clear();
+                    vm.SelectedElements.Add(targetEl);
+                    vm.SelectedElement = targetEl;
+
+                    // Edit 1: Move / Translate
+                    double origX = targetEl.X;
+                    double origY = targetEl.Y;
+                    targetEl.X += 45;
+                    targetEl.Y += 25;
+                    if (Math.Abs(targetEl.X - (origX + 45)) > 0.01)
+                        throw new InvalidOperationException("Layer translation edit failed.");
+
+                    // Edit 2: Opacity modification
+                    targetEl.Opacity = 0.75;
+                    if (Math.Abs(targetEl.Opacity - 0.75) > 0.01)
+                        throw new InvalidOperationException("Layer opacity edit failed.");
+
+                    // Edit 3: Blend mode modification
+                    targetEl.BlendMode = LayerBlendMode.Overlay;
+                    if (targetEl.BlendMode != LayerBlendMode.Overlay)
+                        throw new InvalidOperationException("Layer blend mode edit failed.");
+
+                    // Edit 4: Duplicate element
+                    int initialCount = vm.Elements.Count;
+                    vm.DuplicateCommand.Execute(null);
+                    if (vm.Elements.Count != initialCount + 1)
+                        throw new InvalidOperationException("Layer duplicate edit failed.");
+                }
+
+                // Test Printing Real PSD:
+                vm.OpenPrintDialog();
+                if (!vm.IsPrintDialogOpen)
+                    throw new InvalidOperationException("Print dialog failed to open for real PSD.");
+
+                vm.SelectedPaper = "Letter";
+                vm.PrintOrientation = "Landscape";
+                vm.PrintScaleToFit = true;
+                vm.PrintCornerCropMarks = true;
+                vm.PrintRegistrationMarks = true;
+
+                var realPsdLayout = PrintEngine.ComputeLayout(
+                    vm.CanvasWidth, vm.CanvasHeight, 300.0,
+                    "Letter", "Landscape", center: true, 0, 0, 100.0,
+                    scaleToFit: true, emulsionDown: false,
+                    new PrintMarks(true, true, true, true, true)
+                );
+
+                if (realPsdLayout.ImageWidthPt <= 0 || realPsdLayout.ImageHeightPt <= 0)
+                    throw new InvalidOperationException("Print layout calculation failed for real PSD.");
+
+                // Render page to PDF
+                using var realPsdSurface = new SKBitmap((int)Math.Min(1800, vm.CanvasWidth), (int)Math.Min(1071, vm.CanvasHeight));
+                byte[] pdfBytes = PrintEngine.RenderPrintPdf(realPsdSurface, realPsdLayout, "behance-642fbe2bdc391.psd");
+                if (pdfBytes.Length < 1000)
+                    throw new InvalidOperationException("Print PDF rasterization produced invalid empty stream for real PSD.");
+
+                vm.CancelPrintCommand.Execute(null);
+                if (vm.IsPrintDialogOpen)
+                    throw new InvalidOperationException("Print dialog failed to close cleanly.");
+
+                Console.WriteLine($"  ✓ Real PSD (behance-642fbe2bdc391.psd, 297MB, 61 layers) decoding, editing, and print engine verified.");
+            }
+        }
     }
 
     private static byte[] CreateSyntheticPcx24(int width, int height)

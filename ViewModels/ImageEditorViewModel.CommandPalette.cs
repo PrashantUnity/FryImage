@@ -202,6 +202,10 @@ public partial class ImageEditorViewModel
         AddCmd("type.warp", "Warp Text...", "Type", null, "Waves", OpenWarpTextDialog);
         AddCmd("file.exportas", "Export As...", "File", "Alt+Shift+Ctrl+S", "Export", OpenExportDialog);
         AddCmd("file.new", "New Document...", "File", "Ctrl+N", "FileDocumentPlusOutline", OpenNewDocumentDialog);
+        AddCmd("file.print", "Print...", "File", "Ctrl+P", "Printer", OpenPrintDialog);
+        AddCmd("file.printonecopy", "Print One Copy", "File", "Alt+Shift+Ctrl+P", "Printer", ConfirmPrint);
+        AddCmd("channel.options", "Channel Options...", "Channel", null, "TuneVertical", () => OpenChannelOptions());
+        AddCmd("channel.newspot", "New Spot Channel...", "Channel", null, "EyedropperPlus", OpenNewSpotChannelDialog);
 
         void AddCmd(string id, string title, string category, string? shortcut, string icon, Action action)
         {

@@ -18,6 +18,7 @@ using PdfEditorApp.Plugins.ImageEditor.Core.Vector;
 using PdfEditorApp.Plugins.ImageEditor.Models;
 using PdfEditorApp.Plugins.ImageEditor.Models.Undo;
 using PdfEditorApp.Plugins.ImageEditor.Core.Undo;
+using PdfEditorApp.Plugins.ImageEditor.Core.Printing;
 using SkiaSharp;
 
 namespace PdfEditorApp.Plugins.ImageEditor;
@@ -401,6 +402,7 @@ public partial class ImageEditorViewModel
         {
             NewDocWidth = w;
             NewDocHeight = h;
+            NewDocOrientation = h >= w ? "Portrait" : "Landscape";
             if (parts.Length >= 3 && int.TryParse(parts[2], out int res))
                 NewDocResolution = res;
             if (parts.Length >= 4)
@@ -2493,6 +2495,44 @@ public partial class ImageEditorViewModel
                         }
                     }
 
+                    if (Elements.Count == 0 && psd.CompositeBgraPixels != null && psd.Width > 0 && psd.Height > 0)
+                    {
+                        using var skBmp = new SKBitmap(psd.Width, psd.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
+                        var pin = System.Runtime.InteropServices.GCHandle.Alloc(psd.CompositeBgraPixels, System.Runtime.InteropServices.GCHandleType.Pinned);
+                        try
+                        {
+                            skBmp.InstallPixels(skBmp.Info, pin.AddrOfPinnedObject());
+                            using var img = SKImage.FromBitmap(skBmp);
+                            using var data = img.Encode(SKEncodedImageFormat.Png, 100);
+                            byte[] pngBytes = data.ToArray();
+
+                            using var ms = new MemoryStream(pngBytes);
+                            var avaloniaBmp = new Bitmap(ms);
+
+                            var el = new ImageElement
+                            {
+                                Name = "Background",
+                                X = 0,
+                                Y = 0,
+                                Width = psd.Width,
+                                Height = psd.Height,
+                                NaturalPixelWidth = psd.Width,
+                                NaturalPixelHeight = psd.Height,
+                                Source = avaloniaBmp,
+                                OriginalImageBytes = pngBytes,
+                                Opacity = 1.0,
+                                BlendMode = LayerBlendMode.Normal,
+                                IsVisible = true,
+                                ZIndex = 1
+                            };
+                            Elements.Add(el);
+                        }
+                        finally
+                        {
+                            pin.Free();
+                        }
+                    }
+
                     openedCount++;
                 }
                 else if (ext is ".fits" or ".fit" or ".fts")
@@ -3075,5 +3115,411 @@ public partial class ImageEditorViewModel
         {
             StatusMessage = $"Error saving OpenRaster: {ex.Message}";
         }
+    }
+
+    // ── 15. Channel Options & Quick Mask Options Modal Dialog (#3761 parity) ──
+    [ObservableProperty] private bool _isChannelOptionsDialogOpen;
+    [ObservableProperty] private string _channelOptionsDialogTitle = "Channel Options";
+    [ObservableProperty] private DocumentChannelItem? _channelOptionsTarget;
+    [ObservableProperty] private string _channelOptionsName = "Alpha 1";
+    [ObservableProperty] private string _channelOptionsIndicates = "masked"; // masked | selected | spot
+    [ObservableProperty] private Color _channelOptionsColor = Color.FromRgb(255, 0, 0);
+    [ObservableProperty] private double _channelOptionsOpacity = 50.0;
+    [ObservableProperty] private bool _isChannelOptionsNameVisible = true;
+    [ObservableProperty] private bool _isChannelOptionsSpotVisible = true;
+    [ObservableProperty] private string _channelOptionsOpacityLabel = "Opacity:";
+
+    [ObservableProperty] private bool _quickMaskIndicatesSelected = false;
+    [ObservableProperty] private Color _quickMaskColor = Color.FromRgb(255, 0, 0);
+    [ObservableProperty] private double _quickMaskOpacity = 50.0;
+
+    partial void OnQuickMaskIndicatesSelectedChanged(bool value)
+    {
+        if (CanvasControl != null)
+        {
+            CanvasControl.QuickMaskIndicatesSelected = value;
+            CanvasControl.InvalidateVisual();
+        }
+    }
+
+    partial void OnQuickMaskColorChanged(Color value)
+    {
+        if (CanvasControl != null)
+        {
+            CanvasControl.QuickMaskOverlayColor = value;
+            CanvasControl.InvalidateVisual();
+        }
+    }
+
+    partial void OnQuickMaskOpacityChanged(double value)
+    {
+        if (CanvasControl != null)
+        {
+            CanvasControl.QuickMaskOverlayOpacity = value / 100.0;
+            CanvasControl.InvalidateVisual();
+        }
+    }
+
+    [RelayCommand]
+    public void OpenChannelOptions(DocumentChannelItem? channel = null)
+    {
+        var target = channel ?? SelectedChannel;
+        if (target == null || target.IsComposite) return;
+
+        ChannelOptionsTarget = target;
+        ChannelOptionsDialogTitle = "Channel Options";
+        ChannelOptionsName = target.Name;
+        ChannelOptionsIndicates = target.IsSpot ? "spot" : target.ColorIndicates;
+        ChannelOptionsColor = target.ChannelColor;
+        ChannelOptionsOpacity = target.IsSpot ? target.Solidity : target.Opacity;
+        IsChannelOptionsNameVisible = true;
+        IsChannelOptionsSpotVisible = true;
+        ChannelOptionsOpacityLabel = ChannelOptionsIndicates == "spot" ? "Solidity:" : "Opacity:";
+
+        IsChannelOptionsDialogOpen = true;
+    }
+
+    [RelayCommand]
+    public void OpenQuickMaskOptions()
+    {
+        ChannelOptionsTarget = null;
+        ChannelOptionsDialogTitle = "Quick Mask Options";
+        ChannelOptionsName = "Quick Mask";
+        ChannelOptionsIndicates = QuickMaskIndicatesSelected ? "selected" : "masked";
+        ChannelOptionsColor = QuickMaskColor;
+        ChannelOptionsOpacity = QuickMaskOpacity;
+        IsChannelOptionsNameVisible = false;
+        IsChannelOptionsSpotVisible = false;
+        ChannelOptionsOpacityLabel = "Opacity:";
+
+        IsChannelOptionsDialogOpen = true;
+    }
+
+    [RelayCommand]
+    public void SetChannelIndicates(string indicates)
+    {
+        ChannelOptionsIndicates = indicates;
+        ChannelOptionsOpacityLabel = indicates == "spot" ? "Solidity:" : "Opacity:";
+    }
+
+    [RelayCommand]
+    public void PickChannelOptionsColor()
+    {
+        OpenColorPicker(ChannelOptionsColor, c =>
+        {
+            ChannelOptionsColor = c;
+        });
+    }
+
+    [RelayCommand]
+    public void ConfirmChannelOptions()
+    {
+        if (ChannelOptionsTarget != null)
+        {
+            var target = ChannelOptionsTarget;
+            target.Name = string.IsNullOrWhiteSpace(ChannelOptionsName) ? target.Name : ChannelOptionsName.Trim();
+            target.ColorIndicates = ChannelOptionsIndicates;
+            target.ChannelColor = ChannelOptionsColor;
+            if (ChannelOptionsIndicates == "spot")
+            {
+                target.IsSpot = true;
+                target.Solidity = ChannelOptionsOpacity;
+            }
+            else
+            {
+                target.IsSpot = false;
+                target.Opacity = ChannelOptionsOpacity;
+            }
+            StatusMessage = $"Updated channel options for '{target.Name}'.";
+            CanvasControl?.InvalidateVisual();
+        }
+        else
+        {
+            QuickMaskIndicatesSelected = ChannelOptionsIndicates == "selected";
+            QuickMaskColor = ChannelOptionsColor;
+            QuickMaskOpacity = ChannelOptionsOpacity;
+            StatusMessage = "Updated Quick Mask options.";
+            CanvasControl?.InvalidateVisual();
+        }
+
+        IsChannelOptionsDialogOpen = false;
+    }
+
+    [RelayCommand]
+    public void CancelChannelOptions()
+    {
+        IsChannelOptionsDialogOpen = false;
+    }
+
+    // ── 16. New Spot Channel Modal Dialog (#3761 parity) ─────────────────────
+    [ObservableProperty] private bool _isNewSpotChannelDialogOpen;
+    [ObservableProperty] private string _newSpotChannelName = "Spot Color 1";
+    [ObservableProperty] private Color _newSpotChannelColor = Color.FromRgb(255, 0, 0);
+    [ObservableProperty] private double _newSpotChannelSolidity = 0.0;
+
+    [RelayCommand]
+    public void OpenNewSpotChannelDialog()
+    {
+        int spotCount = DocumentChannels.Count(c => c.IsSpot) + 1;
+        NewSpotChannelName = $"Spot Color {spotCount}";
+        IsNewSpotChannelDialogOpen = true;
+    }
+
+    [RelayCommand]
+    public void PickNewSpotChannelColor()
+    {
+        OpenColorPicker(NewSpotChannelColor, c =>
+        {
+            NewSpotChannelColor = c;
+        });
+    }
+
+    [RelayCommand]
+    public void ConfirmNewSpotChannel()
+    {
+        int docW = (int)Math.Max(1, CanvasWidth);
+        int docH = (int)Math.Max(1, CanvasHeight);
+
+        byte[] maskToSave = new byte[docW * docH];
+        if (CanvasControl?.QuickMaskBuffer != null && CanvasControl.QuickMaskBuffer.Length >= docW * docH)
+        {
+            Array.Copy(CanvasControl.QuickMaskBuffer, maskToSave, docW * docH);
+        }
+
+        var channelItem = new DocumentChannelItem
+        {
+            Name = string.IsNullOrWhiteSpace(NewSpotChannelName) ? "Spot Color 1" : NewSpotChannelName.Trim(),
+            Shortcut = $"Ctrl+{Math.Min(9, 5 + DocumentChannels.Count(c => c.IsAlpha || c.IsSpot))}",
+            IsComposite = false,
+            IsAlpha = false,
+            IsSpot = true,
+            ColorIndicates = "spot",
+            ChannelColor = NewSpotChannelColor,
+            Solidity = NewSpotChannelSolidity,
+            IsVisible = true,
+            Width = docW,
+            Height = docH,
+            MaskData = maskToSave
+        };
+
+        DocumentChannels.Add(channelItem);
+        SelectedChannel = channelItem;
+        StatusMessage = $"Created spot channel '{channelItem.Name}'.";
+        IsNewSpotChannelDialogOpen = false;
+        CanvasControl?.InvalidateVisual();
+    }
+
+    [RelayCommand]
+    public void CancelNewSpotChannel()
+    {
+        IsNewSpotChannelDialogOpen = false;
+    }
+
+    // ── 17. Studio Print Dialog & System Spooler Engine (#4748 parity) ────────
+    [ObservableProperty] private bool _isPrintDialogOpen;
+    [ObservableProperty] private ObservableCollection<string> _availablePrinters = new();
+    [ObservableProperty] private string _selectedPrinter = "Default Printer";
+    [ObservableProperty] private int _printCopies = 1;
+    [ObservableProperty] private ObservableCollection<string> _availablePapers = new()
+    {
+        "Letter", "Legal", "Tabloid", "A4", "A3", "A5", "B3", "B4", "4x6", "5x7"
+    };
+    [ObservableProperty] private string _selectedPaper = "Letter";
+    [ObservableProperty] private string _printOrientation = "Portrait";
+    [ObservableProperty] private string _printColorHandling = "Printer Manages Colors";
+    [ObservableProperty] private ObservableCollection<string> _availablePrinterProfiles = new()
+    {
+        "Coated CMYK", "sRGB IEC61966-2.1", "Adobe RGB (1998) compatible", "Display P3", "Gray Gamma 2.2"
+    };
+    [ObservableProperty] private string _selectedPrinterProfile = "Coated CMYK";
+    [ObservableProperty] private string _printRenderingIntent = "Relative Colorimetric";
+    [ObservableProperty] private bool _printBpc = true;
+    [ObservableProperty] private bool _printCenter = true;
+    [ObservableProperty] private double _printTopPt = 0.0;
+    [ObservableProperty] private double _printLeftPt = 0.0;
+    [ObservableProperty] private double _printScalePercent = 100.0;
+    [ObservableProperty] private bool _printScaleToFit = false;
+    [ObservableProperty] private bool _printCornerCropMarks = false;
+    [ObservableProperty] private bool _printCenterCropMarks = false;
+    [ObservableProperty] private bool _printRegistrationMarks = false;
+    [ObservableProperty] private bool _printDescription = false;
+    [ObservableProperty] private bool _printLabels = false;
+    [ObservableProperty] private bool _printEmulsionDown = false;
+    [ObservableProperty] private string _printScaleMetricsLabel = "";
+
+    // Live preview properties for PrintDialog.axaml
+    [ObservableProperty] private double _printPreviewPaperWidth = 240;
+    [ObservableProperty] private double _printPreviewPaperHeight = 310;
+    [ObservableProperty] private double _printPreviewImageLeft = 20;
+    [ObservableProperty] private double _printPreviewImageTop = 20;
+    [ObservableProperty] private double _printPreviewImageWidth = 200;
+    [ObservableProperty] private double _printPreviewImageHeight = 270;
+    [ObservableProperty] private double _printPreviewScaleX = 1.0;
+    [ObservableProperty] private Geometry? _printPreviewCropMarksGeometry;
+    [ObservableProperty] private Geometry? _printPreviewRegMarksGeometry;
+    [ObservableProperty] private Bitmap? _printPreviewBitmapSource;
+
+    public bool IsFryImageColorManagement => PrintColorHandling.Contains("FryImage");
+
+    partial void OnPrintColorHandlingChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsFryImageColorManagement));
+    }
+
+    partial void OnSelectedPaperChanged(string value) => UpdatePrintLayout();
+    partial void OnPrintOrientationChanged(string value) => UpdatePrintLayout();
+    partial void OnPrintCenterChanged(bool value) => UpdatePrintLayout();
+    partial void OnPrintTopPtChanged(double value) => UpdatePrintLayout();
+    partial void OnPrintLeftPtChanged(double value) => UpdatePrintLayout();
+    partial void OnPrintScalePercentChanged(double value) => UpdatePrintLayout();
+    partial void OnPrintScaleToFitChanged(bool value) => UpdatePrintLayout();
+    partial void OnPrintCornerCropMarksChanged(bool value) => UpdatePrintLayout();
+    partial void OnPrintRegistrationMarksChanged(bool value) => UpdatePrintLayout();
+    partial void OnPrintEmulsionDownChanged(bool value) => UpdatePrintLayout();
+
+    [RelayCommand]
+    public void OpenPrintDialog()
+    {
+        AvailablePrinters.Clear();
+        var sysPrinters = PrintEngine.GetSystemPrinters();
+        string defPrinter = "";
+        foreach (var p in sysPrinters)
+        {
+            string label = p.Name.Replace('_', ' ');
+            if (p.IsDefault)
+            {
+                label = $"Default printer ({label})";
+                defPrinter = label;
+            }
+            AvailablePrinters.Add(label);
+        }
+        SelectedPrinter = !string.IsNullOrEmpty(defPrinter) ? defPrinter : AvailablePrinters.FirstOrDefault() ?? "Default Printer";
+
+        UpdatePrintLayout();
+        IsPrintDialogOpen = true;
+    }
+
+    [RelayCommand]
+    public void PrintOneCopy()
+    {
+        PrintCopies = 1;
+        ConfirmPrint();
+    }
+
+    public void UpdatePrintLayout()
+    {
+        double docW = Math.Max(1, CanvasWidth);
+        double docH = Math.Max(1, CanvasHeight);
+        var marks = new PrintMarks(PrintCornerCropMarks, PrintCenterCropMarks, PrintRegistrationMarks, PrintDescription, PrintLabels);
+
+        var layout = PrintEngine.ComputeLayout(
+            docW, docH, 300.0, SelectedPaper, PrintOrientation, PrintCenter, PrintLeftPt, PrintTopPt,
+            PrintScalePercent, PrintScaleToFit, PrintEmulsionDown, marks
+        );
+
+        PrintScaleMetricsLabel = layout.ScaleAndDimensionsLabel;
+
+        // Scale to preview area (max ~280x340)
+        double maxPreviewW = 280;
+        double maxPreviewH = 340;
+        double k = Math.Min(maxPreviewW / layout.PaperWidthPt, maxPreviewH / layout.PaperHeightPt);
+
+        PrintPreviewPaperWidth = Math.Round(layout.PaperWidthPt * k);
+        PrintPreviewPaperHeight = Math.Round(layout.PaperHeightPt * k);
+        PrintPreviewImageWidth = Math.Max(4, Math.Round(layout.ImageWidthPt * k));
+        PrintPreviewImageHeight = Math.Max(4, Math.Round(layout.ImageHeightPt * k));
+        PrintPreviewImageLeft = Math.Round(layout.ImageXPt * k);
+        PrintPreviewImageTop = Math.Round(layout.ImageYPt * k);
+        PrintPreviewScaleX = PrintEmulsionDown ? -1.0 : 1.0;
+
+        // Crop marks geometry
+        if (PrintCornerCropMarks)
+        {
+            var g = new StreamGeometry();
+            using (var ctx = g.Open())
+            {
+                double x = PrintPreviewImageLeft;
+                double y = PrintPreviewImageTop;
+                double w = PrintPreviewImageWidth;
+                double h = PrintPreviewImageHeight;
+                double len = 8;
+                double gap = 2;
+                // TL
+                ctx.BeginFigure(new Point(x - len, y), false); ctx.LineTo(new Point(x - gap, y));
+                ctx.BeginFigure(new Point(x, y - len), false); ctx.LineTo(new Point(x, y - gap));
+                // TR
+                ctx.BeginFigure(new Point(x + w + gap, y), false); ctx.LineTo(new Point(x + w + len, y));
+                ctx.BeginFigure(new Point(x + w, y - len), false); ctx.LineTo(new Point(x + w, y - gap));
+                // BL
+                ctx.BeginFigure(new Point(x - len, y + h), false); ctx.LineTo(new Point(x - gap, y + h));
+                ctx.BeginFigure(new Point(x, y + h + gap), false); ctx.LineTo(new Point(x, y + h + len));
+                // BR
+                ctx.BeginFigure(new Point(x + w + gap, y + h), false); ctx.LineTo(new Point(x + w + len, y + h));
+                ctx.BeginFigure(new Point(x + w, y + h + gap), false); ctx.LineTo(new Point(x + w, y + h + len));
+            }
+            PrintPreviewCropMarksGeometry = g;
+        }
+        else
+        {
+            PrintPreviewCropMarksGeometry = null;
+        }
+
+        // Generate thumbnail preview if not loaded
+        if (PrintPreviewBitmapSource == null && CanvasControl != null)
+        {
+            try
+            {
+                var rtb = RenderCanvasToBitmap(0.25);
+                if (rtb != null)
+                {
+                    using var ms = new MemoryStream();
+                    rtb.Save(ms, new PngBitmapEncoderOptions());
+                    ms.Position = 0;
+                    PrintPreviewBitmapSource = new Bitmap(ms);
+                }
+            }
+            catch { }
+        }
+    }
+
+    [RelayCommand]
+    public void ConfirmPrint()
+    {
+        try
+        {
+            double docW = Math.Max(1, CanvasWidth);
+            double docH = Math.Max(1, CanvasHeight);
+            var marks = new PrintMarks(PrintCornerCropMarks, PrintCenterCropMarks, PrintRegistrationMarks, PrintDescription, PrintLabels);
+            var layout = PrintEngine.ComputeLayout(
+                docW, docH, 300.0, SelectedPaper, PrintOrientation, PrintCenter, PrintLeftPt, PrintTopPt,
+                PrintScalePercent, PrintScaleToFit, PrintEmulsionDown, marks
+            );
+
+            using var rtb = RenderCanvasToBitmap(1.0);
+            if (rtb != null)
+            {
+                using var ms = new MemoryStream();
+                rtb.Save(ms, new PngBitmapEncoderOptions());
+                ms.Position = 0;
+                using var skBmp = SKBitmap.Decode(ms);
+                byte[] pdfBytes = PrintEngine.RenderPrintPdf(skBmp, layout, DocumentTitle ?? "Document");
+                PrintEngine.SendToSpooler(pdfBytes, SelectedPrinter, PrintCopies);
+                StatusMessage = $"Printed {PrintCopies} copy to '{SelectedPrinter}'.";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Print failed: {ex.Message}";
+        }
+        finally
+        {
+            IsPrintDialogOpen = false;
+        }
+    }
+
+    [RelayCommand]
+    public void CancelPrint()
+    {
+        IsPrintDialogOpen = false;
     }
 }

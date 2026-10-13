@@ -159,12 +159,16 @@ public class BrushTransfer
     public bool Enabled { get; set; }
     public BrushDynamic Opacity { get; set; } = new();
     public BrushDynamic Flow { get; set; } = new();
+    public BrushDynamic Wetness { get; set; } = new();
+    public BrushDynamic Mix { get; set; } = new();
 
     public BrushTransfer Clone() => new()
     {
         Enabled = Enabled,
         Opacity = Opacity.Clone(),
-        Flow = Flow.Clone()
+        Flow = Flow.Clone(),
+        Wetness = Wetness.Clone(),
+        Mix = Mix.Clone()
     };
 }
 

@@ -120,8 +120,24 @@ public partial class ImageEditorViewModel
     [ObservableProperty]
     private bool _brushPressureSize;
 
+    partial void OnBrushPressureSizeChanged(bool value)
+    {
+        if (value && BrushSizeControl == "Off")
+            BrushSizeControl = "Pen Pressure";
+        else if (!value && BrushSizeControl == "Pen Pressure")
+            BrushSizeControl = "Off";
+    }
+
     [ObservableProperty]
     private bool _brushPressureOpacity;
+
+    partial void OnBrushPressureOpacityChanged(bool value)
+    {
+        if (value && BrushOpacityControl == "Off")
+            BrushOpacityControl = "Pen Pressure";
+        else if (!value && BrushOpacityControl == "Pen Pressure")
+            BrushOpacityControl = "Off";
+    }
 
     [ObservableProperty]
     private bool _brushWetEdges;
@@ -131,6 +147,136 @@ public partial class ImageEditorViewModel
 
     [ObservableProperty]
     private bool _brushAirbrush;
+
+    // ── Brush Dynamics (Shape Dynamics & Transfer) Parity #4775 ─────────
+    public static readonly string[] BrushControlChoices =
+    [
+        "Off",
+        "Fade",
+        "Pen Pressure",
+        "Pen Tilt",
+        "Stylus Wheel",
+        "Rotation",
+        "Initial Direction",
+        "Direction"
+    ];
+
+    public string[] AvailableBrushControls => BrushControlChoices;
+
+    [ObservableProperty]
+    private bool _shapeDynamicsEnabled = true;
+
+    [ObservableProperty]
+    private double _brushSizeJitter = 0.0; // 0..100%
+
+    [ObservableProperty]
+    private string _brushSizeControl = "Off";
+
+    partial void OnBrushSizeControlChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsBrushSizeMinimumEnabled));
+        _brushPressureSize = value == "Pen Pressure";
+        OnPropertyChanged(nameof(BrushPressureSize));
+    }
+
+    public bool IsBrushSizeMinimumEnabled => BrushSizeControl != "Off";
+
+    [ObservableProperty]
+    private double _brushSizeMinimum = 20.0; // 0..100%
+
+    [ObservableProperty]
+    private double _brushTiltScale = 100.0; // 0..200%
+
+    [ObservableProperty]
+    private double _brushAngleJitter = 0.0; // 0..100%
+
+    [ObservableProperty]
+    private string _brushAngleControl = "Off";
+
+    [ObservableProperty]
+    private double _brushRoundnessJitter = 0.0; // 0..100%
+
+    [ObservableProperty]
+    private string _brushRoundnessControl = "Off";
+
+    partial void OnBrushRoundnessControlChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsBrushRoundnessMinimumEnabled));
+    }
+
+    public bool IsBrushRoundnessMinimumEnabled => BrushRoundnessControl != "Off";
+
+    [ObservableProperty]
+    private double _brushRoundnessMinimum = 25.0; // 0..100%
+
+    [ObservableProperty]
+    private bool _transferEnabled = true;
+
+    [ObservableProperty]
+    private double _brushOpacityJitter = 0.0; // 0..100%
+
+    [ObservableProperty]
+    private string _brushOpacityControl = "Off";
+
+    partial void OnBrushOpacityControlChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsBrushOpacityMinimumEnabled));
+        _brushPressureOpacity = value == "Pen Pressure";
+        OnPropertyChanged(nameof(BrushPressureOpacity));
+    }
+
+    public bool IsBrushOpacityMinimumEnabled => BrushOpacityControl != "Off";
+
+    [ObservableProperty]
+    private double _brushOpacityMinimum = 0.0; // 0..100%
+
+    [ObservableProperty]
+    private double _brushFlowJitter = 0.0; // 0..100%
+
+    [ObservableProperty]
+    private string _brushFlowControl = "Off";
+
+    partial void OnBrushFlowControlChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsBrushFlowMinimumEnabled));
+    }
+
+    public bool IsBrushFlowMinimumEnabled => BrushFlowControl != "Off";
+
+    [ObservableProperty]
+    private double _brushFlowMinimum = 0.0; // 0..100%
+
+    [ObservableProperty]
+    private double _brushWetnessJitter = 0.0; // 0..100%
+
+    [ObservableProperty]
+    private string _brushWetnessControl = "Off";
+
+    partial void OnBrushWetnessControlChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsBrushWetnessMinimumEnabled));
+    }
+
+    public bool IsBrushWetnessMinimumEnabled => BrushWetnessControl != "Off";
+
+    [ObservableProperty]
+    private double _brushWetnessMinimum = 0.0; // 0..100%
+
+    [ObservableProperty]
+    private double _brushMixJitter = 0.0; // 0..100%
+
+    [ObservableProperty]
+    private string _brushMixControl = "Off";
+
+    partial void OnBrushMixControlChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsBrushMixMinimumEnabled));
+    }
+
+    public bool IsBrushMixMinimumEnabled => BrushMixControl != "Off";
+
+    [ObservableProperty]
+    private double _brushMixMinimum = 0.0; // 0..100%
 
     [ObservableProperty]
     private SymmetryMode _activeSymmetryMode = SymmetryMode.Off;
@@ -702,6 +848,37 @@ public partial class ImageEditorViewModel
         BrushPressureSize = preset.Settings.ShapeDynamics.Size.Control == BrushControl.PenPressure;
         BrushPressureOpacity = preset.Settings.Transfer.Opacity.Control == BrushControl.PenPressure;
 
+        ShapeDynamicsEnabled = preset.Settings.ShapeDynamics.Enabled;
+        BrushSizeJitter = preset.Settings.ShapeDynamics.Size.Jitter * 100.0;
+        BrushSizeControl = FormatBrushControl(preset.Settings.ShapeDynamics.Size.Control);
+        if (preset.Settings.ShapeDynamics.Size.Minimum > 0.0)
+            BrushSizeMinimum = preset.Settings.ShapeDynamics.Size.Minimum * 100.0;
+        BrushTiltScale = preset.Settings.ShapeDynamics.TiltScale * 100.0;
+        BrushAngleJitter = preset.Settings.ShapeDynamics.Angle.Jitter * 100.0;
+        BrushAngleControl = FormatBrushControl(preset.Settings.ShapeDynamics.Angle.Control);
+        BrushRoundnessJitter = preset.Settings.ShapeDynamics.Roundness.Jitter * 100.0;
+        BrushRoundnessControl = FormatBrushControl(preset.Settings.ShapeDynamics.Roundness.Control);
+        if (preset.Settings.ShapeDynamics.Roundness.Minimum > 0.0)
+            BrushRoundnessMinimum = preset.Settings.ShapeDynamics.Roundness.Minimum * 100.0;
+
+        TransferEnabled = preset.Settings.Transfer.Enabled;
+        BrushOpacityJitter = preset.Settings.Transfer.Opacity.Jitter * 100.0;
+        BrushOpacityControl = FormatBrushControl(preset.Settings.Transfer.Opacity.Control);
+        if (preset.Settings.Transfer.Opacity.Minimum > 0.0)
+            BrushOpacityMinimum = preset.Settings.Transfer.Opacity.Minimum * 100.0;
+        BrushFlowJitter = preset.Settings.Transfer.Flow.Jitter * 100.0;
+        BrushFlowControl = FormatBrushControl(preset.Settings.Transfer.Flow.Control);
+        if (preset.Settings.Transfer.Flow.Minimum > 0.0)
+            BrushFlowMinimum = preset.Settings.Transfer.Flow.Minimum * 100.0;
+        BrushWetnessJitter = preset.Settings.Transfer.Wetness.Jitter * 100.0;
+        BrushWetnessControl = FormatBrushControl(preset.Settings.Transfer.Wetness.Control);
+        if (preset.Settings.Transfer.Wetness.Minimum > 0.0)
+            BrushWetnessMinimum = preset.Settings.Transfer.Wetness.Minimum * 100.0;
+        BrushMixJitter = preset.Settings.Transfer.Mix.Jitter * 100.0;
+        BrushMixControl = FormatBrushControl(preset.Settings.Transfer.Mix.Control);
+        if (preset.Settings.Transfer.Mix.Minimum > 0.0)
+            BrushMixMinimum = preset.Settings.Transfer.Mix.Minimum * 100.0;
+
         if (preset.Settings.Aliased && ActiveToolMode != "pencil")
         {
             ActiveToolMode = "pencil";
@@ -780,20 +957,72 @@ public partial class ImageEditorViewModel
         settings.Noise = BrushNoise;
         settings.BuildUp = BrushAirbrush;
 
-        if (BrushPressureSize)
-        {
-            settings.ShapeDynamics.Enabled = true;
-            settings.ShapeDynamics.Size = new BrushDynamic(0.0, BrushControl.PenPressure, minimum: 0.2);
-        }
+        settings.ShapeDynamics.Enabled = ShapeDynamicsEnabled || BrushPressureSize;
+        settings.ShapeDynamics.Size = new BrushDynamic(
+            BrushSizeJitter / 100.0,
+            BrushPressureSize ? BrushControl.PenPressure : ParseBrushControl(BrushSizeControl),
+            BrushSizeMinimum / 100.0
+        );
+        settings.ShapeDynamics.TiltScale = BrushTiltScale / 100.0;
+        settings.ShapeDynamics.Angle = new BrushDynamic(
+            BrushAngleJitter / 100.0,
+            ParseBrushControl(BrushAngleControl),
+            0.0
+        );
+        settings.ShapeDynamics.Roundness = new BrushDynamic(
+            BrushRoundnessJitter / 100.0,
+            ParseBrushControl(BrushRoundnessControl),
+            BrushRoundnessMinimum / 100.0
+        );
 
-        if (BrushPressureOpacity)
-        {
-            settings.Transfer.Enabled = true;
-            settings.Transfer.Opacity = new BrushDynamic(0.0, BrushControl.PenPressure, minimum: 0.1);
-        }
+        settings.Transfer.Enabled = TransferEnabled || BrushPressureOpacity;
+        settings.Transfer.Opacity = new BrushDynamic(
+            BrushOpacityJitter / 100.0,
+            BrushPressureOpacity ? BrushControl.PenPressure : ParseBrushControl(BrushOpacityControl),
+            BrushOpacityMinimum / 100.0
+        );
+        settings.Transfer.Flow = new BrushDynamic(
+            BrushFlowJitter / 100.0,
+            ParseBrushControl(BrushFlowControl),
+            BrushFlowMinimum / 100.0
+        );
+        settings.Transfer.Wetness = new BrushDynamic(
+            BrushWetnessJitter / 100.0,
+            ParseBrushControl(BrushWetnessControl),
+            BrushWetnessMinimum / 100.0
+        );
+        settings.Transfer.Mix = new BrushDynamic(
+            BrushMixJitter / 100.0,
+            ParseBrushControl(BrushMixControl),
+            BrushMixMinimum / 100.0
+        );
 
         return settings;
     }
+
+    public static BrushControl ParseBrushControl(string? name) => name switch
+    {
+        "Fade" => BrushControl.Fade,
+        "Pen Pressure" => BrushControl.PenPressure,
+        "Pen Tilt" => BrushControl.PenTilt,
+        "Stylus Wheel" => BrushControl.StylusWheel,
+        "Rotation" => BrushControl.Rotation,
+        "Initial Direction" => BrushControl.InitialDirection,
+        "Direction" => BrushControl.Direction,
+        _ => BrushControl.Off
+    };
+
+    public static string FormatBrushControl(BrushControl control) => control switch
+    {
+        BrushControl.Fade => "Fade",
+        BrushControl.PenPressure => "Pen Pressure",
+        BrushControl.PenTilt => "Pen Tilt",
+        BrushControl.StylusWheel => "Stylus Wheel",
+        BrushControl.Rotation => "Rotation",
+        BrushControl.InitialDirection => "Initial Direction",
+        BrushControl.Direction => "Direction",
+        _ => "Off"
+    };
 
     [RelayCommand]
     public void SelectShapeTool(string shape)

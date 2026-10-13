@@ -291,10 +291,12 @@ public partial class ImageEditorView : UserControl
         }
 
         // Never steal keystrokes from a focused text-entry control (e.g. the text-content
-        // TextBox or the font-size NumericUpDown) — otherwise typing/backspacing there would
-        // also delete the currently-selected canvas element or trigger undo/redo.
+        // TextBox, font-family ComboBox/AutoCompleteBox, or NumericUpDown) — otherwise
+        // typing/backspacing there would also delete the currently-selected canvas element,
+        // activate spring-loaded tools, or trigger global shortcuts (#4745).
         var focused = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement();
-        if (focused is TextBox or NumericUpDown) return;
+        if (focused is TextBox or NumericUpDown or AutoCompleteBox or ComboBox) return;
+        if (focused is Visual v && (v.FindAncestorOfType<ComboBox>() != null || v.FindAncestorOfType<TextBox>() != null || v.FindAncestorOfType<AutoCompleteBox>() != null)) return;
 
         bool ctrl = e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta);
         bool shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
@@ -344,6 +346,9 @@ public partial class ImageEditorView : UserControl
         // Escape: dismiss any open modal dialogs, cancel Free Transform, cancel crop, deselect, or reset tool
         if (e.Key == Key.Escape)
         {
+            if (vm.IsPrintDialogOpen) { vm.CancelPrintCommand.Execute(null); e.Handled = true; return; }
+            if (vm.IsChannelOptionsDialogOpen) { vm.CancelChannelOptionsCommand.Execute(null); e.Handled = true; return; }
+            if (vm.IsNewSpotChannelDialogOpen) { vm.CancelNewSpotChannelCommand.Execute(null); e.Handled = true; return; }
             if (vm.IsFreeTransformActive) { vm.CancelFreeTransformCommand.Execute(null); e.Handled = true; return; }
             if (vm.IsLiquifyDialogOpen) { vm.CancelLiquifyDialog(); e.Handled = true; return; }
             if (vm.IsColorPickerVisible) { vm.CancelColorPicker(); e.Handled = true; return; }
@@ -403,6 +408,18 @@ public partial class ImageEditorView : UserControl
         if (ctrl && (shift || alt) && e.Key == Key.S)
         {
             vm.OpenExportDialogCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+        if (ctrl && !shift && !alt && e.Key == Key.P)
+        {
+            vm.OpenPrintDialogCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+        if (ctrl && shift && alt && e.Key == Key.P)
+        {
+            vm.ConfirmPrintCommand.Execute(null);
             e.Handled = true;
             return;
         }

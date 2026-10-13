@@ -48,6 +48,9 @@
                                 <MenuItem Header="Load Files into Stack..." Command="{Binding OpenLoadFilesIntoStackDialogCommand}" />
                             </MenuItem>
                             <Separator />
+                            <MenuItem Header="Print..." InputGesture="Ctrl+P" Command="{Binding OpenPrintDialogCommand}" />
+                            <MenuItem Header="Print One Copy" InputGesture="Alt+Shift+Ctrl+P" Command="{Binding ConfirmPrintCommand}" />
+                            <Separator />
                             <MenuItem Header="Close" InputGesture="Ctrl+W" Command="{Binding CloseOverlayCommand}" />
                         </MenuFlyout>
                     </Button.Flyout>

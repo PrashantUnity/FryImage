@@ -468,6 +468,15 @@
                      ========================================== -->
                 <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
                             IsVisible="{Binding IsTextToolActive}">
+                    <!-- Font Family -->
+                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                        <TextBlock Text="Font:" Classes="ps-label" />
+                        <ComboBox Classes="ps-combo" Width="130" Height="22"
+                                  ItemsSource="{Binding AvailableFontNames}"
+                                  SelectedItem="{Binding FontFamilyNameField, Mode=TwoWay}"
+                                  ToolTip.Tip="Font Family" />
+                    </StackPanel>
+
                     <!-- Font Size -->
                     <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                         <TextBlock Text="Size:" Classes="ps-label" />

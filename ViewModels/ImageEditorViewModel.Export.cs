@@ -19,7 +19,7 @@ public partial class ImageEditorViewModel
 {
     // ── Export As Studio Modal (Photoshop Parity) ────────
     [ObservableProperty] private bool _isExportDialogOpen;
-    [ObservableProperty] private string _exportFormat = "PNG"; // PNG, JPEG, WEBP, FITS, BMP
+    [ObservableProperty] private string _exportFormat = "PNG"; // PNG, JPEG, WEBP, FITS, BMP, ICO, TIFF, TGA
     [ObservableProperty] private double _exportScale = 1.0; // 0.5, 1.0, 2.0, 3.0
     [ObservableProperty] private int _exportQuality = 90;
     [ObservableProperty] private bool _exportWebpLossless = false;
@@ -28,6 +28,8 @@ public partial class ImageEditorViewModel
     [ObservableProperty] private string _exportDialogTitle = "Export As";
     [ObservableProperty] private string _exportDimensionsLabel = "";
     [ObservableProperty] private string _exportEstimatedSizeLabel = "";
+    [ObservableProperty] private bool _isIcoOversized = false;
+    [ObservableProperty] private string _icoWarningMessage = "";
 
     private readonly List<CanvasElement> _exportTargetLayers = new();
 
@@ -36,6 +38,8 @@ public partial class ImageEditorViewModel
 
     public bool IsQualityVisible => ExportFormat is "JPEG" or "JPG" || (ExportFormat is "WEBP" && !ExportWebpLossless);
     public bool IsWebpFormat => ExportFormat is "WEBP";
+    public bool IsIcoFormat => ExportFormat.Equals("ICO", StringComparison.OrdinalIgnoreCase);
+    public bool CanConfirmExport => !(IsIcoFormat && IsIcoOversized);
 
     public string ExportScaleStr
     {
@@ -51,11 +55,19 @@ public partial class ImageEditorViewModel
         }
     }
 
+    partial void OnExportScaleChanged(double value)
+    {
+        UpdateExportMetrics();
+        OnPropertyChanged(nameof(ExportScaleStr));
+    }
+
     partial void OnExportFormatChanged(string value)
     {
         UpdateExportMetrics();
         OnPropertyChanged(nameof(IsQualityVisible));
         OnPropertyChanged(nameof(IsWebpFormat));
+        OnPropertyChanged(nameof(IsIcoFormat));
+        OnPropertyChanged(nameof(CanConfirmExport));
     }
 
     partial void OnExportWebpLosslessChanged(bool value)
@@ -110,7 +122,13 @@ public partial class ImageEditorViewModel
     }
 
     [RelayCommand]
-    private void CloseExportDialog() => IsExportDialogOpen = false;
+    private void CloseExportDialog()
+    {
+        IsExportDialogOpen = false;
+        IsBatchLayerExport = false;
+        _exportTargetLayers.Clear();
+        BatchLayerExportCount = 0;
+    }
 
     [RelayCommand]
     private void SetExportFormat(string format)
@@ -140,10 +158,32 @@ public partial class ImageEditorViewModel
             int fw = Math.Max(1, (int)(first.Width * ExportScale));
             int fh = Math.Max(1, (int)(first.Height * ExportScale));
             ExportDimensionsLabel = $"{fw} × {fh} px ({_exportTargetLayers.Count} files)";
+
+            if (ExportFormat.Equals("ICO", StringComparison.OrdinalIgnoreCase))
+            {
+                IsIcoOversized = fw > 256 || fh > 256;
+                IcoWarningMessage = IsIcoOversized ? "ICO is limited to 256 × 256 pixels" : "";
+            }
+            else
+            {
+                IsIcoOversized = false;
+                IcoWarningMessage = "";
+            }
         }
         else
         {
             ExportDimensionsLabel = $"{w} × {h} px";
+
+            if (ExportFormat.Equals("ICO", StringComparison.OrdinalIgnoreCase))
+            {
+                IsIcoOversized = w > 256 || h > 256;
+                IcoWarningMessage = IsIcoOversized ? "ICO is limited to 256 × 256 pixels" : "";
+            }
+            else
+            {
+                IsIcoOversized = false;
+                IcoWarningMessage = "";
+            }
         }
 
         double pixels = (double)w * h;
@@ -153,6 +193,7 @@ public partial class ImageEditorViewModel
             "WEBP" => ExportWebpLossless ? pixels * 0.45 : pixels * 0.18 * (ExportQuality / 100.0),
             "FITS" => pixels * 3.0, // Planar 8-bit RGB
             "BMP" => pixels * 4.0,  // 32-bit uncompressed
+            "ICO" => Math.Min(pixels, 256.0 * 256.0) * 1.5, // 256px max proxy
             _ => pixels * 1.5       // PNG
         };
 
@@ -170,6 +211,8 @@ public partial class ImageEditorViewModel
         OnPropertyChanged(nameof(ExportEstimatedSizeText));
         OnPropertyChanged(nameof(IsQualityVisible));
         OnPropertyChanged(nameof(IsWebpFormat));
+        OnPropertyChanged(nameof(IsIcoFormat));
+        OnPropertyChanged(nameof(CanConfirmExport));
     }
 
     public RenderTargetBitmap? RenderElementToBitmap(CanvasElement el, double scale = 1.0)
@@ -191,7 +234,15 @@ public partial class ImageEditorViewModel
 
     private async Task SaveBitmapToStreamAsync(RenderTargetBitmap rtb, string fmt, Stream outStream)
     {
-        if (fmt == "FITS")
+        if (fmt == "ICO")
+        {
+            using var pngMs = new MemoryStream();
+            rtb.Save(pngMs, new PngBitmapEncoderOptions());
+            pngMs.Position = 0;
+            using var skBmp = SKBitmap.Decode(pngMs);
+            IcoCodec.Encode(skBmp, outStream);
+        }
+        else if (fmt == "FITS")
         {
             using var pngMs = new MemoryStream();
             rtb.Save(pngMs, new PngBitmapEncoderOptions());
@@ -297,12 +348,21 @@ public partial class ImageEditorViewModel
             if (topLevel?.StorageProvider is not { } storage || CanvasControl == null) return;
 
             string fmt = (ExportFormat ?? "PNG").Trim().ToUpperInvariant();
+            if (fmt == "ICO" && IsIcoOversized)
+            {
+                StatusMessage = "ICO export is limited to 256 × 256 pixels; reduce the export scale.";
+                return;
+            }
+
             string ext = fmt switch
             {
                 "JPEG" or "JPG" => "jpg",
                 "WEBP" => "webp",
                 "FITS" => "fits",
                 "BMP" => "bmp",
+                "ICO" => "ico",
+                "TIFF" or "TIF" => "tif",
+                "TGA" => "tga",
                 _ => "png"
             };
 

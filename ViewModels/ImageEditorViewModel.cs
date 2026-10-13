@@ -829,7 +829,22 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     }
 
     // ── Canvas control reference (set by code-behind) ──────────────────────
-    public EditorCanvasControl? CanvasControl { get; set; }
+    private EditorCanvasControl? _canvasControl;
+    public EditorCanvasControl? CanvasControl
+    {
+        get => _canvasControl;
+        set
+        {
+            _canvasControl = value;
+            if (_canvasControl != null)
+            {
+                _canvasControl.DocumentChannels = DocumentChannels;
+                _canvasControl.QuickMaskIndicatesSelected = QuickMaskIndicatesSelected;
+                _canvasControl.QuickMaskOverlayColor = QuickMaskColor;
+                _canvasControl.QuickMaskOverlayOpacity = QuickMaskOpacity / 100.0;
+            }
+        }
+    }
 
     // ── Undo / Redo ────────────────────────────────────────────────────────
     // One instance per overlay — every mutation (shapes, crop, rotate, adjustments)
@@ -2127,11 +2142,89 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         StatusMessage = $"Copied {_elementClipboard.Count} element(s)";
     }
 
+    public void PasteElements() => _ = PasteElementsAsync();
+
     [RelayCommand]
-    private void PasteElements()
+    private async Task PasteElementsAsync()
     {
-        if (_elementClipboard is not { Count: > 0 } clipboard) return;
-        AddClonesAndSelect(CloneWithOffset(clipboard), "Pasted");
+        if (_elementClipboard is { Count: > 0 } inAppClipboard)
+        {
+            AddClonesAndSelect(CloneWithOffset(inAppClipboard), "Pasted");
+            return;
+        }
+
+        // System clipboard image paste fallback (Photoshop & Photocraft #2546 / #4752)
+        try
+        {
+            var topLevel = GetTopLevel();
+            var clipboard = topLevel?.Clipboard;
+            if (clipboard == null) return;
+
+            // 1. Try reading bitmap directly
+            var bmp = await clipboard.TryGetBitmapAsync();
+            if (bmp != null)
+            {
+                PasteBitmapAsLayer(bmp, "Pasted Image");
+                return;
+            }
+
+            // 2. Try reading file list from clipboard
+            var files = await clipboard.TryGetFilesAsync();
+            if (files != null)
+            {
+                foreach (var file in files)
+                {
+                    string path = file.Path.LocalPath;
+                    string ext = Path.GetExtension(path).ToLowerInvariant();
+                    if (ext is ".png" or ".jpg" or ".jpeg" or ".bmp" or ".webp" or ".gif" or ".tif" or ".tiff")
+                    {
+                        var fileBmp = new Bitmap(path);
+                        PasteBitmapAsLayer(fileBmp, Path.GetFileNameWithoutExtension(path));
+                        return;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Paste failed: {ex.Message}";
+        }
+    }
+
+    public void PasteBitmapAsLayer(Bitmap bmp, string layerName = "Pasted Layer")
+    {
+        using var ms = new MemoryStream();
+        bmp.Save(ms, new PngBitmapEncoderOptions());
+        byte[] bytes = ms.ToArray();
+
+        double w = bmp.PixelSize.Width;
+        double h = bmp.PixelSize.Height;
+        double x = Math.Max(0, (CanvasWidth - w) / 2.0);
+        double y = Math.Max(0, (CanvasHeight - h) / 2.0);
+        int nextZ = (Elements.Count > 0 ? Elements.Max(e => e.ZIndex) : 0) + 1;
+
+        var el = new ImageElement
+        {
+            Name = layerName,
+            X = x,
+            Y = y,
+            Width = w,
+            Height = h,
+            NaturalPixelWidth = (int)w,
+            NaturalPixelHeight = (int)h,
+            Source = bmp,
+            OriginalImageBytes = bytes,
+            Opacity = 1.0,
+            BlendMode = LayerBlendMode.Normal,
+            IsVisible = true,
+            ZIndex = nextZ
+        };
+
+        Elements.Add(el);
+        SelectedElements.Clear();
+        SelectedElements.Add(el);
+        SelectedElement = el;
+        StatusMessage = $"Pasted {w:0}×{h:0} px image as new layer.";
     }
 
     private List<CanvasElement> CloneWithOffset(IEnumerable<CanvasElement> source)

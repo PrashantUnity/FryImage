@@ -733,6 +733,80 @@
                         <CheckBox Classes="ps-check" Content="Airbrush Build-up" IsChecked="{Binding BrushAirbrush, Mode=TwoWay}" Margin="0,0,8,4" FontSize="10" />
                     </WrapPanel>
 
+                    <!-- Shape Dynamics (Parity #4775) -->
+                    <TextBlock Text="▾ Shape Dynamics" Classes="ps-section-header" Margin="0,2,0,0" />
+                    <Grid ColumnDefinitions="80,*,40" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="3">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Size Jitter:" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                        <Slider Grid.Row="0" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding BrushSizeJitter, Mode=TwoWay}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding BrushSizeJitter, StringFormat='{}{0:0}%'}" FontSize="10" Foreground="{DynamicResource PsTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Control:" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                        <ComboBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Classes="ps-combo" Height="22" ItemsSource="{Binding AvailableBrushControls}" SelectedItem="{Binding BrushSizeControl, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Min Diameter:" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                        <Slider Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding BrushSizeMinimum, Mode=TwoWay}" IsEnabled="{Binding IsBrushSizeMinimumEnabled}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding BrushSizeMinimum, StringFormat='{}{0:0}%'}" FontSize="10" Foreground="{DynamicResource PsTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Round Jitter:" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                        <Slider Grid.Row="3" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding BrushRoundnessJitter, Mode=TwoWay}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="3" Grid.Column="2" Text="{Binding BrushRoundnessJitter, StringFormat='{}{0:0}%'}" FontSize="10" Foreground="{DynamicResource PsTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Control:" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                        <ComboBox Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Classes="ps-combo" Height="22" ItemsSource="{Binding AvailableBrushControls}" SelectedItem="{Binding BrushRoundnessControl, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+
+                        <TextBlock Grid.Row="5" Grid.Column="0" Text="Min Round:" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                        <Slider Grid.Row="5" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding BrushRoundnessMinimum, Mode=TwoWay}" IsEnabled="{Binding IsBrushRoundnessMinimumEnabled}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="5" Grid.Column="2" Text="{Binding BrushRoundnessMinimum, StringFormat='{}{0:0}%'}" FontSize="10" Foreground="{DynamicResource PsTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                    </Grid>
+
+                    <!-- Transfer (Parity #4775) -->
+                    <TextBlock Text="▾ Transfer" Classes="ps-section-header" Margin="0,2,0,0" />
+                    <Grid ColumnDefinitions="80,*,40" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="3">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Opacity Jitter:" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                        <Slider Grid.Row="0" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding BrushOpacityJitter, Mode=TwoWay}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding BrushOpacityJitter, StringFormat='{}{0:0}%'}" FontSize="10" Foreground="{DynamicResource PsTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Control:" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                        <ComboBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Classes="ps-combo" Height="22" ItemsSource="{Binding AvailableBrushControls}" SelectedItem="{Binding BrushOpacityControl, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Min Opacity:" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                        <Slider Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding BrushOpacityMinimum, Mode=TwoWay}" IsEnabled="{Binding IsBrushOpacityMinimumEnabled}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding BrushOpacityMinimum, StringFormat='{}{0:0}%'}" FontSize="10" Foreground="{DynamicResource PsTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Flow Jitter:" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                        <Slider Grid.Row="3" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding BrushFlowJitter, Mode=TwoWay}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="3" Grid.Column="2" Text="{Binding BrushFlowJitter, StringFormat='{}{0:0}%'}" FontSize="10" Foreground="{DynamicResource PsTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Control:" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                        <ComboBox Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Classes="ps-combo" Height="22" ItemsSource="{Binding AvailableBrushControls}" SelectedItem="{Binding BrushFlowControl, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+
+                        <TextBlock Grid.Row="5" Grid.Column="0" Text="Min Flow:" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                        <Slider Grid.Row="5" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding BrushFlowMinimum, Mode=TwoWay}" IsEnabled="{Binding IsBrushFlowMinimumEnabled}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="5" Grid.Column="2" Text="{Binding BrushFlowMinimum, StringFormat='{}{0:0}%'}" FontSize="10" Foreground="{DynamicResource PsTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                        <TextBlock Grid.Row="6" Grid.Column="0" Text="Wetness Jitter:" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                        <Slider Grid.Row="6" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding BrushWetnessJitter, Mode=TwoWay}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="6" Grid.Column="2" Text="{Binding BrushWetnessJitter, StringFormat='{}{0:0}%'}" FontSize="10" Foreground="{DynamicResource PsTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                        <TextBlock Grid.Row="7" Grid.Column="0" Text="Control:" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                        <ComboBox Grid.Row="7" Grid.Column="1" Grid.ColumnSpan="2" Classes="ps-combo" Height="22" ItemsSource="{Binding AvailableBrushControls}" SelectedItem="{Binding BrushWetnessControl, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+
+                        <TextBlock Grid.Row="8" Grid.Column="0" Text="Min Wetness:" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                        <Slider Grid.Row="8" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding BrushWetnessMinimum, Mode=TwoWay}" IsEnabled="{Binding IsBrushWetnessMinimumEnabled}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="8" Grid.Column="2" Text="{Binding BrushWetnessMinimum, StringFormat='{}{0:0}%'}" FontSize="10" Foreground="{DynamicResource PsTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                        <TextBlock Grid.Row="9" Grid.Column="0" Text="Mix Jitter:" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                        <Slider Grid.Row="9" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding BrushMixJitter, Mode=TwoWay}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="9" Grid.Column="2" Text="{Binding BrushMixJitter, StringFormat='{}{0:0}%'}" FontSize="10" Foreground="{DynamicResource PsTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                        <TextBlock Grid.Row="10" Grid.Column="0" Text="Control:" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                        <ComboBox Grid.Row="10" Grid.Column="1" Grid.ColumnSpan="2" Classes="ps-combo" Height="22" ItemsSource="{Binding AvailableBrushControls}" SelectedItem="{Binding BrushMixControl, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+
+                        <TextBlock Grid.Row="11" Grid.Column="0" Text="Min Mix:" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                        <Slider Grid.Row="11" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding BrushMixMinimum, Mode=TwoWay}" IsEnabled="{Binding IsBrushMixMinimumEnabled}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="11" Grid.Column="2" Text="{Binding BrushMixMinimum, StringFormat='{}{0:0}%'}" FontSize="10" Foreground="{DynamicResource PsTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                    </Grid>
+
                     <!-- Smoothing -->
                     <Grid ColumnDefinitions="65,*,40">
                         <TextBlock Grid.Column="0" Text="Smoothing:" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />

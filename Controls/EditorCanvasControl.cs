@@ -87,9 +87,13 @@ public partial class EditorCanvasControl : Control
     public Color PasteboardColor { get; set; } = Color.FromRgb(0x20, 0x20, 0x20);
     public System.Collections.ObjectModel.ObservableCollection<List<Point>>? PendingRemoveStrokes { get; set; }
 
-    // Quick Mask mode state
+    // Quick Mask mode state & Channel Options (#3761 parity)
     public bool IsQuickMaskMode { get; set; }
     public byte[]? QuickMaskBuffer { get; set; }
+    public bool QuickMaskIndicatesSelected { get; set; } = false;
+    public Color QuickMaskOverlayColor { get; set; } = Color.FromRgb(255, 0, 0);
+    public double QuickMaskOverlayOpacity { get; set; } = 0.5;
+    public System.Collections.ObjectModel.ObservableCollection<Models.DocumentChannelItem>? DocumentChannels { get; set; }
     private bool _isDrawingQuickMask;
 
     // Move & Transform tool options
@@ -768,6 +772,16 @@ public partial class EditorCanvasControl : Control
             if (IsQuickMaskMode && QuickMaskBuffer != null)
             {
                 DrawQuickMaskOverlay(dc, QuickMaskBuffer, _logicalWidth, _logicalHeight);
+            }
+            else if (DocumentChannels != null)
+            {
+                foreach (var ch in DocumentChannels)
+                {
+                    if (ch.IsVisible && (ch.IsAlpha || ch.IsSpot) && ch.MaskData != null)
+                    {
+                        DrawChannelOverlay(dc, ch, _logicalWidth, _logicalHeight);
+                    }
+                }
             }
 
             if (_isDrawingDoodle && _currentDoodlePoints.Count > 0)
@@ -3353,6 +3367,12 @@ public partial class EditorCanvasControl : Control
         try
         {
             byte[] bgra = new byte[w * h * 4];
+            byte cr = QuickMaskOverlayColor.R;
+            byte cg = QuickMaskOverlayColor.G;
+            byte cb = QuickMaskOverlayColor.B;
+            double op = Math.Clamp(QuickMaskOverlayOpacity, 0.0, 1.0);
+            bool indicatesSelected = QuickMaskIndicatesSelected;
+
             Parallel.For(0, h, y =>
             {
                 int rowOffset = y * w;
@@ -3361,13 +3381,72 @@ public partial class EditorCanvasControl : Control
                     int mIdx = rowOffset + x;
                     int bIdx = mIdx * 4;
                     byte m = maskBuffer[mIdx];
-                    if (m < 255)
+                    byte alpha = indicatesSelected
+                        ? (byte)(m * op)
+                        : (byte)((255 - m) * op);
+
+                    if (alpha > 0)
                     {
-                        byte alpha = (byte)((255 - m) * 0.5);
-                        bgra[bIdx] = 0x62;     // B
-                        bgra[bIdx + 1] = 0x5B; // G
-                        bgra[bIdx + 2] = 0xEC; // R
-                        bgra[bIdx + 3] = alpha; // A
+                        bgra[bIdx] = cb;       // B
+                        bgra[bIdx + 1] = cg;   // G
+                        bgra[bIdx + 2] = cr;   // R
+                        bgra[bIdx + 3] = alpha;// A
+                    }
+                }
+            });
+
+            Marshal.Copy(bgra, 0, pin, bgra.Length);
+            bmp.InstallPixels(bmp.Info, pin);
+
+            using var img = SkiaSharp.SKImage.FromBitmap(bmp);
+            using var enc = img.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+            using var ms = new System.IO.MemoryStream(enc.ToArray());
+            var avBmp = new Bitmap(ms);
+            dc.DrawImage(avBmp, new Rect(0, 0, width, height));
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(pin);
+        }
+    }
+
+    private void DrawChannelOverlay(DrawingContext dc, Models.DocumentChannelItem ch, double width, double height)
+    {
+        if (ch.MaskData == null) return;
+        int w = (int)Math.Max(1, Math.Round(width));
+        int h = (int)Math.Max(1, Math.Round(height));
+        if (ch.MaskData.Length < w * h) return;
+
+        using var bmp = new SkiaSharp.SKBitmap(w, h, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+        var pin = Marshal.AllocHGlobal(w * h * 4);
+        try
+        {
+            byte[] bgra = new byte[w * h * 4];
+            byte cr = ch.ChannelColor.R;
+            byte cg = ch.ChannelColor.G;
+            byte cb = ch.ChannelColor.B;
+            double op = (ch.IsSpot ? ch.Solidity : ch.Opacity) / 100.0;
+            op = Math.Clamp(op, 0.0, 1.0);
+            bool indicatesSelected = ch.ColorIndicates == "selected" || ch.IsSpot;
+
+            Parallel.For(0, h, y =>
+            {
+                int rowOffset = y * w;
+                for (int x = 0; x < w; x++)
+                {
+                    int mIdx = rowOffset + x;
+                    int bIdx = mIdx * 4;
+                    byte m = ch.MaskData[mIdx];
+                    byte alpha = indicatesSelected
+                        ? (byte)(m * op)
+                        : (byte)((255 - m) * op);
+
+                    if (alpha > 0)
+                    {
+                        bgra[bIdx] = cb;       // B
+                        bgra[bIdx + 1] = cg;   // G
+                        bgra[bIdx + 2] = cr;   // R
+                        bgra[bIdx + 3] = alpha;// A
                     }
                 }
             });

@@ -45,6 +45,9 @@
                                 <ComboBoxItem Content="PNG" Tag="PNG" />
                                 <ComboBoxItem Content="JPEG" Tag="JPEG" />
                                 <ComboBoxItem Content="WebP" Tag="WEBP" />
+                                <ComboBoxItem Content="ICO" Tag="ICO" />
+                                <ComboBoxItem Content="TIFF" Tag="TIFF" />
+                                <ComboBoxItem Content="TGA" Tag="TGA" />
                                 <ComboBoxItem Content="FITS" Tag="FITS" />
                                 <ComboBoxItem Content="BMP" Tag="BMP" />
                             </ComboBox>
@@ -82,13 +85,21 @@
 
                         <!-- Dimensions & Size Metric Card -->
                         <Border Background="{DynamicResource PsFieldBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" CornerRadius="3" Padding="10" Margin="0,4,0,0">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <StackPanel Grid.Column="0" Spacing="2">
-                                    <TextBlock Text="Target Dimensions" Classes="ps-label" />
-                                    <TextBlock Text="{Binding ExportDimensionsLabel}" FontSize="12" FontWeight="SemiBold" Foreground="#FFFFFF" />
-                                </StackPanel>
-                                <TextBlock Grid.Column="1" Text="{Binding ExportEstimatedSizeLabel}" FontSize="11" Foreground="{DynamicResource PsAccentBrush}" VerticalAlignment="Center" />
-                            </Grid>
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Spacing="2">
+                                        <TextBlock Text="Target Dimensions" Classes="ps-label" />
+                                        <TextBlock Text="{Binding ExportDimensionsLabel}" FontSize="12" FontWeight="SemiBold" Foreground="#FFFFFF" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="1" Text="{Binding ExportEstimatedSizeLabel}" FontSize="11" Foreground="{DynamicResource PsAccentBrush}" VerticalAlignment="Center" />
+                                </Grid>
+                                <!-- Oversized ICO Warning (Photoshop parity #4744) -->
+                                <TextBlock Text="{Binding IcoWarningMessage}"
+                                           IsVisible="{Binding IsIcoOversized}"
+                                           Foreground="{DynamicResource PsWarningBrush}"
+                                           FontSize="11" FontWeight="SemiBold"
+                                           Margin="0,2,0,0" />
+                            </StackPanel>
                         </Border>
                     </StackPanel>
                 </ScrollViewer>
@@ -97,7 +108,7 @@
                 <Border Grid.Row="2" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="12,0">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" VerticalAlignment="Center">
                         <Button Classes="ps-btn" Content="Cancel" Padding="14,5" Command="{Binding CancelExportCommand}" />
-                        <Button Classes="ps-btn ps-btn-primary" Content="Export" Padding="18,5" Command="{Binding ConfirmExportCommand}" />
+                        <Button Classes="ps-btn ps-btn-primary" Content="Export" Padding="18,5" Command="{Binding ConfirmExportCommand}" IsEnabled="{Binding CanConfirmExport}" />
                     </StackPanel>
                 </Border>
             </Grid>

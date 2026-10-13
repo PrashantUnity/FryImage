@@ -1,0 +1,208 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Dialogs.PrintDialog"
+             x:DataType="local:ImageEditorViewModel">
+
+    <!-- Modal Backdrop -->
+    <Border Background="#99000000"
+            IsVisible="{Binding IsPrintDialogOpen}"
+            ZIndex="550">
+        <Border Background="{DynamicResource PsPanelBrush}"
+                BorderBrush="{DynamicResource PsBorderLightBrush}"
+                BorderThickness="1"
+                CornerRadius="4"
+                Width="740" Height="580"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                BoxShadow="0 10 35 #99000000">
+            <Grid RowDefinitions="32,*,44">
+                <!-- Header -->
+                <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="12,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <materialIcons:MaterialIcon Kind="Printer" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+                            <TextBlock Text="FryImage Print Settings" FontWeight="SemiBold" FontSize="12" Foreground="#FFFFFF" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="ps-opt-btn" Command="{Binding CancelPrintCommand}">
+                            <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Body (Two Columns: Left = Page Preview, Right = Print Settings) -->
+                <Grid Grid.Row="1" ColumnDefinitions="330,*">
+                    <!-- Left: Page Preview -->
+                    <Border Grid.Column="0" Background="{DynamicResource PsCanvasBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,1,0" Padding="12">
+                        <Grid RowDefinitions="*,Auto">
+                            <!-- Preview Canvas container -->
+                            <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1" CornerRadius="3" Margin="0,0,0,8" ClipToBounds="True">
+                                <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <!-- Sheet of Paper -->
+                                    <Border Width="{Binding PrintPreviewPaperWidth}" Height="{Binding PrintPreviewPaperHeight}"
+                                            Background="#FFFFFF"
+                                            BorderBrush="#888888" BorderThickness="1"
+                                            BoxShadow="0 4 12 #60000000">
+                                        <Canvas Width="{Binding PrintPreviewPaperWidth}" Height="{Binding PrintPreviewPaperHeight}" ClipToBounds="True">
+                                            <!-- Placed Document Thumbnail Image -->
+                                            <Image Canvas.Left="{Binding PrintPreviewImageLeft}"
+                                                   Canvas.Top="{Binding PrintPreviewImageTop}"
+                                                   Width="{Binding PrintPreviewImageWidth}"
+                                                   Height="{Binding PrintPreviewImageHeight}"
+                                                   Source="{Binding PrintPreviewBitmapSource}"
+                                                   Stretch="Fill"
+                                                   RenderTransformOrigin="50%,50%">
+                                                <Image.RenderTransform>
+                                                    <ScaleTransform ScaleX="{Binding PrintPreviewScaleX}" ScaleY="1" />
+                                                </Image.RenderTransform>
+                                            </Image>
+
+                                            <!-- Corner Crop Marks Overlay Lines -->
+                                            <Path Stroke="#000000" StrokeThickness="1"
+                                                  IsVisible="{Binding PrintCornerCropMarks}"
+                                                  Data="{Binding PrintPreviewCropMarksGeometry}" />
+
+                                            <!-- Registration Marks Overlay -->
+                                            <Path Stroke="#000000" StrokeThickness="1"
+                                                  IsVisible="{Binding PrintRegistrationMarks}"
+                                                  Data="{Binding PrintPreviewRegMarksGeometry}" />
+                                        </Canvas>
+                                    </Border>
+                                </Grid>
+                            </Border>
+
+                            <!-- Bottom Metrics & Status Note -->
+                            <TextBlock Grid.Row="1" Text="{Binding PrintScaleMetricsLabel}"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource PsTextDimBrush}"
+                                       TextAlignment="Center" TextWrapping="Wrap" />
+                        </Grid>
+                    </Border>
+
+                    <!-- Right: Print Settings ScrollViewer -->
+                    <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="14,10">
+                        <StackPanel Spacing="10">
+                            <!-- 1. PRINTER SETUP -->
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="Printer Setup" Classes="ps-section-header" />
+                                <Rectangle Height="1" Fill="{DynamicResource PsBorderSubtleBrush}" />
+
+                                <!-- Printer Select Dropdown -->
+                                <Grid ColumnDefinitions="80,*">
+                                    <TextBlock Grid.Column="0" Text="Printer:" Classes="ps-label" VerticalAlignment="Center" />
+                                    <ComboBox Grid.Column="1" Classes="ps-combo" HorizontalAlignment="Stretch"
+                                              ItemsSource="{Binding AvailablePrinters}"
+                                              SelectedItem="{Binding SelectedPrinter, Mode=TwoWay}" />
+                                </Grid>
+
+                                <!-- Copies -->
+                                <Grid ColumnDefinitions="80,100">
+                                    <TextBlock Grid.Column="0" Text="Copies:" Classes="ps-label" VerticalAlignment="Center" />
+                                    <NumericUpDown Grid.Column="1" Classes="ps-num" Minimum="1" Maximum="999" Increment="1"
+                                                   Value="{Binding PrintCopies, Mode=TwoWay}" />
+                                </Grid>
+
+                                <!-- Paper and Orientation -->
+                                <Grid ColumnDefinitions="80,*,8,100">
+                                    <TextBlock Grid.Column="0" Text="Paper:" Classes="ps-label" VerticalAlignment="Center" />
+                                    <ComboBox Grid.Column="1" Classes="ps-combo" HorizontalAlignment="Stretch"
+                                              ItemsSource="{Binding AvailablePapers}"
+                                              SelectedItem="{Binding SelectedPaper, Mode=TwoWay}" />
+                                    <ComboBox Grid.Column="3" Classes="ps-combo" HorizontalAlignment="Stretch"
+                                              SelectedItem="{Binding PrintOrientation, Mode=TwoWay}">
+                                        <x:String>Portrait</x:String>
+                                        <x:String>Landscape</x:String>
+                                    </ComboBox>
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- 2. COLOR MANAGEMENT -->
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="Color Management" Classes="ps-section-header" />
+                                <Rectangle Height="1" Fill="{DynamicResource PsBorderSubtleBrush}" />
+
+                                <Grid ColumnDefinitions="100,*">
+                                    <TextBlock Grid.Column="0" Text="Color Handling:" Classes="ps-label" VerticalAlignment="Center" />
+                                    <ComboBox Grid.Column="1" Classes="ps-combo" HorizontalAlignment="Stretch"
+                                              SelectedItem="{Binding PrintColorHandling, Mode=TwoWay}">
+                                        <x:String>Printer Manages Colors</x:String>
+                                        <x:String>FryImage Manages Colors</x:String>
+                                        <x:String>No Color Management</x:String>
+                                    </ComboBox>
+                                </Grid>
+
+                                <Grid ColumnDefinitions="100,*" IsVisible="{Binding IsFryImageColorManagement}">
+                                    <TextBlock Grid.Column="0" Text="Printer Profile:" Classes="ps-label" VerticalAlignment="Center" />
+                                    <ComboBox Grid.Column="1" Classes="ps-combo" HorizontalAlignment="Stretch"
+                                              ItemsSource="{Binding AvailablePrinterProfiles}"
+                                              SelectedItem="{Binding SelectedPrinterProfile, Mode=TwoWay}" />
+                                </Grid>
+
+                                <Grid ColumnDefinitions="100,*,Auto" IsVisible="{Binding IsFryImageColorManagement}">
+                                    <TextBlock Grid.Column="0" Text="Intent:" Classes="ps-label" VerticalAlignment="Center" />
+                                    <ComboBox Grid.Column="1" Classes="ps-combo" HorizontalAlignment="Stretch"
+                                              SelectedItem="{Binding PrintRenderingIntent, Mode=TwoWay}">
+                                        <x:String>Relative Colorimetric</x:String>
+                                        <x:String>Perceptual</x:String>
+                                        <x:String>Saturation</x:String>
+                                        <x:String>Absolute Colorimetric</x:String>
+                                    </ComboBox>
+                                    <CheckBox Grid.Column="2" Content="BPC" IsChecked="{Binding PrintBpc, Mode=TwoWay}" Margin="8,0,0,0" ToolTip.Tip="Black Point Compensation" />
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- 3. POSITION AND SIZE -->
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="Position and Size" Classes="ps-section-header" />
+                                <Rectangle Height="1" Fill="{DynamicResource PsBorderSubtleBrush}" />
+
+                                <Grid ColumnDefinitions="Auto,*,Auto,*">
+                                    <CheckBox Grid.Column="0" Content="Center" IsChecked="{Binding PrintCenter, Mode=TwoWay}" Margin="0,0,12,0" />
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" IsEnabled="{Binding !PrintCenter}">
+                                        <TextBlock Text="Top:" Classes="ps-label" VerticalAlignment="Center" />
+                                        <NumericUpDown Classes="ps-num" Width="65" Value="{Binding PrintTopPt, Mode=TwoWay}" FormatString="{}{0:0} pt" />
+                                    </StackPanel>
+                                    <Border Grid.Column="2" Width="8" />
+                                    <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" IsEnabled="{Binding !PrintCenter}">
+                                        <TextBlock Text="Left:" Classes="ps-label" VerticalAlignment="Center" />
+                                        <NumericUpDown Classes="ps-num" Width="65" Value="{Binding PrintLeftPt, Mode=TwoWay}" FormatString="{}{0:0} pt" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid ColumnDefinitions="80,100,12,Auto">
+                                    <TextBlock Grid.Column="0" Text="Scale:" Classes="ps-label" VerticalAlignment="Center" />
+                                    <NumericUpDown Grid.Column="1" Classes="ps-num" Minimum="1" Maximum="1000" Increment="5"
+                                                   Value="{Binding PrintScalePercent, Mode=TwoWay}" FormatString="{}{0:0.0}%"
+                                                   IsEnabled="{Binding !PrintScaleToFit}" />
+                                    <CheckBox Grid.Column="3" Content="Scale to Fit Media" IsChecked="{Binding PrintScaleToFit, Mode=TwoWay}" />
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- 4. PRINTING MARKS -->
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="Printing Marks" Classes="ps-section-header" />
+                                <Rectangle Height="1" Fill="{DynamicResource PsBorderSubtleBrush}" />
+
+                                <WrapPanel Orientation="Horizontal" Margin="2,0">
+                                    <CheckBox Content="Corner Crop Marks" IsChecked="{Binding PrintCornerCropMarks, Mode=TwoWay}" Margin="0,0,12,4" />
+                                    <CheckBox Content="Registration Marks" IsChecked="{Binding PrintRegistrationMarks, Mode=TwoWay}" Margin="0,0,12,4" />
+                                    <CheckBox Content="Labels" IsChecked="{Binding PrintLabels, Mode=TwoWay}" Margin="0,0,12,4" />
+                                    <CheckBox Content="Emulsion Down (Mirror)" IsChecked="{Binding PrintEmulsionDown, Mode=TwoWay}" Margin="0,0,12,4" />
+                                </WrapPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+
+                <!-- Footer Actions -->
+                <Border Grid.Row="2" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="14,0">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" VerticalAlignment="Center">
+                        <Button Classes="ps-btn" Content="Cancel" Padding="14,5" Command="{Binding CancelPrintCommand}" />
+                        <Button Classes="ps-btn ps-btn-primary" Content="Print" Padding="20,5" Command="{Binding ConfirmPrintCommand}" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Border>
+</UserControl>

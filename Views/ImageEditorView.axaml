@@ -199,6 +199,9 @@
         <dialogs:FitImageDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="600" IsVisible="{Binding IsFitImageDialogOpen}" />
         <dialogs:ApplyImageDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="600" IsVisible="{Binding IsApplyImageDialogOpen}" />
         <dialogs:NewBrushPresetDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="600" IsVisible="{Binding IsNewBrushPresetDialogOpen}" />
+        <dialogs:ChannelOptionsDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="600" IsVisible="{Binding IsChannelOptionsDialogOpen}" />
+        <dialogs:NewSpotChannelDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="600" IsVisible="{Binding IsNewSpotChannelDialogOpen}" />
+        <dialogs:PrintDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="600" IsVisible="{Binding IsPrintDialogOpen}" />
 
     </Grid>
 </UserControl>

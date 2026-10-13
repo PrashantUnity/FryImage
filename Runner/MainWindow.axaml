@@ -30,6 +30,22 @@
                     <NativeMenuItemSeparator />
                     <NativeMenuItem Header="Export As..." Gesture="Meta+Shift+W" Command="{Binding OpenExportDialogCommand}" />
                     <NativeMenuItem Header="Quick Export as PNG" Command="{Binding QuickExportAsPngCommand}" />
+                    <NativeMenuItem Header="Export Layers As Files..." Command="{Binding OpenExportSelectedLayersDialogCommand}" />
+                    <NativeMenuItemSeparator />
+                    <NativeMenuItem Header="Automate">
+                        <NativeMenu>
+                            <NativeMenuItem Header="Fit Image..." Command="{Binding OpenFitImageDialogCommand}" />
+                            <NativeMenuItem Header="Crop and Straighten Photos" Command="{Binding CropAndStraightenPhotosCommand}" />
+                        </NativeMenu>
+                    </NativeMenuItem>
+                    <NativeMenuItem Header="Scripts">
+                        <NativeMenu>
+                            <NativeMenuItem Header="Load Files into Stack..." Command="{Binding OpenLoadFilesIntoStackDialogCommand}" />
+                        </NativeMenu>
+                    </NativeMenuItem>
+                    <NativeMenuItemSeparator />
+                    <NativeMenuItem Header="Print..." Gesture="Meta+P" Command="{Binding OpenPrintDialogCommand}" />
+                    <NativeMenuItem Header="Print One Copy" Gesture="Meta+Alt+Shift+P" Command="{Binding ConfirmPrintCommand}" />
                     <NativeMenuItemSeparator />
                     <NativeMenuItem Header="Close" Gesture="Meta+W" Command="{Binding CloseOverlayCommand}" />
                 </NativeMenu>
@@ -40,6 +56,7 @@
                 <NativeMenu>
                     <NativeMenuItem Header="Undo" Gesture="Meta+Z" Command="{Binding UndoCommand}" />
                     <NativeMenuItem Header="Redo" Gesture="Meta+Shift+Z" Command="{Binding RedoCommand}" />
+                    <NativeMenuItem Header="Create New Snapshot..." Command="{Binding CreateNewSnapshotCommand}" />
                     <NativeMenuItemSeparator />
                     <NativeMenuItem Header="Cut" Gesture="Meta+X" Command="{Binding DeleteSelectedElementCommand}" />
                     <NativeMenuItem Header="Copy" Gesture="Meta+C" Command="{Binding CopyElementsCommand}" />
@@ -49,8 +66,19 @@
                     <NativeMenuItemSeparator />
                     <NativeMenuItem Header="Content-Aware Fill..." Command="{Binding ApplyContentAwareFillCommand}" />
                     <NativeMenuItem Header="Content-Aware Scale..." Gesture="Meta+Alt+Shift+C" Command="{Binding OpenContentAwareScaleDialogCommand}" />
+                    <NativeMenuItem Header="Fill from History" Gesture="Meta+Alt+Back" Command="{Binding FillFromHistoryCommand}" />
                     <NativeMenuItemSeparator />
-                    <NativeMenuItem Header="Free Transform" Gesture="Meta+T" Command="{Binding SetToolCommand}" CommandParameter="select" />
+                    <NativeMenuItem Header="Free Transform" Gesture="Meta+T" Command="{Binding BeginFreeTransformCommand}" />
+                    <NativeMenuItem Header="Transform">
+                        <NativeMenu>
+                            <NativeMenuItem Header="Scale" Command="{Binding BeginTransformModeCommand}" CommandParameter="Scale" />
+                            <NativeMenuItem Header="Rotate" Command="{Binding BeginTransformModeCommand}" CommandParameter="Rotate" />
+                            <NativeMenuItem Header="Skew" Command="{Binding BeginTransformModeCommand}" CommandParameter="Skew" />
+                            <NativeMenuItem Header="Distort" Command="{Binding BeginTransformModeCommand}" CommandParameter="Distort" />
+                            <NativeMenuItem Header="Perspective" Command="{Binding BeginTransformModeCommand}" CommandParameter="Perspective" />
+                            <NativeMenuItem Header="Warp" Command="{Binding BeginTransformModeCommand}" CommandParameter="Warp" />
+                        </NativeMenu>
+                    </NativeMenuItem>
                     <NativeMenuItem Header="Rotate 90° CW" Command="{Binding RotateArtboardClockwiseCommand}" />
                     <NativeMenuItem Header="Rotate 90° CCW" Command="{Binding RotateArtboardCounterClockwiseCommand}" />
                     <NativeMenuItemSeparator />
@@ -61,17 +89,37 @@
             <!-- Image Menu -->
             <NativeMenuItem Header="Image">
                 <NativeMenu>
+                    <NativeMenuItem Header="Mode">
+                        <NativeMenu>
+                            <NativeMenuItem Header="RGB Color" Command="{Binding SetDocumentColorModeCommand}" CommandParameter="RGB" />
+                            <NativeMenuItem Header="CMYK Color" Command="{Binding SetDocumentColorModeCommand}" CommandParameter="CMYK" />
+                            <NativeMenuItem Header="Grayscale" Command="{Binding SetDocumentColorModeCommand}" CommandParameter="Grayscale" />
+                            <NativeMenuItemSeparator />
+                            <NativeMenuItem Header="8 Bits/Channel" Command="{Binding SetDocumentBitsPerChannelCommand}" CommandParameter="8" />
+                            <NativeMenuItem Header="16 Bits/Channel" Command="{Binding SetDocumentBitsPerChannelCommand}" CommandParameter="16" />
+                            <NativeMenuItem Header="32 Bits/Channel" Command="{Binding SetDocumentBitsPerChannelCommand}" CommandParameter="32" />
+                        </NativeMenu>
+                    </NativeMenuItem>
+                    <NativeMenuItemSeparator />
                     <NativeMenuItem Header="Adjustments">
                         <NativeMenu>
                             <NativeMenuItem Header="Brightness / Contrast..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="BrightnessContrast" />
                             <NativeMenuItem Header="Levels..." Gesture="Meta+L" Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Levels" />
                             <NativeMenuItem Header="Curves..." Gesture="Meta+M" Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Curves" />
+                            <NativeMenuItem Header="Exposure..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Exposure" />
+                            <NativeMenuItemSeparator />
                             <NativeMenuItem Header="Hue / Saturation..." Gesture="Meta+U" Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="HueSaturation" />
                             <NativeMenuItem Header="Vibrance..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Vibrance" />
                             <NativeMenuItem Header="Color Balance..." Gesture="Meta+B" Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="ColorBalance" />
+                            <NativeMenuItem Header="Selective Color..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="SelectiveColor" />
+                            <NativeMenuItem Header="Color Lookup..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="ColorLookup" />
+                            <NativeMenuItem Header="Photo Filter..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="PhotoFilter" />
+                            <NativeMenuItem Header="Gradient Map..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="GradientMap" />
                             <NativeMenuItemSeparator />
                             <NativeMenuItem Header="Threshold..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Threshold" />
                             <NativeMenuItem Header="Posterize..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Posterize" />
+                            <NativeMenuItem Header="Black &amp; White..." Gesture="Meta+Alt+Shift+B" Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="BlackAndWhite" />
+                            <NativeMenuItem Header="Shadows / Highlights..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="ShadowsHighlights" />
                             <NativeMenuItemSeparator />
                             <NativeMenuItem Header="Invert" Gesture="Meta+I" Command="{Binding ApplyInvertCommand}" />
                         </NativeMenu>
@@ -82,7 +130,9 @@
                     <NativeMenuItem Header="Auto Color" Command="{Binding ApplyAutoColorCommand}" />
                     <NativeMenuItem Header="Equalize" Command="{Binding ApplyEqualizeCommand}" />
                     <NativeMenuItemSeparator />
+                    <NativeMenuItem Header="Apply Image..." Command="{Binding OpenApplyImageDialogCommand}" />
                     <NativeMenuItem Header="Canvas Size..." Command="{Binding OpenCanvasSetupCommand}" />
+                    <NativeMenuItem Header="Crop and Straighten Photos" Command="{Binding CropAndStraightenPhotosCommand}" />
                     <NativeMenuItem Header="Rotate Canvas 90° CW" Command="{Binding RotateArtboardClockwiseCommand}" />
                     <NativeMenuItem Header="Rotate Canvas 90° CCW" Command="{Binding RotateArtboardCounterClockwiseCommand}" />
                 </NativeMenu>
@@ -91,17 +141,31 @@
             <!-- Layer Menu -->
             <NativeMenuItem Header="Layer">
                 <NativeMenu>
-                    <NativeMenuItem Header="New Layer" Gesture="Meta+Shift+N" Command="{Binding InsertRectangleCommand}" />
-                    <NativeMenuItem Header="Duplicate Layer" Gesture="Meta+J" Command="{Binding DuplicateCommand}" />
+                    <NativeMenuItem Header="New Layer..." Gesture="Meta+Shift+N" Command="{Binding OpenNewLayerDialogCommand}" />
+                    <NativeMenuItem Header="Duplicate Layer..." Command="{Binding OpenDuplicateLayerDialogCommand}" />
+                    <NativeMenuItem Header="Quick Duplicate Layer" Gesture="Meta+J" Command="{Binding DuplicateCommand}" />
                     <NativeMenuItem Header="Delete Layer" Command="{Binding DeleteSelectedElementCommand}" />
+                    <NativeMenuItem Header="Rename Layer..." Command="{Binding OpenRenameLayerDialogCommand}" />
+                    <NativeMenuItemSeparator />
+                    <NativeMenuItem Header="Toggle Visibility" Gesture="Meta+OemComma" Command="{Binding ToggleLayerVisibilityCommand}" />
+                    <NativeMenuItem Header="Lock Transparent Pixels" Gesture="Divide" Command="{Binding ToggleLockTransparencyCommand}" />
+                    <NativeMenuItemSeparator />
+                    <NativeMenuItem Header="Layer from Background..." Command="{Binding ConvertBackgroundToLayerCommand}" />
+                    <NativeMenuItem Header="Background from Layer" Command="{Binding ConvertLayerToBackgroundCommand}" />
                     <NativeMenuItemSeparator />
                     <NativeMenuItem Header="New Adjustment Layer">
                         <NativeMenu>
                             <NativeMenuItem Header="Brightness / Contrast..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="BrightnessContrast" />
                             <NativeMenuItem Header="Levels..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Levels" />
                             <NativeMenuItem Header="Curves..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Curves" />
+                            <NativeMenuItem Header="Exposure..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Exposure" />
                             <NativeMenuItem Header="Hue / Saturation..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="HueSaturation" />
                             <NativeMenuItem Header="Vibrance..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Vibrance" />
+                            <NativeMenuItem Header="Color Balance..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="ColorBalance" />
+                            <NativeMenuItem Header="Selective Color..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="SelectiveColor" />
+                            <NativeMenuItem Header="Color Lookup..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="ColorLookup" />
+                            <NativeMenuItem Header="Photo Filter..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="PhotoFilter" />
+                            <NativeMenuItem Header="Gradient Map..." Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="GradientMap" />
                         </NativeMenu>
                     </NativeMenuItem>
                     <NativeMenuItemSeparator />
@@ -111,6 +175,10 @@
                     <NativeMenuItem Header="Send Backward" Command="{Binding SendBackwardCommand}" />
                     <NativeMenuItem Header="Bring to Front" Command="{Binding BringToFrontCommand}" />
                     <NativeMenuItem Header="Send to Back" Command="{Binding SendToBackCommand}" />
+                    <NativeMenuItemSeparator />
+                    <NativeMenuItem Header="Merge Down" Gesture="Meta+E" Command="{Binding MergeDownCommand}" />
+                    <NativeMenuItem Header="Merge Visible" Gesture="Meta+Shift+E" Command="{Binding MergeVisibleCommand}" />
+                    <NativeMenuItem Header="Flatten Image" Command="{Binding FlattenImageCommand}" />
                 </NativeMenu>
             </NativeMenuItem>
 
@@ -134,17 +202,41 @@
                     <NativeMenuItem Header="Deselect" Gesture="Meta+D" Command="{Binding DeselectAllCommand}" />
                     <NativeMenuItem Header="Inverse" Gesture="Meta+Shift+I" Command="{Binding InvertSelectionCommand}" />
                     <NativeMenuItemSeparator />
-                    <NativeMenuItem Header="Color Range..." Command="{Binding OpenColorRangeDialogCommand}" />
+                    <NativeMenuItem Header="Subject" Command="{Binding SelectSubjectCommand}" />
                     <NativeMenuItem Header="Sky" Command="{Binding SelectSkyCommand}" />
+                    <NativeMenuItem Header="Color Range..." Command="{Binding OpenColorRangeDialogCommand}" />
                     <NativeMenuItem Header="Select and Mask..." Gesture="Meta+Alt+R" Command="{Binding OpenSelectAndMaskDialogCommand}" />
+                    <NativeMenuItem Header="Modify">
+                        <NativeMenu>
+                            <NativeMenuItem Header="Border..." Command="{Binding ModifySelectionBorderCommand}" />
+                            <NativeMenuItem Header="Smooth..." Command="{Binding ModifySelectionSmoothCommand}" />
+                            <NativeMenuItem Header="Expand..." Command="{Binding ModifySelectionExpandCommand}" />
+                            <NativeMenuItem Header="Contract..." Command="{Binding ModifySelectionContractCommand}" />
+                            <NativeMenuItemSeparator />
+                            <NativeMenuItem Header="Feather..." Gesture="Shift+F6" Command="{Binding ModifySelectionFeatherCommand}" />
+                        </NativeMenu>
+                    </NativeMenuItem>
+                    <NativeMenuItemSeparator />
+                    <NativeMenuItem Header="Make Work Path from Selection..." Command="{Binding MakeWorkPathFromSelectionCommand}" />
+                    <NativeMenuItem Header="Convert Selection to Shape" Command="{Binding ConvertSelectionToShapeCommand}" />
+                    <NativeMenuItemSeparator />
+                    <NativeMenuItem Header="Load Luminosity" Gesture="Meta+Alt+2" Command="{Binding LoadLuminositySelectionCommand}" />
+                    <NativeMenuItem Header="Save Selection as Channel..." Command="{Binding SaveSelectionAsChannelCommand}" />
                 </NativeMenu>
             </NativeMenuItem>
 
             <!-- Filter Menu -->
             <NativeMenuItem Header="Filter">
                 <NativeMenu>
+                    <NativeMenuItem Header="Camera Raw Filter..." Gesture="Meta+Shift+A" Command="{Binding OpenFilterDialogCommand}" CommandParameter="CameraRaw" />
                     <NativeMenuItem Header="Liquify..." Gesture="Meta+Shift+X" Command="{Binding OpenLiquifyDialogCommand}" />
                     <NativeMenuItemSeparator />
+                    <NativeMenuItem Header="Blur Gallery">
+                        <NativeMenu>
+                            <NativeMenuItem Header="Tilt-Shift..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="TiltShift" />
+                            <NativeMenuItem Header="Iris Blur..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="IrisBlur" />
+                        </NativeMenu>
+                    </NativeMenuItem>
                     <NativeMenuItem Header="Blur">
                         <NativeMenu>
                             <NativeMenuItem Header="Gaussian Blur..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="GaussianBlur" />
@@ -159,17 +251,32 @@
                     </NativeMenuItem>
                     <NativeMenuItem Header="Distort">
                         <NativeMenu>
+                            <NativeMenuItem Header="Wave..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Wave" />
+                            <NativeMenuItem Header="Ripple..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Ripple" />
+                            <NativeMenuItem Header="Pinch..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Pinch" />
+                            <NativeMenuItem Header="Polar Coordinates..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="PolarCoordinates" />
                             <NativeMenuItem Header="Twirl..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Twirl" />
                             <NativeMenuItem Header="Spherize..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Spherize" />
+                            <NativeMenuItem Header="ZigZag..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="ZigZag" />
+                            <NativeMenuItem Header="Shear..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Shear" />
+                            <NativeMenuItem Header="Displace..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Displace" />
                         </NativeMenu>
                     </NativeMenuItem>
                     <NativeMenuItem Header="Pixelate">
                         <NativeMenu>
+                            <NativeMenuItem Header="Color Halftone..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="ColorHalftone" />
+                            <NativeMenuItem Header="Crystallize..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Crystallize" />
+                            <NativeMenuItem Header="Pointillize..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Pointillize" />
                             <NativeMenuItem Header="Mosaic..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Mosaic" />
                         </NativeMenu>
                     </NativeMenuItem>
                     <NativeMenuItem Header="Stylize">
                         <NativeMenu>
+                            <NativeMenuItem Header="Oil Paint..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="OilPaint" />
+                            <NativeMenuItem Header="Wind..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Wind" />
+                            <NativeMenuItem Header="Diffuse..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Diffuse" />
+                            <NativeMenuItem Header="Find Edges" Command="{Binding OpenFilterDialogCommand}" CommandParameter="FindEdges" />
+                            <NativeMenuItem Header="Solarize..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Solarize" />
                             <NativeMenuItem Header="Emboss..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Emboss" />
                         </NativeMenu>
                     </NativeMenuItem>
@@ -184,6 +291,7 @@
                         <NativeMenu>
                             <NativeMenuItem Header="High Pass..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="HighPass" />
                             <NativeMenuItem Header="Offset..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Offset" />
+                            <NativeMenuItem Header="Color to Alpha..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="ColorToAlpha" />
                         </NativeMenu>
                     </NativeMenuItem>
                 </NativeMenu>

@@ -1,0 +1,98 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Dialogs.ChannelOptionsDialog"
+             x:DataType="local:ImageEditorViewModel">
+
+    <UserControl.Resources>
+        <local:StringEqualsConverter x:Key="StringEqualsConverter" />
+        <local:ColorToBrushConverter x:Key="ColorToBrushConverter" />
+    </UserControl.Resources>
+
+    <!-- Modal Backdrop -->
+    <Border Background="#99000000"
+            IsVisible="{Binding IsChannelOptionsDialogOpen}"
+            ZIndex="550">
+        <Border Background="{DynamicResource PsPanelBrush}"
+                BorderBrush="{DynamicResource PsBorderLightBrush}"
+                BorderThickness="1"
+                CornerRadius="3"
+                Width="360"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                BoxShadow="0 10 30 #80000000">
+            <Grid RowDefinitions="32,*,44">
+                <!-- Header -->
+                <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="12,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <materialIcons:MaterialIcon Kind="Tune" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+                            <TextBlock Text="{Binding ChannelOptionsDialogTitle}" FontWeight="SemiBold" FontSize="12" Foreground="#FFFFFF" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="ps-opt-btn" Command="{Binding CancelChannelOptionsCommand}">
+                            <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Body -->
+                <StackPanel Grid.Row="1" Spacing="10" Margin="16,14">
+                    <!-- Name Row (Alpha & Spot channels only) -->
+                    <Grid ColumnDefinitions="75,*" IsVisible="{Binding IsChannelOptionsNameVisible}">
+                        <TextBlock Grid.Column="0" Text="Name:" Classes="ps-label" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Classes="ps-input" Text="{Binding ChannelOptionsName, Mode=TwoWay}" />
+                    </Grid>
+
+                    <!-- Color Indicates Section -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Color Indicates:" Classes="ps-section-header" />
+                        <Rectangle Height="1" Fill="{DynamicResource PsBorderSubtleBrush}" />
+                        <StackPanel Spacing="4" Margin="12,0,0,0">
+                            <RadioButton GroupName="ChannelIndicates" Content="Masked Areas"
+                                         IsChecked="{Binding ChannelOptionsIndicates, Converter={StaticResource StringEqualsConverter}, ConverterParameter='masked', Mode=TwoWay}"
+                                         Command="{Binding SetChannelIndicatesCommand}" CommandParameter="masked" />
+                            <RadioButton GroupName="ChannelIndicates" Content="Selected Areas"
+                                         IsChecked="{Binding ChannelOptionsIndicates, Converter={StaticResource StringEqualsConverter}, ConverterParameter='selected', Mode=TwoWay}"
+                                         Command="{Binding SetChannelIndicatesCommand}" CommandParameter="selected" />
+                            <RadioButton GroupName="ChannelIndicates" Content="Spot Color"
+                                         IsVisible="{Binding IsChannelOptionsSpotVisible}"
+                                         IsChecked="{Binding ChannelOptionsIndicates, Converter={StaticResource StringEqualsConverter}, ConverterParameter='spot', Mode=TwoWay}"
+                                         Command="{Binding SetChannelIndicatesCommand}" CommandParameter="spot" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Color & Opacity / Solidity Section -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Color" Classes="ps-section-header" />
+                        <Rectangle Height="1" Fill="{DynamicResource PsBorderSubtleBrush}" />
+                        <Grid ColumnDefinitions="Auto,12,Auto,8,*" Margin="4,4,0,0">
+                            <!-- Color Swatch Button -->
+                            <Button Grid.Column="0" Classes="ps-opt-btn" Padding="0"
+                                    Command="{Binding PickChannelOptionsColorCommand}"
+                                    ToolTip.Tip="Select Channel Color">
+                                <Border Width="40" Height="24" CornerRadius="2"
+                                        Background="{Binding ChannelOptionsColor, Converter={StaticResource ColorToBrushConverter}}"
+                                        BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1" />
+                            </Button>
+
+                            <TextBlock Grid.Column="2" Text="{Binding ChannelOptionsOpacityLabel}" Classes="ps-label" VerticalAlignment="Center" />
+                            <NumericUpDown Grid.Column="4" Classes="ps-num" Width="80"
+                                           Minimum="0" Maximum="100" Increment="5"
+                                           Value="{Binding ChannelOptionsOpacity, Mode=TwoWay}"
+                                           FormatString="{}{0:0}%" VerticalAlignment="Center" />
+                        </Grid>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Footer Actions -->
+                <Border Grid.Row="2" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="12,0">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" VerticalAlignment="Center">
+                        <Button Classes="ps-btn" Content="Cancel" Padding="14,5" Command="{Binding CancelChannelOptionsCommand}" />
+                        <Button Classes="ps-btn ps-btn-primary" Content="OK" Padding="18,5" Command="{Binding ConfirmChannelOptionsCommand}" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Border>
+</UserControl>

@@ -26,6 +26,7 @@
         <Color x:Key="PsSelectionColor">#1E4870</Color>
         <Color x:Key="PsRowSelectedColor">#525252</Color>
         <Color x:Key="PsHoverColor">#383838</Color>
+        <Color x:Key="PsWarningColor">#F59E0B</Color>
 
         <!-- Brushes -->
         <SolidColorBrush x:Key="PsChromeBrush" Color="{StaticResource PsChromeColor}" />
@@ -49,6 +50,7 @@
         <SolidColorBrush x:Key="PsSelectionBrush" Color="{StaticResource PsSelectionColor}" />
         <SolidColorBrush x:Key="PsRowSelectedBrush" Color="{StaticResource PsRowSelectedColor}" />
         <SolidColorBrush x:Key="PsHoverBrush" Color="{StaticResource PsHoverColor}" />
+        <SolidColorBrush x:Key="PsWarningBrush" Color="{StaticResource PsWarningColor}" />
     </Styles.Resources>
 
     <!-- Top Menu Item Buttons -->

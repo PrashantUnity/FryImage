@@ -301,9 +301,25 @@ public partial class ImageEditorViewModel
     public int ColorPickerY => (int)Math.Round(ColorConversions.RgbToCmyk(ColorPickerWorkingColor).Y * 100.0);
     public int ColorPickerK => (int)Math.Round(ColorConversions.RgbToCmyk(ColorPickerWorkingColor).K * 100.0);
 
+    private Action<Color>? _customColorPickerCallback;
+
+    public void OpenColorPicker(Color initialColor, Action<Color> onCommit, string targetTitle = "Color Picker")
+    {
+        _customColorPickerCallback = onCommit;
+        ColorPickerTarget = targetTitle;
+        ColorPickerOriginalColor = initialColor;
+        ColorPickerWorkingColor = initialColor;
+        var hsv = initialColor.ToHsv();
+        ColorPickerHsvColor = (hsv.S < 0.001 && hsv.V < 0.001)
+            ? new HsvColor(1.0, 0.0, 0.0, 0.0)
+            : hsv;
+        IsColorPickerVisible = true;
+    }
+
     [RelayCommand]
     public void OpenColorPicker(string target = "Foreground")
     {
+        _customColorPickerCallback = null;
         ColorPickerTarget = target;
         ColorPickerOriginalColor = target.Equals("Background", StringComparison.OrdinalIgnoreCase)
             ? SecondaryColor
@@ -319,7 +335,12 @@ public partial class ImageEditorViewModel
     [RelayCommand]
     public void CommitColorPicker()
     {
-        if (ColorPickerTarget.Equals("Background", StringComparison.OrdinalIgnoreCase))
+        if (_customColorPickerCallback != null)
+        {
+            _customColorPickerCallback(ColorPickerWorkingColor);
+            _customColorPickerCallback = null;
+        }
+        else if (ColorPickerTarget.Equals("Background", StringComparison.OrdinalIgnoreCase))
         {
             SecondaryColor = ColorPickerWorkingColor;
         }
@@ -340,6 +361,7 @@ public partial class ImageEditorViewModel
     [RelayCommand]
     public void CancelColorPicker()
     {
+        _customColorPickerCallback = null;
         IsColorPickerVisible = false;
     }
 

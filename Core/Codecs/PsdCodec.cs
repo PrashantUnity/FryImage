@@ -31,6 +31,7 @@ public static class PsdCodec
         public bool IsVisible { get; set; } = true;
         public string BlendMode { get; set; } = "norm";
         public byte[]? BgraPixels { get; set; }
+        internal List<(short ChannelId, uint Length)> Channels { get; } = new();
     }
 
     public sealed class PsdDocument
@@ -76,11 +77,11 @@ public static class PsdCodec
 
         // 2. Color Mode Data
         uint colorModeLen = reader.ReadUInt32();
-        if (colorModeLen > 0) reader.ReadBytes((int)colorModeLen);
+        SkipBytes(stream, reader, colorModeLen);
 
         // 3. Image Resources
         uint imgResLen = reader.ReadUInt32();
-        if (imgResLen > 0) reader.ReadBytes((int)imgResLen);
+        SkipBytes(stream, reader, imgResLen);
 
         // 4. Layer and Mask Information
         uint layerSectionLen = reader.ReadUInt32();
@@ -113,12 +114,11 @@ public static class PsdCodec
                     };
 
                     // Channel info records (6 bytes each: 2 byte id, 4 byte data length)
-                    var channelIds = new short[layerChannels];
-                    var channelLens = new uint[layerChannels];
                     for (int c = 0; c < layerChannels; c++)
                     {
-                        channelIds[c] = reader.ReadInt16();
-                        channelLens[c] = reader.ReadUInt32();
+                        short chId = reader.ReadInt16();
+                        uint chLen = reader.ReadUInt32();
+                        layer.Channels.Add((chId, chLen));
                     }
 
                     // Blend mode signature
@@ -138,11 +138,11 @@ public static class PsdCodec
 
                     // Layer mask data
                     uint maskLen = reader.ReadUInt32();
-                    if (maskLen > 0) reader.ReadBytes((int)maskLen);
+                    SkipBytes(stream, reader, maskLen);
 
                     // Layer blending ranges
                     uint blendRangesLen = reader.ReadUInt32();
-                    if (blendRangesLen > 0) reader.ReadBytes((int)blendRangesLen);
+                    SkipBytes(stream, reader, blendRangesLen);
 
                     // Layer name (Pascal string padded to multiple of 4 bytes)
                     byte nameLen = reader.ReadByte();
@@ -183,7 +183,7 @@ public static class PsdCodec
                         }
 
                         long readSoFar = stream.Position - tagDataStart;
-                        if (readSoFar < tagLen) reader.ReadBytes((int)(tagLen - readSoFar));
+                        if (readSoFar < tagLen) SkipBytes(stream, reader, tagLen - readSoFar);
                         if ((tagLen % 2) != 0 && stream.Position < extraStart + extraLen) reader.ReadByte();
                     }
 
@@ -191,7 +191,7 @@ public static class PsdCodec
                     long extraRead = stream.Position - extraStart;
                     if (extraRead < extraLen)
                     {
-                        reader.ReadBytes((int)(extraLen - extraRead));
+                        SkipBytes(stream, reader, extraLen - extraRead);
                     }
 
                     layers.Add(layer);
@@ -202,7 +202,16 @@ public static class PsdCodec
                 {
                     int lw = layer.Width;
                     int lh = layer.Height;
-                    if (lw <= 0 || lh <= 0) continue;
+
+                    if (lw <= 0 || lh <= 0)
+                    {
+                        // Empty layer (group marker or adjustment layer)
+                        foreach (var (_, clen) in layer.Channels)
+                        {
+                            SkipBytes(stream, reader, clen);
+                        }
+                        continue;
+                    }
 
                     byte[] r = new byte[lw * lh];
                     byte[] g = new byte[lw * lh];
@@ -210,42 +219,70 @@ public static class PsdCodec
                     byte[] a = new byte[lw * lh];
                     Array.Fill(a, (byte)255);
 
-                    // Typically channels are: 0=R, 1=G, 2=B, -1=A (Transparency mask)
-                    // The channels appear in order of the layer records
-                    for (int c = 0; c < 4; c++)
+                    foreach (var (cid, clen) in layer.Channels)
                     {
-                        if (stream.Position >= layerSectionStart + layerSectionLen) break;
+                        if (clen == 0) continue;
+                        long chStart = stream.Position;
 
-                        ushort comp = reader.ReadUInt16(); // 0 = Raw, 1 = RLE
-                        byte[] target = c switch
+                        if (clen < 2)
+                        {
+                            SkipBytes(stream, reader, clen);
+                            continue;
+                        }
+
+                        byte[]? target = cid switch
                         {
                             0 => r,
                             1 => g,
                             2 => b,
-                            _ => a
+                            -1 => a,
+                            _ => null // e.g. -2 user mask or other auxiliary channel
                         };
+
+                        ushort comp = reader.ReadUInt16();
 
                         if (comp == 0) // Raw
                         {
-                            reader.Read(target, 0, target.Length);
+                            if (target != null)
+                            {
+                                int toRead = Math.Min(target.Length, (int)(clen - 2));
+                                reader.Read(target, 0, toRead);
+                            }
                         }
                         else if (comp == 1) // RLE (PackBits)
                         {
-                            // Row byte counts
                             var rowCounts = new ushort[lh];
                             for (int row = 0; row < lh; row++)
                             {
                                 rowCounts[row] = reader.ReadUInt16();
                             }
 
-                            // Decode scanlines
-                            int offset = 0;
                             for (int row = 0; row < lh; row++)
                             {
                                 int byteCount = rowCounts[row];
                                 byte[] compressedRow = reader.ReadBytes(byteCount);
-                                offset += DecodePackBits(compressedRow, target, offset, lw);
+                                if (target != null)
+                                {
+                                    int rowOffset = row * lw;
+                                    DecodePackBits(compressedRow, target, rowOffset, lw);
+                                }
                             }
+                        }
+                        else if (comp == 2 || comp == 3) // ZIP / ZIP with prediction
+                        {
+                            int compLen = (int)(clen - 2);
+                            byte[] compBytes = reader.ReadBytes(compLen);
+                            if (target != null)
+                            {
+                                DecompressZip(compBytes, target, comp == 3, lw, lh);
+                            }
+                        }
+
+                        // Align stream to exact end of channel block
+                        long bytesRead = stream.Position - chStart;
+                        if (bytesRead < clen)
+                        {
+                            SkipBytes(stream, reader, clen - bytesRead);
                         }
                     }
 
@@ -269,7 +306,7 @@ public static class PsdCodec
             long totalRead = stream.Position - layerSectionStart;
             if (totalRead < layerSectionLen)
             {
-                reader.ReadBytes((int)(layerSectionLen - totalRead));
+                SkipBytes(stream, reader, layerSectionLen - totalRead);
             }
         }
 
@@ -281,19 +318,23 @@ public static class PsdCodec
                 ushort comp = reader.ReadUInt16();
                 int cw = doc.Width;
                 int ch = doc.Height;
-                int totalPixels = cw * ch;
+                long totalPixels = (long)cw * ch;
 
                 if (totalPixels > 0 && totalPixels < 50_000_000)
                 {
-                    byte[] cr = new byte[totalPixels];
-                    byte[] cg = new byte[totalPixels];
-                    byte[] cb = new byte[totalPixels];
+                    int totalP = (int)totalPixels;
+                    byte[] cr = new byte[totalP];
+                    byte[] cg = new byte[totalP];
+                    byte[] cb = new byte[totalP];
+                    byte[] ca = new byte[totalP];
+                    Array.Fill(ca, (byte)255);
 
                     if (comp == 0) // Raw
                     {
-                        reader.Read(cr, 0, totalPixels);
-                        reader.Read(cg, 0, totalPixels);
-                        reader.Read(cb, 0, totalPixels);
+                        reader.Read(cr, 0, totalP);
+                        if (doc.Channels > 1) reader.Read(cg, 0, totalP);
+                        if (doc.Channels > 2) reader.Read(cb, 0, totalP);
+                        if (doc.Channels > 3) reader.Read(ca, 0, totalP);
                     }
                     else if (comp == 1) // RLE
                     {
@@ -303,27 +344,37 @@ public static class PsdCodec
                             rowLens[s] = reader.ReadUInt16();
 
                         int scanlineIdx = 0;
-                        for (int c = 0; c < Math.Min(3, doc.Channels); c++)
+                        for (int c = 0; c < doc.Channels; c++)
                         {
-                            byte[] target = c == 0 ? cr : (c == 1 ? cg : cb);
-                            int off = 0;
+                            byte[]? target = c switch
+                            {
+                                0 => cr,
+                                1 => cg,
+                                2 => cb,
+                                3 => ca,
+                                _ => null
+                            };
+
                             for (int row = 0; row < ch; row++)
                             {
                                 int rLen = rowLens[scanlineIdx++];
                                 byte[] compRow = reader.ReadBytes(rLen);
-                                off += DecodePackBits(compRow, target, off, cw);
+                                if (target != null)
+                                {
+                                    DecodePackBits(compRow, target, row * cw, cw);
+                                }
                             }
                         }
                     }
 
-                    byte[] compositeBgra = new byte[totalPixels * 4];
-                    for (int p = 0; p < totalPixels; p++)
+                    byte[] compositeBgra = new byte[totalP * 4];
+                    for (int p = 0; p < totalP; p++)
                     {
                         int baseIdx = p * 4;
                         compositeBgra[baseIdx] = cb[p];
                         compositeBgra[baseIdx + 1] = cg[p];
                         compositeBgra[baseIdx + 2] = cr[p];
-                        compositeBgra[baseIdx + 3] = 255;
+                        compositeBgra[baseIdx + 3] = ca[p];
                     }
                     doc.CompositeBgraPixels = compositeBgra;
                 }
@@ -335,6 +386,59 @@ public static class PsdCodec
         }
 
         return doc;
+    }
+
+    private static void SkipBytes(Stream stream, BinaryReader reader, long count)
+    {
+        if (count <= 0) return;
+        if (stream.CanSeek)
+        {
+            stream.Seek(count, SeekOrigin.Current);
+        }
+        else
+        {
+            long remaining = count;
+            byte[] buf = new byte[Math.Min(81920, remaining)];
+            while (remaining > 0)
+            {
+                int toRead = (int)Math.Min(buf.Length, remaining);
+                int r = reader.Read(buf, 0, toRead);
+                if (r <= 0) break;
+                remaining -= r;
+            }
+        }
+    }
+
+    private static void DecompressZip(byte[] compressed, byte[] target, bool prediction, int width, int height)
+    {
+        try
+        {
+            using var ms = new MemoryStream(compressed);
+            using var zlib = new System.IO.Compression.ZLibStream(ms, System.IO.Compression.CompressionMode.Decompress);
+            int read = 0;
+            while (read < target.Length)
+            {
+                int r = zlib.Read(target, read, target.Length - read);
+                if (r <= 0) break;
+                read += r;
+            }
+
+            if (prediction)
+            {
+                for (int y = 0; y < height; y++)
+                {
+                    int rowStart = y * width;
+                    for (int x = 1; x < width; x++)
+                    {
+                        target[rowStart + x] = (byte)(target[rowStart + x] + target[rowStart + x - 1]);
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Graceful fallback
+        }
     }
 
     /// <summary>

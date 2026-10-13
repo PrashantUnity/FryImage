@@ -345,11 +345,28 @@ public partial class ImageEditorView : UserControl
         if (e.Key == Key.Escape)
         {
             if (vm.IsFreeTransformActive) { vm.CancelFreeTransformCommand.Execute(null); e.Handled = true; return; }
+            if (vm.IsLiquifyDialogOpen) { vm.CancelLiquifyDialog(); e.Handled = true; return; }
+            if (vm.IsColorPickerVisible) { vm.CancelColorPicker(); e.Handled = true; return; }
             if (vm.IsNewBrushPresetDialogOpen) { vm.CloseNewBrushPresetDialog(); e.Handled = true; return; }
             if (vm.IsNewDocumentDialogOpen) { vm.IsNewDocumentDialogOpen = false; e.Handled = true; return; }
             if (vm.IsAdjustmentDialogOpen) { vm.CancelAdjustmentDialogCommand.Execute(null); e.Handled = true; return; }
             if (vm.IsFilterDialogOpen) { vm.CancelFilterDialogCommand.Execute(null); e.Handled = true; return; }
             if (vm.IsLayerStyleDialogOpen) { vm.IsLayerStyleDialogOpen = false; e.Handled = true; return; }
+            if (vm.IsExportDialogOpen) { vm.IsExportDialogOpen = false; e.Handled = true; return; }
+            if (vm.IsFitImageDialogOpen) { vm.CancelFitImageDialog(); e.Handled = true; return; }
+            if (vm.IsLoadFilesIntoStackDialogOpen) { vm.CancelLoadFilesIntoStackDialog(); e.Handled = true; return; }
+            if (vm.IsApplyImageDialogOpen) { vm.CancelApplyImageDialog(); e.Handled = true; return; }
+            if (vm.IsContentAwareScaleDialogOpen) { vm.CancelContentAwareScaleDialog(); e.Handled = true; return; }
+            if (vm.IsColorRangeDialogOpen) { vm.CancelColorRangeDialog(); e.Handled = true; return; }
+            if (vm.IsSelectAndMaskDialogOpen) { vm.CancelSelectAndMaskDialog(); e.Handled = true; return; }
+            if (vm.IsWarpTextDialogOpen) { vm.CancelWarpTextDialog(); e.Handled = true; return; }
+            if (vm.IsDuplicateLayerDialogOpen) { vm.IsDuplicateLayerDialogOpen = false; e.Handled = true; return; }
+            if (vm.IsNewLayerDialogOpen) { vm.IsNewLayerDialogOpen = false; e.Handled = true; return; }
+            if (vm.IsRenameLayerDialogOpen) { vm.IsRenameLayerDialogOpen = false; e.Handled = true; return; }
+            if (vm.IsNewGuideDialogOpen) { vm.IsNewGuideDialogOpen = false; e.Handled = true; return; }
+            if (vm.IsNewGuideLayoutDialogOpen) { vm.IsNewGuideLayoutDialogOpen = false; e.Handled = true; return; }
+            if (vm.IsRasterizePromptOpen) { vm.CancelRasterize(); e.Handled = true; return; }
+            if (vm.IsCommandPaletteOpen) { vm.ToggleCommandPalette(); e.Handled = true; return; }
             if (vm.SelectedElements.Count > 0) { vm.DeselectAllCommand.Execute(null); e.Handled = true; return; }
             vm.SetToolCommand.Execute("select");
             e.Handled = true;

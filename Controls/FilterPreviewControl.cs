@@ -180,21 +180,8 @@ public class FilterPreviewControl : Control
         var roundedRect = new RoundedRect(bounds, 3);
         using var clipState = dc.PushClip(roundedRect);
 
-        // 1. Draw transparency checkerboard pattern
-        const double checkSize = 10.0;
+        // 1. Studio dark background
         dc.FillRectangle(CheckerDarkBrush, bounds);
-        for (double y = 0; y < bounds.Height; y += checkSize)
-        {
-            int row = (int)(y / checkSize);
-            for (double x = 0; x < bounds.Width; x += checkSize)
-            {
-                int col = (int)(x / checkSize);
-                if ((row + col) % 2 == 0)
-                {
-                    dc.FillRectangle(CheckerLightBrush, new Rect(x, y, Math.Min(checkSize, bounds.Width - x), Math.Min(checkSize, bounds.Height - y)));
-                }
-            }
-        }
 
         // 2. Determine which image to show:
         // When pointer is pressed down, show Original; otherwise show Preview (or fallback to Original)
@@ -208,14 +195,38 @@ public class FilterPreviewControl : Control
             double imgH = activeBitmap.Size.Height;
             double z = Math.Clamp(Zoom, 0.125, 8.0);
 
-            double displayW = imgW * z;
-            double displayH = imgH * z;
+            // Maintain exact square pixel scaling without stretching (#4640, #4655)
+            double displayW = Math.Round(imgW * z);
+            double displayH = Math.Round(imgH * z);
 
-            // Center in viewport + pan offset
-            double destX = (bounds.Width - displayW) / 2.0 + PanOffset.X;
-            double destY = (bounds.Height - displayH) / 2.0 + PanOffset.Y;
+            // Center in viewport + pan offset, snapped to whole pixels
+            double destX = Math.Round((bounds.Width - displayW) / 2.0 + PanOffset.X);
+            double destY = Math.Round((bounds.Height - displayH) / 2.0 + PanOffset.Y);
 
             var destRect = new Rect(destX, destY, displayW, displayH);
+
+            // Draw checkerboard strictly under the image area (#4640)
+            var visibleImageRect = destRect.Intersect(bounds);
+            if (visibleImageRect.Width > 0 && visibleImageRect.Height > 0)
+            {
+                using (dc.PushClip(visibleImageRect))
+                {
+                    const double checkSize = 10.0;
+                    for (double cy = destRect.Y; cy < destRect.Bottom; cy += checkSize)
+                    {
+                        int row = (int)((cy - destRect.Y) / checkSize);
+                        for (double cx = destRect.X; cx < destRect.Right; cx += checkSize)
+                        {
+                            int col = (int)((cx - destRect.X) / checkSize);
+                            if ((row + col) % 2 == 0)
+                            {
+                                dc.FillRectangle(CheckerLightBrush, new Rect(cx, cy, Math.Min(checkSize, destRect.Right - cx), Math.Min(checkSize, destRect.Bottom - cy)));
+                            }
+                        }
+                    }
+                }
+            }
+
             dc.DrawImage(activeBitmap, new Rect(0, 0, imgW, imgH), destRect);
         }
 

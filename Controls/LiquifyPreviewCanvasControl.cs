@@ -297,16 +297,45 @@ public sealed class LiquifyPreviewCanvasControl : Control
         InvalidateVisual();
     }
 
+    private bool _isResizingBrush;
+    private double _initialBrushSize;
+    private Point _brushResizeStart;
+
+    protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
+    {
+        base.OnPointerWheelChanged(e);
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Alt) || e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        {
+            BrushSize = Math.Clamp(BrushSize + (e.Delta.Y > 0 ? 5.0 : -5.0), 4.0, 500.0);
+            InvalidateVisual();
+            e.Handled = true;
+        }
+    }
+
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
+        var screenPt = e.GetPosition(this);
+        _cursorScreenPoint = screenPt;
+        _isCursorInside = true;
+
+        // Photoshop Parity: Alt+Right-drag resizes the brush instead of painting (#4707)
+        bool isAlt = e.KeyModifiers.HasFlag(KeyModifiers.Alt);
+        bool isRightButton = e.GetCurrentPoint(this).Properties.IsRightButtonPressed;
+        if (isAlt && isRightButton)
+        {
+            _isResizingBrush = true;
+            _brushResizeStart = screenPt;
+            _initialBrushSize = BrushSize;
+            e.Pointer.Capture(this);
+            e.Handled = true;
+            return;
+        }
+
         if (_mesh == null || _sourceBgra == null || _deformedBgra == null) return;
 
         var bounds = Bounds;
         var destRect = GetImageDestRect(bounds);
-        var screenPt = e.GetPosition(this);
-        _cursorScreenPoint = screenPt;
-        _isCursorInside = true;
 
         if (!destRect.Contains(screenPt)) return;
 
@@ -326,6 +355,15 @@ public sealed class LiquifyPreviewCanvasControl : Control
         base.OnPointerMoved(e);
         _cursorScreenPoint = e.GetPosition(this);
         _isCursorInside = true;
+
+        if (_isResizingBrush)
+        {
+            double deltaX = _cursorScreenPoint.X - _brushResizeStart.X;
+            BrushSize = Math.Clamp(Math.Round(_initialBrushSize + deltaX * 1.5), 4.0, 500.0);
+            InvalidateVisual();
+            e.Handled = true;
+            return;
+        }
 
         if (!_isDeforming || _mesh == null || _sourceBgra == null || _deformedBgra == null)
         {
@@ -348,6 +386,15 @@ public sealed class LiquifyPreviewCanvasControl : Control
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {
         base.OnPointerReleased(e);
+        if (_isResizingBrush)
+        {
+            _isResizingBrush = false;
+            e.Pointer.Capture(null);
+            InvalidateVisual();
+            e.Handled = true;
+            return;
+        }
+
         if (_isDeforming)
         {
             _isDeforming = false;

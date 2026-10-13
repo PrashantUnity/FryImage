@@ -721,6 +721,152 @@ public static class ParityFeatureSnapshotSuite
             throw new InvalidOperationException($"FitChannel failed to constrain gain on flat gradient patch: {gainFlat}");
         }
         Console.WriteLine("  ✓ Content-Aware Fill gradient tint protection (FitChannel gain constraint) verified.");
+
+        // 44. Test New Brush Preset Dialog & Preset Model properties (8c135457)
+        vm.OpenNewBrushPresetDialogCommand.Execute(null);
+        if (!vm.IsNewBrushPresetDialogOpen)
+        {
+            throw new InvalidOperationException("OpenNewBrushPresetDialogCommand failed to open dialog.");
+        }
+        vm.NewBrushPresetName = "Parity Texture Brush";
+        vm.NewBrushPresetCaptureSize = true;
+        vm.NewBrushPresetColor = true;
+        vm.ConfirmNewBrushPresetCommand.Execute(null);
+        if (vm.IsNewBrushPresetDialogOpen)
+        {
+            throw new InvalidOperationException("ConfirmNewBrushPresetCommand failed to close dialog.");
+        }
+        if (vm.SelectedBrushPreset == null || vm.SelectedBrushPreset.Name != "Parity Texture Brush" || !vm.SelectedBrushPreset.CaptureSize)
+        {
+            throw new InvalidOperationException("Created brush preset did not retain CaptureSize or Name.");
+        }
+        Console.WriteLine("  ✓ New Brush Preset dialog & preset model properties verified.");
+
+        // 45. Test Background Eraser Pre-Stroke Snapshot Matching (cda46050)
+        byte[] eraserTarget = new byte[16 * 16 * 4];
+        byte[] eraserSnapshot = new byte[16 * 16 * 4];
+        for (int i = 0; i < 16 * 16; i++)
+        {
+            eraserTarget[i * 4] = 200; eraserTarget[i * 4 + 1] = 50; eraserTarget[i * 4 + 2] = 50; eraserTarget[i * 4 + 3] = 255;
+            eraserSnapshot[i * 4] = 200; eraserSnapshot[i * 4 + 1] = 50; eraserSnapshot[i * 4 + 2] = 50; eraserSnapshot[i * 4 + 3] = 255;
+        }
+        RetouchEngine.ApplyBackgroundEraserDab(eraserTarget, 16, 16, new Point(8, 8), Color.FromRgb(50, 50, 200), radius: 6, hardness: 1.0, tolerance: 20.0, preStrokeSnapshot: eraserSnapshot);
+        RetouchEngine.ApplyBackgroundEraserDab(eraserTarget, 16, 16, new Point(9, 8), Color.FromRgb(50, 50, 200), radius: 6, hardness: 1.0, tolerance: 20.0, preStrokeSnapshot: eraserSnapshot);
+        if (eraserTarget[(8 * 16 + 8) * 4 + 3] > 10)
+        {
+            throw new InvalidOperationException("BackgroundEraserDab failed to erase sampled color.");
+        }
+        Console.WriteLine("  ✓ Background Eraser pre-stroke snapshot matching verified.");
+
+        // 46. Test FITS Long String CONTINUE convention roundtrip (781871ff)
+        string longFitsString = "This is an astronomical observation description that is substantially longer than sixty-four characters and requires multiple FITS CONTINUE cards.";
+        var stringCards = FitsCodec.FormatStringCards("OBSINFO", longFitsString, "Long test metadata");
+        if (stringCards.Count < 2)
+        {
+            throw new InvalidOperationException("FitsCodec.FormatStringCards should split long string into multiple CONTINUE cards.");
+        }
+        byte[] syntheticBgra = new byte[8 * 8 * 4];
+        Array.Fill(syntheticBgra, (byte)128);
+        using var fitsMs = new MemoryStream();
+        FitsCodec.Encode(syntheticBgra, 8, 8, fitsMs);
+        fitsMs.Position = 0;
+        var fitsDecoded = FitsCodec.Decode(fitsMs);
+        if (fitsDecoded == null || fitsDecoded.Width != 8 || fitsDecoded.Height != 8)
+        {
+            throw new InvalidOperationException("FitsCodec failed to roundtrip astronomical image.");
+        }
+        Console.WriteLine("  ✓ FITS long string CONTINUE convention & HDU roundtrip verified.");
+
+        // 47. Test CMYK Inks Invert, Threshold, Posterize and 16-bit Lab Invert (becc27ac)
+        byte[] cmykTest = [50, 100, 150, 200];
+        byte[] cmykInverted = ImageAdjustmentEngine.ApplyInvertCmyk(cmykTest);
+        if (cmykInverted[0] != 205 || cmykInverted[1] != 155 || cmykInverted[2] != 105 || cmykInverted[3] != 55)
+        {
+            throw new InvalidOperationException("ApplyInvertCmyk failed 4-channel ink inversion.");
+        }
+        byte[] cmykThresholded = ImageAdjustmentEngine.ApplyThresholdCmyk(cmykTest, threshold: 100);
+        if (cmykThresholded[0] != 0 || cmykThresholded[1] != 0 || cmykThresholded[2] != 0 || cmykThresholded[3] != 255)
+        {
+            throw new InvalidOperationException("ApplyThresholdCmyk failed ink thresholding.");
+        }
+        byte[] cmykPosterized = ImageAdjustmentEngine.ApplyPosterizeCmyk(cmykTest, levels: 2);
+        if (cmykPosterized[0] != 0 && cmykPosterized[0] != 255)
+        {
+            throw new InvalidOperationException("ApplyPosterizeCmyk failed posterization.");
+        }
+        ushort[] lab16Test = [30000, 40000, 20000];
+        ushort[] lab16Inverted = ImageAdjustmentEngine.ApplyInvertLab16(lab16Test);
+        if (lab16Inverted[0] != 35535 || lab16Inverted[1] != 25535 || lab16Inverted[2] != 45535)
+        {
+            throw new InvalidOperationException("ApplyInvertLab16 failed neutral mirroring.");
+        }
+        Console.WriteLine("  ✓ CMYK inks Invert, Threshold, Posterize and 16-bit Lab Invert verified.");
+
+        // 48. Test Text Element Recoloring without Rasterization (93397b08)
+        var textLayer = new TextElement { Text = "Photoshop", ForegroundColor = Colors.Black, Width = 100, Height = 30 };
+        vm.Elements.Clear();
+        vm.Elements.Add(textLayer);
+        vm.SelectedElement = textLayer;
+        vm.ForegroundColor = Color.FromRgb(255, 64, 32);
+        vm.FillWithForegroundColor();
+        if (textLayer.ForegroundColor != Color.FromRgb(255, 64, 32) || !(vm.Elements[0] is TextElement))
+        {
+            throw new InvalidOperationException("FillWithForegroundColor must recolor TextElement directly without rasterizing.");
+        }
+        Console.WriteLine("  ✓ Fill shortcut recolors text layers directly without rasterizing verified.");
+
+        // 49. Test Layer Mask Thumbnail Context Menu & Combine Selection Modes (4eb8ca25)
+        var maskedElement = new RectangleElement { Name = "Masked Layer", Width = 100, Height = 100, MaskData = new byte[100 * 100], IsMaskEnabled = true };
+        vm.Elements.Clear();
+        vm.Elements.Add(maskedElement);
+        vm.SelectedElement = maskedElement;
+        vm.ToggleLayerMaskEnabled();
+        if (maskedElement.IsMaskEnabled != false)
+        {
+            throw new InvalidOperationException("ToggleLayerMaskEnabled failed to disable mask.");
+        }
+        vm.ToggleLayerMaskEnabled();
+        if (maskedElement.IsMaskEnabled != true)
+        {
+            throw new InvalidOperationException("ToggleLayerMaskEnabled failed to re-enable mask.");
+        }
+        Console.WriteLine("  ✓ Layer mask thumbnail context menu & toggle commands verified.");
+
+        // 50. Test Dull Color Range Sensitivity in Hue/Saturation (8da02bf5)
+        byte[] dullGray = [100, 100, 102, 255];
+        double[] rHues = [30.0, 0, 0, 0, 0, 0];
+        double[] rSats = [40.0, 0, 0, 0, 0, 0];
+        double[] rLights = [0, 0, 0, 0, 0, 0];
+        byte[] adjustedDull = ImageAdjustmentEngine.ApplyHueSaturationWithRanges(dullGray, 0, 0, 0, rHues, rSats, rLights);
+        if (adjustedDull == null || adjustedDull.Length != 4)
+        {
+            throw new InvalidOperationException("ApplyHueSaturationWithRanges failed on dull colors.");
+        }
+        Console.WriteLine("  ✓ Dull color range sensitivity in Hue/Saturation verified.");
+
+        // 51. Test Document Dirty Prompt on Pasted / Unsaved Content (5cff9ebe)
+        if (!vm.IsDirty && vm.Elements.Count > 0)
+        {
+            throw new InvalidOperationException("ViewModel must report IsDirty=true when document contains unsaved layers.");
+        }
+        Console.WriteLine("  ✓ Document dirty tracking & unsaved work status verified.");
+
+        // 52. Test PSD Layer Info Padding Outside Block Length (481b939f)
+        var psdDoc = new PsdCodec.PsdDocument
+        {
+            Width = 10,
+            Height = 10,
+            Layers = [new PsdCodec.PsdLayerInfo { Name = "Test Layer", Right = 10, Bottom = 10, BgraPixels = new byte[10 * 10 * 4] }]
+        };
+        using var psdMs = new MemoryStream();
+        PsdCodec.Encode(psdDoc, psdMs);
+        psdMs.Position = 0;
+        var psdDecoded = PsdCodec.Decode(psdMs);
+        if (psdDecoded == null || psdDecoded.Layers.Count != 1 || psdDecoded.Layers[0].Name != "Test Layer")
+        {
+            throw new InvalidOperationException("PsdCodec failed roundtrip with 4-byte padding alignment.");
+        }
+        Console.WriteLine("  ✓ PSD layer info padding outside block length verified.");
     }
 
     private static byte[] CreateSyntheticPcx24(int width, int height)

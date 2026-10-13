@@ -1,0 +1,101 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:controls="using:PdfEditorApp.Plugins.ImageEditor.Controls"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Dialogs.NewBrushPresetDialog"
+             x:DataType="local:ImageEditorViewModel">
+
+    <!-- Modal Backdrop -->
+    <Border Background="#99000000"
+            IsVisible="{Binding IsNewBrushPresetDialogOpen}"
+            ZIndex="500">
+        <Border Background="{DynamicResource PsPanelBrush}"
+                BorderBrush="{DynamicResource PsBorderLightBrush}"
+                BorderThickness="1"
+                CornerRadius="3"
+                Width="500"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                BoxShadow="0 10 30 #80000000">
+            <Grid RowDefinitions="32,Auto">
+                <!-- Header -->
+                <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="10,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <materialIcons:MaterialIcon Kind="Brush" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+                            <TextBlock Text="New Brush Preset…" FontWeight="SemiBold" FontSize="12" Foreground="#FFFFFF" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="ps-opt-btn" Command="{Binding CloseNewBrushPresetDialogCommand}" ToolTip.Tip="Close (Esc)">
+                            <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Body: 3-column layout (Photoshop standard) -->
+                <Grid Grid.Row="1" Margin="16" ColumnDefinitions="96,16,*,16,90">
+                    <!-- Column 1: Brush Tip Preview and Size -->
+                    <StackPanel Grid.Column="0" Spacing="6" HorizontalAlignment="Center">
+                        <Border Width="96" Height="96"
+                                Background="{DynamicResource PsFieldBrush}"
+                                BorderBrush="{DynamicResource PsBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="2">
+                            <controls:BrushPreviewControl Width="96" Height="96"
+                                                          BrushSize="{Binding BrushThickness}"
+                                                          BrushHardness="{Binding BrushHardness}"
+                                                          BrushRoundness="{Binding BrushRoundness}"
+                                                          BrushAngle="{Binding BrushAngle}"
+                                                          BrushColor="{Binding PrimaryColor}" />
+                        </Border>
+                        <TextBlock Text="{Binding BrushThickness, StringFormat='{}{0:0}'}"
+                                   FontSize="11" Foreground="{DynamicResource PsTextDimBrush}"
+                                   HorizontalAlignment="Center" />
+                    </StackPanel>
+
+                    <!-- Column 2: Name and Capture Settings -->
+                    <StackPanel Grid.Column="2" Spacing="8" VerticalAlignment="Top">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <TextBlock Grid.Column="0" Text="Name:" Classes="ps-label" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBox Grid.Column="1" Classes="ps-txt"
+                                     Text="{Binding NewBrushPresetName, Mode=TwoWay}"
+                                     PlaceholderText="Enter preset name" />
+                        </Grid>
+
+                        <CheckBox Content="Capture Brush Size in Preset"
+                                  IsChecked="{Binding NewBrushPresetCaptureSize, Mode=TwoWay}"
+                                  Margin="0,4,0,0" />
+
+                        <CheckBox Content="Include Tool Settings"
+                                  IsChecked="{Binding NewBrushPresetToolSettings, Mode=TwoWay}" />
+
+                        <CheckBox Content="Include Color"
+                                  IsChecked="{Binding NewBrushPresetColor, Mode=TwoWay}"
+                                  IsEnabled="{Binding NewBrushPresetToolSettings}"
+                                  Margin="20,0,0,0" />
+
+                        <!-- Problem message if any -->
+                        <TextBlock Text="{Binding NewBrushPresetValidationMessage}"
+                                   Foreground="#F87171" FontSize="11" TextWrapping="Wrap"
+                                   IsVisible="{Binding !!NewBrushPresetValidationMessage.Length}"
+                                   Margin="0,4,0,0" />
+                    </StackPanel>
+
+                    <!-- Column 3: OK and Cancel Action Buttons -->
+                    <StackPanel Grid.Column="4" Spacing="8" VerticalAlignment="Top">
+                        <Button Classes="ps-btn ps-btn-primary" Content="OK"
+                                Width="90" Height="26"
+                                HorizontalContentAlignment="Center"
+                                IsEnabled="{Binding CanConfirmNewBrushPreset}"
+                                Command="{Binding ConfirmNewBrushPresetCommand}" />
+
+                        <Button Classes="ps-btn" Content="Cancel"
+                                Width="90" Height="26"
+                                HorizontalContentAlignment="Center"
+                                Command="{Binding CloseNewBrushPresetDialogCommand}" />
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Border>
+    </Border>
+</UserControl>

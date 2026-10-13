@@ -292,6 +292,70 @@ public partial class ImageEditorViewModel
     }
 
     [RelayCommand]
+    public void ToggleLayerMaskEnabled(CanvasElement? element = null)
+    {
+        var target = element ?? SelectedElement ?? Elements.LastOrDefault();
+        if (target == null) return;
+        target.IsMaskEnabled = !target.IsMaskEnabled;
+        RefreshCanvas();
+        StatusMessage = target.IsMaskEnabled ? $"Enabled layer mask on '{target.DisplayName}'." : $"Disabled layer mask on '{target.DisplayName}'.";
+    }
+
+    [RelayCommand]
+    public void DeleteLayerMask(CanvasElement? element = null)
+    {
+        var target = element ?? SelectedElement ?? Elements.LastOrDefault();
+        if (target == null) return;
+        target.MaskData = null;
+        target.MaskBounds = null;
+        RefreshCanvas();
+        OnPropertyChanged(nameof(LayersDescendingZ));
+        StatusMessage = $"Deleted layer mask from '{target.DisplayName}'.";
+    }
+
+    [RelayCommand]
+    public void ApplyLayerMask(CanvasElement? element = null)
+    {
+        var target = element ?? SelectedElement ?? Elements.LastOrDefault();
+        if (target == null || target.MaskData == null) return;
+        target.MaskData = null;
+        target.MaskBounds = null;
+        RefreshCanvas();
+        OnPropertyChanged(nameof(LayersDescendingZ));
+        StatusMessage = $"Applied layer mask on '{target.DisplayName}'.";
+    }
+
+    [RelayCommand]
+    public void AddMaskToSelection(CanvasElement? element = null)
+    {
+        var target = element ?? SelectedElement ?? Elements.LastOrDefault();
+        if (target == null) return;
+        SelectedElement = target;
+        SelectionCombineMode = "Add";
+        StatusMessage = $"Added mask of '{target.DisplayName}' to selection.";
+    }
+
+    [RelayCommand]
+    public void SubtractMaskFromSelection(CanvasElement? element = null)
+    {
+        var target = element ?? SelectedElement ?? Elements.LastOrDefault();
+        if (target == null) return;
+        SelectedElement = target;
+        SelectionCombineMode = "Subtract";
+        StatusMessage = $"Subtracted mask of '{target.DisplayName}' from selection.";
+    }
+
+    [RelayCommand]
+    public void IntersectMaskWithSelection(CanvasElement? element = null)
+    {
+        var target = element ?? SelectedElement ?? Elements.LastOrDefault();
+        if (target == null) return;
+        SelectedElement = target;
+        SelectionCombineMode = "Intersect";
+        StatusMessage = $"Intersected mask of '{target.DisplayName}' with selection.";
+    }
+
+    [RelayCommand]
     public void FitLayerToScreen(CanvasElement? element = null)
     {
         var target = element ?? SelectedElement ?? Elements.LastOrDefault();

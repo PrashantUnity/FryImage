@@ -167,6 +167,7 @@ public partial class ImageEditorViewModel
         AddCmd("brush.symmetry.horizontal", "Symmetry: Horizontal", "Brush", null, "FlipVertical", () => ActiveSymmetryMode = SymmetryMode.Horizontal);
         AddCmd("brush.symmetry.dual", "Symmetry: Dual Axis (4-Quadrant)", "Brush", null, "CrosshairsGps", () => ActiveSymmetryMode = SymmetryMode.Dual);
         AddCmd("brush.symmetry.radial", "Symmetry: Radial (Mandala)", "Brush", null, "RadiusOutline", () => ActiveSymmetryMode = SymmetryMode.Radial);
+        AddCmd("brush.presets.new", "New Brush Preset...", "Brush", null, "Plus", OpenNewBrushPresetDialog);
 
         // ── 6. Edit & History ────────────────────────────────
         AddCmd("history.undo", "Undo", "Edit", "Ctrl+Z", "Undo", Undo);

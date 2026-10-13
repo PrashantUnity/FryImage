@@ -147,12 +147,16 @@
                                 <Border Width="380" Background="{DynamicResource PsPanelBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12">
                                     <StackPanel Spacing="10">
                                         <!-- Header & Active Preset Name -->
-                                        <Grid ColumnDefinitions="*,Auto">
+                                        <Grid ColumnDefinitions="*,Auto,Auto">
                                             <StackPanel Grid.Column="0">
                                                 <TextBlock Text="BRUSH PRESETS &amp; TIP SHAPE" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource PsTextDimBrush}" LetterSpacing="0.8" />
                                                 <TextBlock Text="{Binding SelectedBrushPreset.Name, FallbackValue='Hard Round'}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource PsTextBrush}" Margin="0,2,0,0" />
                                             </StackPanel>
-                                            <Border Grid.Column="1" Background="{DynamicResource PsFieldBrush}" CornerRadius="4" Padding="6,2">
+                                            <Button Grid.Column="1" Classes="ps-opt-btn" Width="24" Height="24" Padding="0" Margin="0,0,6,0"
+                                                    Command="{Binding OpenNewBrushPresetDialogCommand}" ToolTip.Tip="New Brush Preset...">
+                                                <materialIcons:MaterialIcon Kind="Plus" Width="14" Height="14" />
+                                            </Button>
+                                            <Border Grid.Column="2" Background="{DynamicResource PsFieldBrush}" CornerRadius="4" Padding="6,2">
                                                 <TextBlock Text="{Binding SelectedBrushPreset.Group, FallbackValue='General'}" FontSize="10" Foreground="{DynamicResource PsAccentBrush}" FontWeight="SemiBold" />
                                             </Border>
                                         </Grid>

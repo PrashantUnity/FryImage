@@ -237,12 +237,56 @@
                                                 Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).FitLayerToScreenCommand}"
                                                 CommandParameter="{Binding}"
                                                 ToolTip.Tip="Alt-click thumbnail to fit layer on screen">
-                                            <Border Width="22" Height="20"
-                                                    Background="#FFFFFF"
-                                                    BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1"
-                                                    CornerRadius="1" HorizontalAlignment="Center">
-                                                <materialIcons:MaterialIcon Kind="{Binding ElementType, Converter={StaticResource ElementTypeToIconConverter}}"
-                                                                            Width="12" Height="12" Foreground="#333333" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            <Grid Width="22" Height="20">
+                                                <Border Background="#FFFFFF"
+                                                        BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1"
+                                                        CornerRadius="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                                    <materialIcons:MaterialIcon Kind="{Binding ElementType, Converter={StaticResource ElementTypeToIconConverter}}"
+                                                                                Width="12" Height="12" Foreground="#333333" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                                <!-- Shape Layer Badge (#4584) -->
+                                                <Border IsVisible="{Binding IsVectorShape}" Width="8" Height="8"
+                                                        Background="#222222" BorderBrush="#888888" BorderThickness="0.5" CornerRadius="1"
+                                                        HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                                        ToolTip.Tip="Vector Shape Layer">
+                                                    <materialIcons:MaterialIcon Kind="VectorSquare" Width="6" Height="6" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                            </Grid>
+                                        </Button>
+
+                                        <!-- Layer Mask Thumbnail with Photoshop Mask Menu (#4575) -->
+                                        <Button Classes="ps-tool-btn" Width="24" Height="22" Padding="0" Margin="2,0,0,0"
+                                                IsVisible="{Binding HasMask}"
+                                                Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).TargetLayerMaskCommand}"
+                                                ToolTip.Tip="Layer Mask (Right-click for mask options)">
+                                            <Button.ContextMenu>
+                                                <ContextMenu>
+                                                    <MenuItem Header="Disable Layer Mask"
+                                                              Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleLayerMaskEnabledCommand}"
+                                                              CommandParameter="{Binding}" />
+                                                    <MenuItem Header="Delete Layer Mask"
+                                                              Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).DeleteLayerMaskCommand}"
+                                                              CommandParameter="{Binding}" />
+                                                    <MenuItem Header="Apply Layer Mask"
+                                                              Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ApplyLayerMaskCommand}"
+                                                              CommandParameter="{Binding}" />
+                                                    <Separator />
+                                                    <MenuItem Header="Add Mask to Selection"
+                                                              Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).AddMaskToSelectionCommand}"
+                                                              CommandParameter="{Binding}" />
+                                                    <MenuItem Header="Subtract Mask from Selection"
+                                                              Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SubtractMaskFromSelectionCommand}"
+                                                              CommandParameter="{Binding}" />
+                                                    <MenuItem Header="Intersect Mask with Selection"
+                                                              Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).IntersectMaskWithSelectionCommand}"
+                                                              CommandParameter="{Binding}" />
+                                                    <Separator />
+                                                    <MenuItem Header="Select and Mask…"
+                                                              Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).OpenSelectAndMaskDialogCommand}" />
+                                                </ContextMenu>
+                                            </Button.ContextMenu>
+                                            <Border Width="22" Height="20" Background="#FFFFFF" BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1" CornerRadius="1">
+                                                <materialIcons:MaterialIcon Kind="ShieldHalfFull" Width="12" Height="12" Foreground="#333333" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                             </Border>
                                         </Button>
                                     </StackPanel>

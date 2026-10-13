@@ -128,9 +128,62 @@ public static class ActionPlaybackEngine
             {
                 vm.SelectAllElementsCommand.Execute(null);
             }
-            else if (cmd.Contains("deselect"))
+            else if (cmd.Contains("refineselectionedge") || cmd.Contains("select and mask"))
             {
-                vm.DeselectAllCommand.Execute(null);
+                vm.OpenSelectAndMaskDialogCommand.Execute(null);
+            }
+            else if (cmd.Contains("gefc") || cmd.Contains("spatter"))
+            {
+                vm.OpenFilterDialogCommand.Execute("Spatter");
+            }
+            else if (cmd.Contains("rppl") || cmd.Contains("ripple"))
+            {
+                vm.OpenFilterDialogCommand.Execute("Ripple");
+            }
+            else if (cmd.Contains("crst") || cmd.Contains("crystallize"))
+            {
+                vm.OpenFilterDialogCommand.Execute("Crystallize");
+            }
+            else if (cmd.Contains("layerfrombackground") || cmd.Contains("layer from background"))
+            {
+                vm.ConvertBackgroundToLayerCommand.Execute(null);
+            }
+            else if (cmd.Contains("stepbackward") || cmd.Contains("step backward"))
+            {
+                vm.UndoCommand.Execute(null);
+            }
+            else if (cmd.Contains("stepforward") || cmd.Contains("step forward"))
+            {
+                vm.RedoCommand.Execute(null);
+            }
+            else if (cmd.Contains("removefromselection"))
+            {
+                vm.SelectionCombineMode = "Subtract";
+            }
+            else if (cmd.Contains("loadselection"))
+            {
+                vm.LoadChannelAsSelectionCommand.Execute(null);
+            }
+            else if (cmd.Contains("fillforeground") || cmd.Contains("fill foreground"))
+            {
+                vm.FillWithForegroundColorCommand.Execute(null);
+            }
+            else if (cmd.Contains("fillbackground") || cmd.Contains("fill background"))
+            {
+                vm.FillWithBackgroundColorCommand.Execute(null);
+            }
+            else if (cmd.Contains("translate") || cmd.Contains("nudge"))
+            {
+                if (vm.SelectedElement != null)
+                {
+                    vm.SelectedElement.X += 5;
+                    vm.SelectedElement.Y += 5;
+                    vm.RefreshCanvas();
+                }
+            }
+            else if (cmd.Contains("imagesize") || cmd.Contains("image size"))
+            {
+                vm.RefreshCanvas();
             }
             else if (cmd.Contains("frame"))
             {

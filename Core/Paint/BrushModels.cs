@@ -374,6 +374,10 @@ public class BrushPreset
     public List<string> Folder { get; set; } = new();
     public string IconKind { get; set; } = "Brush";
     public BrushSettings Settings { get; set; } = new();
+    public bool CaptureSize { get; set; } = true;
+    public bool IncludeToolSettings { get; set; } = false;
+    public bool IncludeColor { get; set; } = false;
+    public Color? PresetColor { get; set; }
 
     public BrushPreset() { }
 
@@ -387,7 +391,13 @@ public class BrushPreset
         if (folder != null) Folder.AddRange(folder);
     }
 
-    public BrushPreset Clone() => new(Id, Name, Group, IconKind, Settings.Clone(), Folder);
+    public BrushPreset Clone() => new(Id, Name, Group, IconKind, Settings.Clone(), Folder)
+    {
+        CaptureSize = CaptureSize,
+        IncludeToolSettings = IncludeToolSettings,
+        IncludeColor = IncludeColor,
+        PresetColor = PresetColor
+    };
 }
 
 /// <summary>

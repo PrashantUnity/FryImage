@@ -125,6 +125,12 @@ public abstract class CanvasElement
     /// <summary>When true, this layer is a Smart Object container with non-destructive Smart Filters.</summary>
     public bool IsSmartObject { get; set; }
 
+    /// <summary>When true, this layer is a vector shape layer and displays the shape badge (#4584).</summary>
+    public virtual bool IsVectorShape => this is VectorShapeElement || ElementType == "Shape";
+
+    /// <summary>Whether this element has an attached raster layer mask (#4575).</summary>
+    public bool HasMask => MaskData != null && MaskData.Length > 0;
+
     /// <summary>Non-destructive Smart Filters applied to this layer.</summary>
     public System.Collections.ObjectModel.ObservableCollection<SmartFilter> SmartFilters { get; set; } = [];
 

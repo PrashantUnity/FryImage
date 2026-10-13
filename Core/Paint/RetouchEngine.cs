@@ -442,13 +442,17 @@ public static class RetouchEngine
     }
 
     /// <summary>
+    /// <summary>
     /// Applies a Background Eraser dab that samples a background color under the crosshair
     /// and erases matching pixels within tolerance, preserving edge boundaries.
+    /// Supports pre-stroke snapshot buffer (#4552) so subsequent overlapping dabs along a stroke
+    /// sample and match from original pixel data rather than already-erased pixels.
     /// </summary>
     public static void ApplyBackgroundEraserDab(
         byte[] bgra, int width, int height,
         Point center, Color sampledBgColor,
-        double radius, double hardness, double tolerance = 32.0, double opacity = 100.0)
+        double radius, double hardness, double tolerance = 32.0, double opacity = 100.0,
+        byte[]? preStrokeSnapshot = null)
     {
         int minX = (int)Math.Max(0, Math.Floor(center.X - radius));
         int maxX = (int)Math.Min(width - 1, Math.Ceiling(center.X + radius));
@@ -463,6 +467,8 @@ public static class RetouchEngine
         double targetR = sampledBgColor.R;
         double maxDist = Math.Max(1.0, tolerance * 4.4167); // scale 0-100 to max RGB Euclidean dist (~441.67)
 
+        var src = preStrokeSnapshot ?? bgra;
+
         Parallel.For(minY, maxY + 1, y =>
         {
             for (int x = minX; x <= maxX; x++)
@@ -472,10 +478,10 @@ public static class RetouchEngine
                 if (cov <= 0.0) continue;
 
                 int idx = (y * width + x) * 4;
-                byte b = bgra[idx];
-                byte g = bgra[idx + 1];
-                byte r = bgra[idx + 2];
-                byte a = bgra[idx + 3];
+                byte b = src[idx];
+                byte g = src[idx + 1];
+                byte r = src[idx + 2];
+                byte a = src[idx + 3];
                 if (a == 0) continue;
 
                 double colorDist = Math.Sqrt((r - targetR) * (r - targetR) + (g - targetG) * (g - targetG) + (b - targetB) * (b - targetB));
@@ -483,7 +489,8 @@ public static class RetouchEngine
                 {
                     double matchWeight = 1.0 - (colorDist / maxDist);
                     double eraseAlpha = cov * matchWeight * factor;
-                    bgra[idx + 3] = (byte)Math.Clamp(Math.Round(a * (1.0 - eraseAlpha)), 0, 255);
+                    byte currentA = bgra[idx + 3];
+                    bgra[idx + 3] = (byte)Math.Clamp(Math.Round(currentA * (1.0 - eraseAlpha)), 0, 255);
                 }
             }
         });

@@ -320,6 +320,15 @@ public partial class EditorCanvasControl : Control
         }
     }
 
+    public static readonly StyledProperty<bool> IsCapsLockActiveProperty =
+        AvaloniaProperty.Register<EditorCanvasControl, bool>(nameof(IsCapsLockActive), false);
+
+    public bool IsCapsLockActive
+    {
+        get => GetValue(IsCapsLockActiveProperty);
+        set => SetValue(IsCapsLockActiveProperty, value);
+    }
+
     private void UpdateCursorForTool()
     {
         if (_spaceHeld || _isPanning || ActiveToolMode == "hand")
@@ -327,12 +336,18 @@ public partial class EditorCanvasControl : Control
             Cursor = new Cursor(StandardCursorType.Hand);
             return;
         }
+
+        // CapsLock swaps between standard tool icon cursor and precise crosshair (#4639, #4650)
+        bool precise = IsCapsLockActive;
+
         Cursor = ActiveToolMode switch
         {
-            "brush" => new Cursor(StandardCursorType.Cross),
-            "eraser" => new Cursor(StandardCursorType.Cross),
+            "brush" or "eraser" => new Cursor(StandardCursorType.Cross),
+            "pen" or "freeformpen" or "curvaturepen" or "addanchor" or "deleteanchor" or "convertpoint" =>
+                precise ? new Cursor(StandardCursorType.Cross) : new Cursor(StandardCursorType.Arrow),
             "text" => new Cursor(StandardCursorType.Ibeam),
-            "eyedropper" => new Cursor(StandardCursorType.Cross),
+            "eyedropper" or "colorsampler" or "paintbucket" =>
+                precise ? new Cursor(StandardCursorType.Cross) : new Cursor(StandardCursorType.Hand),
             "marquee" or "lasso" or "wand" => new Cursor(StandardCursorType.Cross),
             "zoom" => new Cursor(StandardCursorType.Cross),
             "hand" or "rotateview" => new Cursor(StandardCursorType.Hand),

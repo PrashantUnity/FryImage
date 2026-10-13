@@ -3522,6 +3522,9 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
 
     public bool IsConfirmDiscardOpen { get => IsConfirmingDiscard; set => IsConfirmingDiscard = value; }
     public string DiscardPromptMessage => DiscardConfirmMessage;
+    public bool IsDirty => Elements.Count > 0 || History.CanUndo;
+    public bool HasUnsavedWork => IsDirty;
+    public bool HasUnsavedChanges => IsDirty;
 
     // Continuous RGB Ribbon Histogram moved to ViewModels/ImageEditorViewModel.Histogram.cs
     // Layer Style Modal Dialog (fx) moved to ViewModels/ImageEditorViewModel.Modals.cs

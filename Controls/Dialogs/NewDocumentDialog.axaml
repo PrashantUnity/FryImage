@@ -162,10 +162,14 @@
                                     <StackPanel Grid.Column="1" Spacing="3">
                                         <TextBlock Text="Orientation" Classes="ps-label" />
                                         <StackPanel Orientation="Horizontal" Spacing="4">
-                                            <Button Classes="ps-opt-btn" Width="28" Height="24" Command="{Binding SwapNewDocOrientationCommand}" ToolTip.Tip="Portrait">
+                                            <Button Classes="ps-opt-btn" Width="28" Height="24"
+                                                    Command="{Binding SetNewDocOrientationCommand}" CommandParameter="Portrait"
+                                                    ToolTip.Tip="Portrait">
                                                 <materialIcons:MaterialIcon Kind="CropPortrait" Width="14" Height="14" />
                                             </Button>
-                                            <Button Classes="ps-opt-btn" Width="28" Height="24" Command="{Binding SwapNewDocOrientationCommand}" ToolTip.Tip="Landscape">
+                                            <Button Classes="ps-opt-btn" Width="28" Height="24"
+                                                    Command="{Binding SetNewDocOrientationCommand}" CommandParameter="Landscape"
+                                                    ToolTip.Tip="Landscape">
                                                 <materialIcons:MaterialIcon Kind="CropLandscape" Width="14" Height="14" />
                                             </Button>
                                         </StackPanel>

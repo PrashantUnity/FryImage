@@ -472,6 +472,142 @@ public static partial class ImageAdjustmentEngine
     }
 
     /// <summary>
+    /// Applies Invert to 4-channel CMYK inks (#3930): paper (0% ink) inverts to 100% ink across all 4 channels (400% ink).
+    /// </summary>
+    public static byte[] ApplyInvertCmyk(byte[] cmykPixels)
+    {
+        byte[] result = new byte[cmykPixels.Length];
+        Parallel.For(0, cmykPixels.Length / 4, p =>
+        {
+            int idx = p * 4;
+            result[idx] = (byte)(255 - cmykPixels[idx]);         // C
+            result[idx + 1] = (byte)(255 - cmykPixels[idx + 1]); // M
+            result[idx + 2] = (byte)(255 - cmykPixels[idx + 2]); // Y
+            result[idx + 3] = (byte)(255 - cmykPixels[idx + 3]); // K
+        });
+        return result;
+    }
+
+    /// <summary>
+    /// Applies Threshold on CMYK inks (#3930): cuts to paper (0% ink) or 100% black ink alone.
+    /// </summary>
+    public static byte[] ApplyThresholdCmyk(byte[] cmykPixels, int threshold = 128)
+    {
+        byte[] result = new byte[cmykPixels.Length];
+        Parallel.For(0, cmykPixels.Length / 4, p =>
+        {
+            int idx = p * 4;
+            // Total density / black ink threshold
+            int k = cmykPixels[idx + 3];
+            int totalInk = (cmykPixels[idx] + cmykPixels[idx + 1] + cmykPixels[idx + 2] + k) / 4;
+            byte kVal = totalInk >= threshold ? (byte)255 : (byte)0;
+            result[idx] = 0;
+            result[idx + 1] = 0;
+            result[idx + 2] = 0;
+            result[idx + 3] = kVal;
+        });
+        return result;
+    }
+
+    /// <summary>
+    /// Applies Posterize directly to each CMYK ink channel (#3930).
+    /// </summary>
+    public static byte[] ApplyPosterizeCmyk(byte[] cmykPixels, int levels = 4)
+    {
+        int safeLevels = Math.Clamp(levels, 2, 255);
+        byte[] lut = new byte[256];
+        double step = 255.0 / (safeLevels - 1);
+        for (int i = 0; i < 256; i++)
+        {
+            int bucket = (int)Math.Round((i / 255.0) * (safeLevels - 1));
+            lut[i] = (byte)Math.Clamp((int)Math.Round(bucket * step), 0, 255);
+        }
+
+        byte[] result = new byte[cmykPixels.Length];
+        Parallel.For(0, cmykPixels.Length / 4, p =>
+        {
+            int idx = p * 4;
+            result[idx] = lut[cmykPixels[idx]];
+            result[idx + 1] = lut[cmykPixels[idx + 1]];
+            result[idx + 2] = lut[cmykPixels[idx + 2]];
+            result[idx + 3] = lut[cmykPixels[idx + 3]];
+        });
+        return result;
+    }
+
+    /// <summary>
+    /// 16-bit Lab Invert (#3930): inverts L and mirrors a & b around neutral 32768, keeping greys neutral.
+    /// </summary>
+    public static ushort[] ApplyInvertLab16(ushort[] labPixels)
+    {
+        ushort[] result = new ushort[labPixels.Length];
+        for (int i = 0; i < labPixels.Length; i += 3)
+        {
+            result[i] = (ushort)(65535 - labPixels[i]);         // L: 0..65535 inverted
+            result[i + 1] = (ushort)(65535 - labPixels[i + 1]); // a: mirrored around 32768
+            result[i + 2] = (ushort)(65535 - labPixels[i + 2]); // b: mirrored around 32768
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Applies Hue/Saturation with per-color ranges (Reds, Yellows, Greens, Cyans, Blues, Magentas).
+    /// Matches Photoshop oracle parity (#4089): range edits apply in full even to dull colors without chroma fading.
+    /// </summary>
+    public static byte[] ApplyHueSaturationWithRanges(
+        byte[] bgraPixels,
+        int masterHue, int masterSat, int masterLight,
+        double[]? rangeHues = null, double[]? rangeSats = null, double[]? rangeLights = null)
+    {
+        byte[] result = new byte[bgraPixels.Length];
+        double mHue = masterHue;
+        double mSat = masterSat / 100.0;
+        double mLight = masterLight / 100.0;
+
+        Parallel.For(0, bgraPixels.Length / 4, p =>
+        {
+            int idx = p * 4;
+            byte b = bgraPixels[idx];
+            byte g = bgraPixels[idx + 1];
+            byte r = bgraPixels[idx + 2];
+            byte a = bgraPixels[idx + 3];
+
+            RgbToHsl(r, g, b, out double h0, out double s0, out double l0);
+
+            // Master lightness shift
+            double l = mLight > 0 ? l0 + (1.0 - l0) * mLight : l0 * (1.0 + mLight);
+            double h = ((h0 + mHue) % 360.0 + 360.0) % 360.0;
+            double s = mSat > 0 ? s0 / Math.Max(1.0 - mSat, 1.0 / 512.0) : s0 * (1.0 + mSat);
+
+            // Range-specific edits applied in full (Photoshop #4089: no chroma attenuation damping)
+            if (rangeHues != null && rangeSats != null && rangeLights != null && (r != g || g != b))
+            {
+                // Determine dominant hue sector: 0=Reds, 1=Yellows, 2=Greens, 3=Cyans, 4=Blues, 5=Magentas
+                int sector = (int)(Math.Floor(((h0 + 30.0) % 360.0) / 60.0)) % 6;
+                if (sector >= 0 && sector < rangeHues.Length)
+                {
+                    h = ((h + rangeHues[sector]) % 360.0 + 360.0) % 360.0;
+                    double rSat = rangeSats[sector] / 100.0;
+                    s = rSat > 0 ? s / Math.Max(1.0 - rSat, 1.0 / 512.0) : s * (1.0 + rSat);
+                    double rLight = rangeLights[sector] / 100.0;
+                    l = rLight > 0 ? l + (1.0 - l) * rLight : l * (1.0 + rLight);
+                }
+            }
+
+            s = Math.Clamp(s, 0.0, 1.0);
+            l = Math.Clamp(l, 0.0, 1.0);
+            HslToRgb(h, s, l, out byte outR, out byte outG, out byte outB);
+
+            result[idx] = outB;
+            result[idx + 1] = outG;
+            result[idx + 2] = outR;
+            result[idx + 3] = a;
+        });
+
+        return result;
+    }
+
+    /// <summary>
     /// Applies Auto Tone: performs per-channel histogram stretching (clipping 0.5% tails) across R, G, B channels.
     /// </summary>
     public static byte[] ApplyAutoTone(byte[] bgraPixels)

@@ -323,6 +323,13 @@ public partial class ImageEditorViewModel
             fillable.FillColor = PrimaryColor;
             FillColorField = PrimaryColor;
             StatusMessage = "Filled layer with foreground color (Alt+Backspace).";
+            RefreshCanvas();
+        }
+        else if (SelectedElement is TextElement textElem)
+        {
+            textElem.ForegroundColor = PrimaryColor;
+            StatusMessage = "Recolored text with foreground color (Alt+Backspace).";
+            RefreshCanvas();
         }
     }
 
@@ -334,6 +341,13 @@ public partial class ImageEditorViewModel
             fillable.FillColor = SecondaryColor;
             FillColorField = SecondaryColor;
             StatusMessage = "Filled layer with background color (Ctrl+Backspace).";
+            RefreshCanvas();
+        }
+        else if (SelectedElement is TextElement textElem)
+        {
+            textElem.ForegroundColor = SecondaryColor;
+            StatusMessage = "Recolored text with background color (Ctrl+Backspace).";
+            RefreshCanvas();
         }
     }
 }

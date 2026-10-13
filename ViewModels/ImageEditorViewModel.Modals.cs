@@ -382,12 +382,31 @@ public partial class ImageEditorViewModel
         }
     }
 
+    [ObservableProperty] private string _newDocOrientation = "Landscape";
+    [ObservableProperty] private string _newDocUnit = "Pixels";
+
+    [RelayCommand]
+    public void SetNewDocOrientation(string orientation)
+    {
+        NewDocOrientation = orientation;
+        bool isPortrait = string.Equals(orientation, "Portrait", StringComparison.OrdinalIgnoreCase);
+        if (isPortrait && NewDocWidth > NewDocHeight)
+        {
+            SwapNewDocOrientation();
+        }
+        else if (!isPortrait && NewDocHeight > NewDocWidth)
+        {
+            SwapNewDocOrientation();
+        }
+    }
+
     [RelayCommand]
     public void SwapNewDocOrientation()
     {
         int temp = NewDocWidth;
         NewDocWidth = NewDocHeight;
         NewDocHeight = temp;
+        NewDocOrientation = NewDocHeight >= NewDocWidth ? "Portrait" : "Landscape";
     }
 
     [RelayCommand]
@@ -409,6 +428,109 @@ public partial class ImageEditorViewModel
         FitToWindow();
         StatusMessage = $"Created document {CanvasWidth}×{CanvasHeight} px @ {NewDocResolution} ppi.";
         ScheduleHistogramUpdate();
+    }
+
+    // ── 2B. New Brush Preset Modal Dialog (Photoshop Parity #4490) ───────────
+    [ObservableProperty] private bool _isNewBrushPresetDialogOpen;
+    [ObservableProperty] private string _newBrushPresetName = "Brush 1";
+    [ObservableProperty] private bool _newBrushPresetCaptureSize = true;
+    [ObservableProperty] private bool _newBrushPresetToolSettings = false;
+    [ObservableProperty] private bool _newBrushPresetColor = false;
+    [ObservableProperty] private string _newBrushPresetValidationMessage = "";
+
+    public bool CanConfirmNewBrushPreset =>
+        !string.IsNullOrWhiteSpace(NewBrushPresetName) &&
+        !Core.Paint.BrushPresetLibrary.Presets.Any(p => string.Equals(p.Name, NewBrushPresetName.Trim(), StringComparison.OrdinalIgnoreCase));
+
+    partial void OnNewBrushPresetNameChanged(string value)
+    {
+        ValidateNewBrushPresetName();
+    }
+
+    public void ValidateNewBrushPresetName()
+    {
+        string trimmed = NewBrushPresetName?.Trim() ?? "";
+        if (string.IsNullOrEmpty(trimmed))
+        {
+            NewBrushPresetValidationMessage = "Enter a name for the brush preset.";
+        }
+        else if (Core.Paint.BrushPresetLibrary.Presets.Any(p => string.Equals(p.Name, trimmed, StringComparison.OrdinalIgnoreCase)))
+        {
+            NewBrushPresetValidationMessage = "A brush preset with this name already exists.";
+        }
+        else
+        {
+            NewBrushPresetValidationMessage = "";
+        }
+        OnPropertyChanged(nameof(CanConfirmNewBrushPreset));
+    }
+
+    public static string GetSuggestedBrushPresetName(string? currentName = null)
+    {
+        var presets = Core.Paint.BrushPresetLibrary.Presets;
+        if (!string.IsNullOrEmpty(currentName) && presets.Any(p => string.Equals(p.Name, currentName, StringComparison.OrdinalIgnoreCase)))
+        {
+            for (int i = 1; i < 1000; i++)
+            {
+                string candidate = $"{currentName} {i}";
+                if (!presets.Any(p => string.Equals(p.Name, candidate, StringComparison.OrdinalIgnoreCase)))
+                    return candidate;
+            }
+        }
+
+        for (int i = 1; i < 1000; i++)
+        {
+            string candidate = $"Brush {i}";
+            if (!presets.Any(p => string.Equals(p.Name, candidate, StringComparison.OrdinalIgnoreCase)))
+                return candidate;
+        }
+
+        return "New Brush";
+    }
+
+    [RelayCommand]
+    public void OpenNewBrushPresetDialog()
+    {
+        NewBrushPresetName = GetSuggestedBrushPresetName(SelectedBrushPreset?.Name);
+        NewBrushPresetCaptureSize = true;
+        NewBrushPresetToolSettings = false;
+        NewBrushPresetColor = false;
+        ValidateNewBrushPresetName();
+        IsNewBrushPresetDialogOpen = true;
+    }
+
+    [RelayCommand]
+    public void CloseNewBrushPresetDialog()
+    {
+        IsNewBrushPresetDialogOpen = false;
+    }
+
+    [RelayCommand]
+    public void ConfirmNewBrushPreset()
+    {
+        ValidateNewBrushPresetName();
+        if (!CanConfirmNewBrushPreset) return;
+
+        string name = NewBrushPresetName.Trim();
+        string id = "preset_" + Guid.NewGuid().ToString("N")[..8];
+        var settings = GetCurrentBrushSettings();
+        if (!NewBrushPresetCaptureSize)
+        {
+            settings.Size = 24.0;
+        }
+
+        var preset = new Core.Paint.BrushPreset(id, name, "General", "Brush", settings)
+        {
+            CaptureSize = NewBrushPresetCaptureSize,
+            IncludeToolSettings = NewBrushPresetToolSettings,
+            IncludeColor = NewBrushPresetToolSettings && NewBrushPresetColor,
+            PresetColor = (NewBrushPresetToolSettings && NewBrushPresetColor) ? PrimaryColor : null
+        };
+
+        Core.Paint.BrushPresetLibrary.AddPreset(preset);
+        SelectedBrushPreset = preset;
+        StatusMessage = $"Saved brush preset '{name}'.";
+        IsNewBrushPresetDialogOpen = false;
     }
 
     // ── 3. Image Adjustment Modal Dialog (Image › Adjustments) ─────────────

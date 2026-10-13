@@ -36,6 +36,8 @@ public static class FitsCodec
         bool endFound = false;
         int totalHeaderBytes = 0;
 
+        string? lastKey = null;
+
         while (!endFound)
         {
             int read = stream.Read(cardBuffer, 0, CardSize);
@@ -50,13 +52,30 @@ public static class FitsCodec
             {
                 endFound = true;
             }
+            else if (string.Equals(key, "CONTINUE", StringComparison.OrdinalIgnoreCase) && lastKey != null)
+            {
+                // FITS CONTINUE convention: continue long string from preceding card
+                string contVal = card.Length > 8 ? card[8..].Trim() : "";
+                int slashIdx = contVal.IndexOf('/');
+                if (slashIdx >= 0) contVal = contVal[..slashIdx].Trim();
+                contVal = contVal.Trim('\'');
+
+                string current = cards.GetValueOrDefault(lastKey, "");
+                if (current.EndsWith('&'))
+                    current = current[..^1];
+                cards[lastKey] = current + contVal;
+            }
             else if (card.Length > 8 && card[8] == '=')
             {
                 string val = card[9..].Trim();
                 int slashIdx = val.IndexOf('/');
                 if (slashIdx >= 0) val = val[..slashIdx].Trim();
                 val = val.Trim('\'').Trim();
-                if (!string.IsNullOrEmpty(key)) cards[key] = val;
+                if (!string.IsNullOrEmpty(key))
+                {
+                    cards[key] = val;
+                    lastKey = key;
+                }
             }
         }
 
@@ -276,5 +295,40 @@ public static class FitsCodec
             if (card.Length > CardSize) card = card[..CardSize];
         }
         return card;
+    }
+
+    public static List<string> FormatStringCards(string key, string text, string comment = "")
+    {
+        if (text.Length <= 65)
+        {
+            return [FormatCard(key, $"'{text}'", comment)];
+        }
+
+        var result = new List<string>();
+        int offset = 0;
+        bool isFirst = true;
+        while (offset < text.Length)
+        {
+            int remaining = text.Length - offset;
+            int take = Math.Min(64, remaining);
+            string chunk = text.Substring(offset, take);
+            offset += take;
+
+            bool hasMore = offset < text.Length;
+            string chunkVal = hasMore ? $"'{chunk}&'" : $"'{chunk}'";
+
+            if (isFirst)
+            {
+                result.Add(FormatCard(key, chunkVal, comment));
+                isFirst = false;
+            }
+            else
+            {
+                string card = ("CONTINUE  " + chunkVal).PadRight(CardSize, ' ');
+                if (card.Length > CardSize) card = card[..CardSize];
+                result.Add(card);
+            }
+        }
+        return result;
     }
 }

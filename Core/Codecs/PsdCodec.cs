@@ -499,9 +499,14 @@ public static class PsdCodec
             }
 
             byte[] layerBytes = layerMs.ToArray();
-            writer.Write((uint)(layerBytes.Length + 4)); // Layer section len
-            writer.Write((uint)layerBytes.Length); // Layer info len
+            int sectionPad = (4 - (layerBytes.Length % 4)) % 4;
+            writer.Write((uint)(layerBytes.Length + 4 + sectionPad)); // Layer section len
+            writer.Write((uint)layerBytes.Length); // Layer info len (exact length excluding trailing pad)
             writer.Write(layerBytes);
+            if (sectionPad > 0)
+            {
+                writer.Write(new byte[sectionPad]);
+            }
         }
 
         // 5. Merged Composite Image Data (Raw RGB)

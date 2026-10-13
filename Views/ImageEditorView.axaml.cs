@@ -326,6 +326,7 @@ public partial class ImageEditorView : UserControl
         if (e.Key == Key.Escape)
         {
             if (vm.IsFreeTransformActive) { vm.CancelFreeTransformCommand.Execute(null); e.Handled = true; return; }
+            if (vm.IsNewBrushPresetDialogOpen) { vm.CloseNewBrushPresetDialog(); e.Handled = true; return; }
             if (vm.IsNewDocumentDialogOpen) { vm.IsNewDocumentDialogOpen = false; e.Handled = true; return; }
             if (vm.IsAdjustmentDialogOpen) { vm.CancelAdjustmentDialogCommand.Execute(null); e.Handled = true; return; }
             if (vm.IsFilterDialogOpen) { vm.CancelFilterDialogCommand.Execute(null); e.Handled = true; return; }

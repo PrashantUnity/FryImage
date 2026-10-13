@@ -123,6 +123,7 @@ public partial class ImageEditorView : UserControl
         // Command Palette & Brush Settings hotkey integration
         CanvasControl.CommandPaletteRequested += () => vm.ToggleCommandPalette();
         CanvasControl.BrushSettingsRequested += () => vm.SelectRightDockTab("Brushes");
+        CanvasControl.CanvasHoveredElementChanged += el => vm.CanvasHoveredElement = el;
 
         // Keep the canvas's tool mode in sync with the toolbar's selected tool. Also keep the
         // inline text-edit overlay's own formatting in sync with ribbon toggles — without this,
@@ -131,7 +132,12 @@ public partial class ImageEditorView : UserControl
         // the user commits (Enter/click-away) and the canvas re-renders from the model.
         vm.PropertyChanged += (_, args) =>
         {
-            if (args.PropertyName == nameof(ImageEditorViewModel.ActiveToolMode))
+            if (args.PropertyName == nameof(ImageEditorViewModel.HoveredElement))
+            {
+                CanvasControl.HoveredElement = vm.HoveredElement;
+                CanvasControl.InvalidateVisual();
+            }
+            else if (args.PropertyName == nameof(ImageEditorViewModel.ActiveToolMode))
             {
                 CanvasControl.ActiveToolMode = vm.ActiveToolMode;
                 CanvasControl.BrushAliased = vm.ActiveToolMode == "pencil" || (vm.SelectedBrushPreset?.Settings.Aliased ?? false);
@@ -293,6 +299,19 @@ public partial class ImageEditorView : UserControl
         bool ctrl = e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta);
         bool shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
         bool alt = e.KeyModifiers.HasFlag(KeyModifiers.Alt);
+
+        // In open parameter dialogs, Cmd+Z / Ctrl+Z steps the dialog's settings without touching document history (#4697, #4715)
+        if (ctrl && e.Key == Key.Z)
+        {
+            if (vm.IsFilterDialogOpen || vm.IsAdjustmentDialogOpen)
+            {
+                if (vm.StepDialogHistory(shift))
+                {
+                    e.Handled = true;
+                    return;
+                }
+            }
+        }
 
         // Commit or Cancel pending remove strokes
         if (e.Key == Key.Enter && vm.PendingRemoveStrokes.Count > 0 && !vm.IsFreeTransformActive)

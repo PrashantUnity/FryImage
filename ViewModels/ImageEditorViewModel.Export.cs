@@ -254,6 +254,41 @@ public partial class ImageEditorViewModel
     }
 
     [RelayCommand]
+    public async Task QuickExportAsPngAsync()
+    {
+        try
+        {
+            var topLevel = GetTopLevel();
+            if (topLevel?.StorageProvider is not { } storage || CanvasControl == null) return;
+
+            var singleFile = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = "Quick Export as PNG",
+                SuggestedFileName = "quick_export.png",
+                DefaultExtension = ".png",
+                FileTypeChoices =
+                [
+                    new FilePickerFileType("PNG Image") { Patterns = ["*.png"] }
+                ]
+            });
+
+            if (singleFile == null) return;
+
+            using var bitmap = RenderCanvasToBitmap(1.0);
+            if (bitmap == null) return;
+
+            await using var outStream = await singleFile.OpenWriteAsync();
+            await SaveBitmapToStreamAsync(bitmap, "PNG", outStream);
+
+            StatusMessage = $"Quick exported to {singleFile.Name}.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Quick export failed: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
     private async Task ConfirmExportAsync()
     {
         try

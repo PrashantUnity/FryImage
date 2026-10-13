@@ -365,6 +365,39 @@
                          B. DOCUMENT CANVAS PROPERTIES (Default when no elements selected)
                          ========================================== -->
                     <StackPanel Spacing="8" Margin="10,6" IsVisible="{Binding !HasSelectedElements}">
+                        <!-- Align and Distribute with Background in multiple selection (#4608, #4637) -->
+                        <StackPanel Spacing="4" IsVisible="{Binding CanAlignSelectedElements}">
+                            <TextBlock Text="▾ Align &amp; Distribute" Classes="ps-label" FontWeight="SemiBold" />
+                            <StackPanel Orientation="Horizontal" Spacing="2">
+                                <Button Classes="ps-tool-btn" Width="22" Height="20" Command="{Binding AlignLeftCommand}" ToolTip.Tip="Align Left">
+                                    <materialIcons:MaterialIcon Kind="AlignHorizontalLeft" Width="12" Height="12" />
+                                </Button>
+                                <Button Classes="ps-tool-btn" Width="22" Height="20" Command="{Binding AlignCenterHorizontalCommand}" ToolTip.Tip="Align Horizontal Center">
+                                    <materialIcons:MaterialIcon Kind="AlignHorizontalCenter" Width="12" Height="12" />
+                                </Button>
+                                <Button Classes="ps-tool-btn" Width="22" Height="20" Command="{Binding AlignRightCommand}" ToolTip.Tip="Align Right">
+                                    <materialIcons:MaterialIcon Kind="AlignHorizontalRight" Width="12" Height="12" />
+                                </Button>
+                                <Rectangle Width="1" Height="14" Fill="{DynamicResource PsBorderSubtleBrush}" Margin="2,0" />
+                                <Button Classes="ps-tool-btn" Width="22" Height="20" Command="{Binding AlignTopCommand}" ToolTip.Tip="Align Top">
+                                    <materialIcons:MaterialIcon Kind="AlignVerticalTop" Width="12" Height="12" />
+                                </Button>
+                                <Button Classes="ps-tool-btn" Width="22" Height="20" Command="{Binding AlignCenterVerticalCommand}" ToolTip.Tip="Align Vertical Center">
+                                    <materialIcons:MaterialIcon Kind="AlignVerticalCenter" Width="12" Height="12" />
+                                </Button>
+                                <Button Classes="ps-tool-btn" Width="22" Height="20" Command="{Binding AlignBottomCommand}" ToolTip.Tip="Align Bottom">
+                                    <materialIcons:MaterialIcon Kind="AlignVerticalBottom" Width="12" Height="12" />
+                                </Button>
+                                <Rectangle Width="1" Height="14" Fill="{DynamicResource PsBorderSubtleBrush}" Margin="2,0" />
+                                <Button Classes="ps-tool-btn" Width="22" Height="20" Command="{Binding DistributeHorizontalCommand}" ToolTip.Tip="Distribute Horizontally">
+                                    <materialIcons:MaterialIcon Kind="DistributeHorizontalCenter" Width="12" Height="12" />
+                                </Button>
+                                <Button Classes="ps-tool-btn" Width="22" Height="20" Command="{Binding DistributeVerticalCommand}" ToolTip.Tip="Distribute Vertically">
+                                    <materialIcons:MaterialIcon Kind="DistributeVerticalCenter" Width="12" Height="12" />
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
+
                         <!-- Document Header -->
                         <StackPanel Orientation="Horizontal" Spacing="4">
                             <materialIcons:MaterialIcon Kind="FileDocumentOutline" Width="13" Height="13" Foreground="{DynamicResource PsTextDimBrush}" />

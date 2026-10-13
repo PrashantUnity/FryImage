@@ -665,6 +665,76 @@ public partial class ImageEditorViewModel
     }
 
     [RelayCommand]
+    public void SelectSky()
+    {
+        try
+        {
+            ImageElement? target = SelectedElement as ImageElement ?? Elements.OfType<ImageElement>().LastOrDefault();
+            byte[]? imageBytes = target?.OriginalImageBytes;
+
+            if (imageBytes == null || imageBytes.Length == 0)
+            {
+                int docW = (int)Math.Max(1, CanvasWidth);
+                int docH = (int)Math.Max(1, CanvasHeight);
+                using var surface = SKSurface.Create(new SKImageInfo(docW, docH, SKColorType.Bgra8888, SKAlphaType.Premul));
+                if (surface != null)
+                {
+                    var canvas = surface.Canvas;
+                    canvas.Clear(SKColors.White);
+                    foreach (var elem in Elements.Where(e => e.IsVisible).OrderBy(e => e.ZIndex))
+                    {
+                        if (elem is ImageElement img && img.OriginalImageBytes != null)
+                        {
+                            using var imgBmp = SKBitmap.Decode(img.OriginalImageBytes);
+                            if (imgBmp != null)
+                            {
+                                var destRect = new SKRect((float)img.X, (float)img.Y, (float)(img.X + img.Width), (float)(img.Y + img.Height));
+                                canvas.DrawBitmap(imgBmp, destRect);
+                            }
+                        }
+                    }
+                    using var snap = surface.Snapshot();
+                    using var data = snap.Encode(SKEncodedImageFormat.Png, 90);
+                    imageBytes = data.ToArray();
+                }
+            }
+
+            if (imageBytes == null || imageBytes.Length == 0)
+            {
+                StatusMessage = "No image data available to select sky.";
+                return;
+            }
+
+            using var bmp = SKBitmap.Decode(imageBytes);
+            if (bmp == null)
+            {
+                StatusMessage = "Failed to decode image for sky detection.";
+                return;
+            }
+
+            byte[]? mask = Core.Raster.SkySegmentationEngine.CreateSkySelectionMask(bmp);
+            if (mask == null)
+            {
+                StatusMessage = "No sky detected.";
+                return;
+            }
+
+            if (CanvasControl != null)
+            {
+                CanvasControl.QuickMaskBuffer = mask;
+                CanvasControl.IsQuickMaskMode = true;
+                CanvasControl.InvalidateVisual();
+            }
+
+            StatusMessage = "Sky detected and selected.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Select Sky error: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
     public void RemoveBackground()
     {
         try

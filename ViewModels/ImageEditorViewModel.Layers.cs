@@ -280,6 +280,8 @@ public partial class ImageEditorViewModel
         StatusMessage = newLock ? "Locked transparent pixels." : "Unlocked transparent pixels.";
     }
 
+    [ObservableProperty] private bool _isVectorMaskTargeted;
+
     [RelayCommand]
     public void TargetLayerMask()
     {
@@ -287,8 +289,71 @@ public partial class ImageEditorViewModel
         if (target == null) return;
 
         IsLayerMaskTargeted = !IsLayerMaskTargeted;
+        if (IsLayerMaskTargeted) IsVectorMaskTargeted = false;
         StatusMessage = IsLayerMaskTargeted ? $"Targeted layer mask on '{target.DisplayName}'." : $"Targeted composite on '{target.DisplayName}'.";
         OnPropertyChanged(nameof(IsLayerMaskTargeted));
+    }
+
+    [RelayCommand]
+    public void TargetVectorMask()
+    {
+        var target = SelectedElement ?? Elements.LastOrDefault();
+        if (target == null) return;
+
+        IsVectorMaskTargeted = !IsVectorMaskTargeted;
+        if (IsVectorMaskTargeted) IsLayerMaskTargeted = false;
+        StatusMessage = IsVectorMaskTargeted ? $"Targeted vector mask on '{target.DisplayName}'." : $"Targeted composite on '{target.DisplayName}'.";
+        OnPropertyChanged(nameof(IsVectorMaskTargeted));
+    }
+
+    [RelayCommand]
+    public void AddLayerMask(CanvasElement? element = null)
+    {
+        var target = element ?? SelectedElement ?? Elements.LastOrDefault();
+        if (target == null) return;
+
+        // If a vector path is active/selected, create vector mask from that path and target it (#4728, #4740)
+        var path = CanvasControl?.ActiveDocumentPath;
+        if (path != null && !path.IsEmpty)
+        {
+            target.VectorMask = path.Clone();
+            target.IsVectorMaskEnabled = true;
+            IsVectorMaskTargeted = true;
+            IsLayerMaskTargeted = false;
+            RefreshCanvas();
+            OnPropertyChanged(nameof(LayersDescendingZ));
+            StatusMessage = $"Added vector mask from path onto '{target.DisplayName}'.";
+            return;
+        }
+
+        // Otherwise create raster layer mask (from active selection or reveal all)
+        byte[]? selMask = CanvasControl?.QuickMaskBuffer;
+        if (selMask != null && selMask.Length >= CanvasWidth * CanvasHeight)
+        {
+            target.MaskData = (byte[])selMask.Clone();
+            target.MaskBounds = new Rect(0, 0, CanvasWidth, CanvasHeight);
+            target.IsMaskEnabled = true;
+            IsLayerMaskTargeted = true;
+            IsVectorMaskTargeted = false;
+            RefreshCanvas();
+            OnPropertyChanged(nameof(LayersDescendingZ));
+            StatusMessage = $"Added layer mask from selection onto '{target.DisplayName}'.";
+            return;
+        }
+
+        // Reveal all (white mask)
+        int w = Math.Max(1, (int)target.Width);
+        int h = Math.Max(1, (int)target.Height);
+        var fullMask = new byte[w * h];
+        Array.Fill(fullMask, (byte)255);
+        target.MaskData = fullMask;
+        target.MaskBounds = new Rect(0, 0, target.Width, target.Height);
+        target.IsMaskEnabled = true;
+        IsLayerMaskTargeted = true;
+        IsVectorMaskTargeted = false;
+        RefreshCanvas();
+        OnPropertyChanged(nameof(LayersDescendingZ));
+        StatusMessage = $"Added reveal-all layer mask onto '{target.DisplayName}'.";
     }
 
     [RelayCommand]
@@ -379,13 +444,15 @@ public partial class ImageEditorViewModel
         var target = element ?? BackgroundLayer ?? (Elements.Count > 0 ? Elements[0] : null);
         if (target == null) return;
 
-        target.IsBackground = false;
-        target.IsPositionLocked = false;
-        target.IsTransparencyLocked = false;
-        if (string.Equals(target.Name, "Background", StringComparison.OrdinalIgnoreCase) || string.IsNullOrEmpty(target.Name))
+        if (target.IsBackground || string.Equals(target.Name, "Background", StringComparison.OrdinalIgnoreCase) || (target.Name != null && target.Name.StartsWith("Background", StringComparison.OrdinalIgnoreCase)) || string.IsNullOrEmpty(target.Name))
         {
             target.Name = "Layer 0";
         }
+
+        target.IsBackground = false;
+        target.IsLocked = false;
+        target.IsPositionLocked = false;
+        target.IsTransparencyLocked = false;
 
         RefreshCanvas();
         OnPropertyChanged(nameof(LayersDescendingZ));

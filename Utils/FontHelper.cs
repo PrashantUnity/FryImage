@@ -39,16 +39,26 @@ public static class FontHelper
 
         return FontFamilyCache.GetOrAdd(fontName, static name =>
         {
-            string cleanName = name.Replace(" ", "");
+            string familyToLookup = name;
+            if (name.Contains('-'))
+            {
+                var resolved = PdfEditorApp.Plugins.ImageEditor.Core.Text.FontResolver.GuessFromPostScriptName(name);
+                if (!string.IsNullOrWhiteSpace(resolved.Family))
+                {
+                    familyToLookup = resolved.Family;
+                }
+            }
+
+            string cleanName = familyToLookup.Replace(" ", "");
             string ttfPath = Path.Combine(UserFontDirectory, $"{cleanName}.ttf");
 
             if (File.Exists(ttfPath))
             {
                 return new FontFamily(
-                    $"file://{UserFontDirectory}#{name}, avares://PdfEditorApp/Assets/Fonts#{name}, {name}");
+                    $"file://{UserFontDirectory}#{familyToLookup}, avares://PdfEditorApp/Assets/Fonts#{familyToLookup}, {familyToLookup}");
             }
 
-            return new FontFamily($"avares://PdfEditorApp/Assets/Fonts#{name}, {name}");
+            return new FontFamily($"avares://PdfEditorApp/Assets/Fonts#{familyToLookup}, {familyToLookup}");
         });
     }
 

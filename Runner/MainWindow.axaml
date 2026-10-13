@@ -29,6 +29,7 @@
                     <NativeMenuItem Header="Save Project JSON" Command="{Binding SaveProjectJsonCommand}" />
                     <NativeMenuItemSeparator />
                     <NativeMenuItem Header="Export As..." Gesture="Meta+Shift+W" Command="{Binding OpenExportDialogCommand}" />
+                    <NativeMenuItem Header="Quick Export as PNG" Command="{Binding QuickExportAsPngCommand}" />
                     <NativeMenuItemSeparator />
                     <NativeMenuItem Header="Close" Gesture="Meta+W" Command="{Binding CloseOverlayCommand}" />
                 </NativeMenu>
@@ -134,6 +135,7 @@
                     <NativeMenuItem Header="Inverse" Gesture="Meta+Shift+I" Command="{Binding InvertSelectionCommand}" />
                     <NativeMenuItemSeparator />
                     <NativeMenuItem Header="Color Range..." Command="{Binding OpenColorRangeDialogCommand}" />
+                    <NativeMenuItem Header="Sky" Command="{Binding SelectSkyCommand}" />
                     <NativeMenuItem Header="Select and Mask..." Gesture="Meta+Alt+R" Command="{Binding OpenSelectAndMaskDialogCommand}" />
                 </NativeMenu>
             </NativeMenuItem>
@@ -181,6 +183,7 @@
                     <NativeMenuItem Header="Other">
                         <NativeMenu>
                             <NativeMenuItem Header="High Pass..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="HighPass" />
+                            <NativeMenuItem Header="Offset..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Offset" />
                         </NativeMenu>
                     </NativeMenuItem>
                 </NativeMenu>

@@ -37,6 +37,7 @@
                             <MenuItem Header="Save PSD..." InputGesture="Ctrl+S" Command="{Binding SavePsdFileCommand}" />
                             <MenuItem Header="Save Project JSON" Command="{Binding SaveProjectJsonCommand}" />
                             <MenuItem Header="Export As..." InputGesture="Ctrl+Shift+W" Command="{Binding OpenExportDialogCommand}" />
+                            <MenuItem Header="Quick Export as PNG" Command="{Binding QuickExportAsPngCommand}" />
                             <MenuItem Header="Export Layers As Files..." Command="{Binding OpenExportSelectedLayersDialogCommand}" />
                             <Separator />
                             <MenuItem Header="Automate">
@@ -235,6 +236,7 @@
                             <MenuItem Header="Inverse" InputGesture="Ctrl+Shift+I" Command="{Binding InvertSelectionCommand}" />
                             <Separator />
                             <MenuItem Header="Subject" Command="{Binding SelectSubjectCommand}" />
+                            <MenuItem Header="Sky" Command="{Binding SelectSkyCommand}" />
                             <MenuItem Header="Color Range..." Command="{Binding OpenColorRangeDialogCommand}" />
                             <MenuItem Header="Select and Mask..." InputGesture="Ctrl+Alt+R" Command="{Binding OpenSelectAndMaskDialogCommand}" />
                             <MenuItem Header="Modify">
@@ -320,6 +322,7 @@
                             </MenuItem>
                             <MenuItem Header="Other">
                                 <MenuItem Header="High Pass..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="HighPass" />
+                                <MenuItem Header="Offset..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="Offset" />
                                 <MenuItem Header="Color to Alpha..." Command="{Binding OpenFilterDialogCommand}" CommandParameter="ColorToAlpha" />
                             </MenuItem>
                         </MenuFlyout>

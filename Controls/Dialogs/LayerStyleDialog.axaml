@@ -36,6 +36,14 @@
                     <!-- Left: Effects Checklist -->
                     <Border Grid.Column="0" Background="{DynamicResource PsFieldBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,1,0" Padding="8">
                         <StackPanel Spacing="4">
+                            <!-- Blending Options (#4395, #f57db2b5) -->
+                            <Button Classes="ps-opt-btn" HorizontalAlignment="Stretch" Padding="6,4"
+                                    Command="{Binding SelectLayerStyleSectionCommand}" CommandParameter="BlendingOptions"
+                                    Classes.active="{Binding ActiveLayerStyleSection, Converter={StaticResource StringEqualsConverter}, ConverterParameter='BlendingOptions'}">
+                                <TextBlock Text="Blending Options: Custom" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                            </Button>
+                            <Separator Margin="0,2,0,4" Background="{DynamicResource PsBorderBrush}" />
+
                             <!-- Drop Shadow -->
                             <Button Classes="ps-opt-btn" HorizontalAlignment="Stretch" Padding="6,4"
                                     Command="{Binding SelectLayerStyleSectionCommand}" CommandParameter="DropShadow"
@@ -325,6 +333,75 @@
                                 </Grid>
                                 <Slider Minimum="10" Maximum="500" Value="{Binding FxPatternOverlayScale, Mode=TwoWay}" />
                             </StackPanel>
+                        </StackPanel>
+
+                        <!-- Blending Options Settings (#4395, #f57db2b5) -->
+                        <StackPanel Spacing="12" IsVisible="{Binding ActiveLayerStyleSection, Converter={StaticResource StringEqualsConverter}, ConverterParameter='BlendingOptions'}">
+                            <TextBlock Text="Blending Options" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource PsTextBrush}" />
+
+                            <!-- General Blending -->
+                            <Border Background="{DynamicResource PsPanelBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" Padding="8" CornerRadius="2">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="General Blending" FontWeight="SemiBold" Classes="ps-label" />
+                                    <Grid ColumnDefinitions="100,*">
+                                        <TextBlock Grid.Column="0" Text="Blend Mode:" Classes="ps-label" VerticalAlignment="Center" />
+                                        <ComboBox Grid.Column="1" Classes="ps-combo" Width="140" HorizontalAlignment="Left"
+                                                  ItemsSource="{Binding AvailableBlendModes}" SelectedItem="{Binding BlendModeField, Mode=TwoWay}" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="100,*">
+                                        <TextBlock Grid.Column="0" Text="Opacity:" Classes="ps-label" VerticalAlignment="Center" />
+                                        <Grid Grid.Column="1" ColumnDefinitions="*,Auto">
+                                            <Slider Grid.Column="0" Minimum="0" Maximum="100" Value="{Binding OpacityField, Mode=TwoWay}" />
+                                            <TextBlock Grid.Column="1" Text="{Binding OpacityField, StringFormat='{}{0:0}%'}" Margin="8,0,0,0" Width="36" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Advanced Blending -->
+                            <Border Background="{DynamicResource PsPanelBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" Padding="8" CornerRadius="2">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="Advanced Blending" FontWeight="SemiBold" Classes="ps-label" />
+                                    <Grid ColumnDefinitions="100,*">
+                                        <TextBlock Grid.Column="0" Text="Fill Opacity:" Classes="ps-label" VerticalAlignment="Center" />
+                                        <Grid Grid.Column="1" ColumnDefinitions="*,Auto">
+                                            <Slider Grid.Column="0" Minimum="0" Maximum="100" Value="{Binding FillOpacity, Mode=TwoWay}" />
+                                            <TextBlock Grid.Column="1" Text="{Binding FillOpacity, StringFormat='{}{0:0}%'}" Margin="8,0,0,0" Width="36" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Blend If -->
+                            <Border Background="{DynamicResource PsPanelBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" Padding="8" CornerRadius="2">
+                                <StackPanel Spacing="8">
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <TextBlock Grid.Column="0" Text="Blend If:" FontWeight="SemiBold" Classes="ps-label" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <ComboBox Grid.Column="1" Classes="ps-combo" Width="90" HorizontalAlignment="Left" SelectedIndex="0">
+                                            <ComboBoxItem Content="Gray" />
+                                            <ComboBoxItem Content="Red" />
+                                            <ComboBoxItem Content="Green" />
+                                            <ComboBoxItem Content="Blue" />
+                                        </ComboBox>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="110,*">
+                                        <TextBlock Grid.Column="0" Text="This Layer:" Classes="ps-label" VerticalAlignment="Center" />
+                                        <Grid Grid.Column="1" ColumnDefinitions="Auto,*,Auto">
+                                            <TextBlock Grid.Column="0" Text="{Binding BlendIfThisBlackLow}" Width="28" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                                            <Slider Grid.Column="1" Minimum="0" Maximum="255" Value="{Binding BlendIfThisWhiteHigh, Mode=TwoWay}" />
+                                            <TextBlock Grid.Column="2" Text="{Binding BlendIfThisWhiteHigh}" Width="28" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="110,*">
+                                        <TextBlock Grid.Column="0" Text="Underlying Layer:" Classes="ps-label" VerticalAlignment="Center" />
+                                        <Grid Grid.Column="1" ColumnDefinitions="Auto,*,Auto">
+                                            <TextBlock Grid.Column="0" Text="{Binding BlendIfUnderBlackLow}" Width="28" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                                            <Slider Grid.Column="1" Minimum="0" Maximum="255" Value="{Binding BlendIfUnderWhiteHigh, Mode=TwoWay}" />
+                                            <TextBlock Grid.Column="2" Text="{Binding BlendIfUnderWhiteHigh}" Width="28" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                         </Panel>
                     </ScrollViewer>

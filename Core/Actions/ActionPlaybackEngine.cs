@@ -62,15 +62,59 @@ public static class ActionPlaybackEngine
         return [defaultSet];
     }
 
-    public static async Task ExecuteActionAsync(AtnCodec.AtnAction action, ImageEditorViewModel vm)
+    /// <summary>
+    /// Checks whether an action step command is a shell save command that batch processing should override.
+    /// </summary>
+    public static bool IsSaveCommand(string cmd)
+    {
+        return cmd.Contains("save as") || cmd.Contains("saveas") || cmd.Contains("shell_save") || cmd == "save";
+    }
+
+    /// <summary>
+    /// Checks whether an action step command is a Quick Export command that should be skipped during batch processing (#4747).
+    /// </summary>
+    public static bool IsQuickExportCommand(string cmd)
+    {
+        return cmd.Contains("quick export") || cmd.Contains("quickexport") || cmd.Contains("file.export.quickexport");
+    }
+
+    /// <summary>
+    /// Filters steps for batch action execution: skips view commands, save commands, and Quick Export steps (#4747).
+    /// </summary>
+    public static List<AtnCodec.AtnItem> FilterBatchSteps(IEnumerable<AtnCodec.AtnItem> items)
+    {
+        return items.Where(item =>
+        {
+            if (!item.Enabled) return false;
+            string cmd = (item.Dictionary ?? item.EventName ?? "").Trim().ToLowerInvariant();
+            if (IsSaveCommand(cmd)) return false;
+            if (IsQuickExportCommand(cmd)) return false;
+            if (cmd.Contains("fit on screen") || cmd.Contains("zoom in") || cmd.Contains("zoom out") || cmd.Contains("actual pixels")) return false;
+            return true;
+        }).ToList();
+    }
+
+    public static async Task ExecuteActionAsync(AtnCodec.AtnAction action, ImageEditorViewModel vm, bool isBatch = false)
     {
         vm.StatusMessage = $"Playing action: {action.Name}...";
 
-        foreach (var item in action.Items)
-        {
-            if (!item.Enabled) continue;
+        var items = isBatch ? FilterBatchSteps(action.Items) : action.Items.Where(it => it.Enabled).ToList();
 
+        foreach (var item in items)
+        {
             string cmd = (item.Dictionary ?? item.EventName ?? "").Trim().ToLowerInvariant();
+
+            // When executing in batch mode, skip recorded Quick Export and Save commands (#4747)
+            if (isBatch && (IsQuickExportCommand(cmd) || IsSaveCommand(cmd)))
+            {
+                continue;
+            }
+
+            if (IsQuickExportCommand(cmd))
+            {
+                await vm.QuickExportAsPngAsync();
+                continue;
+            }
 
             if (cmd.Contains("gaussian blur") || cmd.Contains("blur"))
             {

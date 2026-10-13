@@ -1,3 +1,6 @@
+using System;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using Avalonia;
 using Avalonia.Media;
 
@@ -7,8 +10,13 @@ namespace PdfEditorApp.Plugins.ImageEditor.Models;
 /// Abstract base for all canvas elements in the Image Editor.
 /// Each element knows how to draw itself via Avalonia DrawingContext.
 /// </summary>
-public abstract class CanvasElement
+public abstract class CanvasElement : INotifyPropertyChanged
 {
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
     public Guid Id { get; } = Guid.NewGuid();
 
     /// <summary>Top-left X position on the canvas.</summary>
@@ -124,6 +132,21 @@ public abstract class CanvasElement
 
     /// <summary>When true, this layer is a Smart Object container with non-destructive Smart Filters.</summary>
     public bool IsSmartObject { get; set; }
+
+    private bool _isCanvasHovered;
+    /// <summary>When true, this layer is hovered on canvas by the Move tool (#4718, #4719).</summary>
+    public bool IsCanvasHovered
+    {
+        get => _isCanvasHovered;
+        set
+        {
+            if (_isCanvasHovered != value)
+            {
+                _isCanvasHovered = value;
+                OnPropertyChanged();
+            }
+        }
+    }
 
     /// <summary>When true, this layer is a vector shape layer and displays the shape badge (#4584).</summary>
     public virtual bool IsVectorShape => this is VectorShapeElement || ElementType == "Shape";

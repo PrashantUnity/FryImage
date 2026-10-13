@@ -46,5 +46,21 @@ public partial class LayersDockPanel : UserControl
             e.Handled = true;
         }
     }
+
+    private void OnLayerRowPointerEntered(object? sender, PointerEventArgs e)
+    {
+        if (sender is Control { DataContext: Models.CanvasElement el } && DataContext is ImageEditorViewModel vm)
+        {
+            vm.HoveredElement = el;
+        }
+    }
+
+    private void OnLayerRowPointerExited(object? sender, PointerEventArgs e)
+    {
+        if (DataContext is ImageEditorViewModel vm)
+        {
+            vm.HoveredElement = null;
+        }
+    }
 }
 

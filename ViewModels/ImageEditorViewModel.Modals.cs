@@ -17,6 +17,7 @@ using PdfEditorApp.Plugins.ImageEditor.Core.Raster;
 using PdfEditorApp.Plugins.ImageEditor.Core.Vector;
 using PdfEditorApp.Plugins.ImageEditor.Models;
 using PdfEditorApp.Plugins.ImageEditor.Models.Undo;
+using PdfEditorApp.Plugins.ImageEditor.Core.Undo;
 using SkiaSharp;
 
 namespace PdfEditorApp.Plugins.ImageEditor;
@@ -25,7 +26,20 @@ public partial class ImageEditorViewModel
 {
     // ── 1. Layer Style Modal Dialog (fx) ───────────────────────────────────
     [ObservableProperty] private bool _isLayerStyleDialogOpen;
-    [ObservableProperty] private string _activeLayerStyleSection = "DropShadow"; // DropShadow, OuterGlow, InnerShadow, ColorOverlay, Stroke
+    [ObservableProperty] private string _activeLayerStyleSection = "BlendingOptions"; // BlendingOptions, DropShadow, OuterGlow, InnerShadow, ColorOverlay, Stroke
+
+    // Blending Options & Blend If (#4395, #f57db2b5)
+    [ObservableProperty] private double _generalOpacity = 100;
+    [ObservableProperty] private double _fillOpacity = 100;
+    [ObservableProperty] private string _blendIfChannel = "Gray";
+    [ObservableProperty] private byte _blendIfThisBlackLow = 0;
+    [ObservableProperty] private byte _blendIfThisBlackHigh = 0;
+    [ObservableProperty] private byte _blendIfThisWhiteLow = 255;
+    [ObservableProperty] private byte _blendIfThisWhiteHigh = 255;
+    [ObservableProperty] private byte _blendIfUnderBlackLow = 0;
+    [ObservableProperty] private byte _blendIfUnderBlackHigh = 0;
+    [ObservableProperty] private byte _blendIfUnderWhiteLow = 255;
+    [ObservableProperty] private byte _blendIfUnderWhiteHigh = 255;
 
     // Drop Shadow
     [ObservableProperty] private bool _fxDropShadowEnabled;
@@ -1534,6 +1548,14 @@ public partial class ImageEditorViewModel
     private int _filterDisplaceCustomWidth;
     private int _filterDisplaceCustomHeight;
 
+    // 35. Offset Filter (Filter > Other > Offset...) (#4738)
+    [ObservableProperty] private double _filterOffsetHorizontal = 0;
+    [ObservableProperty] private double _filterOffsetVertical = 0;
+    [ObservableProperty] private string _filterOffsetUndefinedMode = "Wrap"; // Wrap, RepeatEdge, Background
+
+    // In-Dialog Settings Undo/Redo History (#4697, #4715)
+    private DialogEditHistory<string>? _activeDialogEditHistory;
+
     // In-Dialog Filter Preview (Photoshop standard)
     [ObservableProperty] private Bitmap? _filterDialogPreviewBitmap;
     [ObservableProperty] private Bitmap? _filterDialogOriginalBitmap;
@@ -1608,6 +1630,7 @@ public partial class ImageEditorViewModel
             "WaterPaper" => "Water Paper",
             "ColorToAlpha" => "Color to Alpha",
             "Displace" => "Displace",
+            "Offset" => "Offset",
             _ => "Filter"
         };
 
@@ -1734,6 +1757,7 @@ public partial class ImageEditorViewModel
         FilterPreviewEnabled = true;
 
         IsFilterDialogOpen = true;
+        InitDialogHistory(GetCurrentDialogSettingsSnapshot());
     }
 
     partial void OnFilterDisplaceHorizScaleChanged(double value) => ApplyFilterPreview();
@@ -1897,6 +1921,60 @@ public partial class ImageEditorViewModel
     partial void OnFilterWaterPaperFiberLengthChanged(int value) => ApplyFilterPreview();
     partial void OnFilterWaterPaperBrightnessChanged(int value) => ApplyFilterPreview();
     partial void OnFilterWaterPaperContrastChanged(int value) => ApplyFilterPreview();
+    partial void OnFilterOffsetHorizontalChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterOffsetVerticalChanged(double value) => ApplyFilterPreview();
+    partial void OnFilterOffsetUndefinedModeChanged(string value) => ApplyFilterPreview();
+
+    public void InitDialogHistory(string initialSettings)
+    {
+        _activeDialogEditHistory = new DialogEditHistory<string>(initialSettings);
+    }
+
+    public void RecordDialogSettingsState(string currentSettings, bool busy = false)
+    {
+        _activeDialogEditHistory?.Settle(currentSettings, busy, (a, b) => a == b);
+    }
+
+    public bool StepDialogHistory(bool redo)
+    {
+        if (_activeDialogEditHistory == null) return false;
+        string current = GetCurrentDialogSettingsSnapshot();
+        string? target = redo ? _activeDialogEditHistory.Redo(current) : _activeDialogEditHistory.Undo(current);
+        if (target != null)
+        {
+            ApplyDialogSettingsSnapshot(target);
+            return true;
+        }
+        return false;
+    }
+
+    private string GetCurrentDialogSettingsSnapshot()
+    {
+        if (IsFilterDialogOpen)
+        {
+            return $"Filter:{ActiveFilterMode}:{FilterBlurRadius}:{FilterSharpenAmount}:{FilterHighPassRadius}:{FilterNoiseAmount}:{FilterOffsetHorizontal}:{FilterOffsetVertical}:{FilterOffsetUndefinedMode}";
+        }
+        return $"Adjust:{ActiveFilterMode}";
+    }
+
+    private void ApplyDialogSettingsSnapshot(string snapshot)
+    {
+        if (snapshot.StartsWith("Filter:"))
+        {
+            var parts = snapshot.Split(':');
+            if (parts.Length >= 9)
+            {
+                if (double.TryParse(parts[2], out var blur)) FilterBlurRadius = blur;
+                if (double.TryParse(parts[3], out var sh)) FilterSharpenAmount = sh;
+                if (double.TryParse(parts[4], out var hp)) FilterHighPassRadius = hp;
+                if (int.TryParse(parts[5], out var noise)) FilterNoiseAmount = noise;
+                if (double.TryParse(parts[6], out var ox)) FilterOffsetHorizontal = ox;
+                if (double.TryParse(parts[7], out var oy)) FilterOffsetVertical = oy;
+                FilterOffsetUndefinedMode = parts[8];
+                ApplyFilterPreview();
+            }
+        }
+    }
 
     private byte[] ExecuteFilterMode(byte[] bgra, int width, int height)
     {
@@ -1959,6 +2037,17 @@ public partial class ImageEditorViewModel
                 _filterDisplaceCustomBytes,
                 _filterDisplaceCustomWidth,
                 _filterDisplaceCustomHeight),
+            "Offset" => OffsetFilterEngine.ApplyOffset(
+                bgra, width, height,
+                (int)Math.Round(FilterOffsetHorizontal),
+                (int)Math.Round(FilterOffsetVertical),
+                FilterOffsetUndefinedMode switch
+                {
+                    "RepeatEdge" => OffsetFilterEngine.UndefinedAreaMode.Repeat,
+                    "Background" => OffsetFilterEngine.UndefinedAreaMode.Background,
+                    _ => OffsetFilterEngine.UndefinedAreaMode.Wrap
+                },
+                SecondaryColor),
             _ => bgra
         };
     }
@@ -1994,6 +2083,7 @@ public partial class ImageEditorViewModel
                 FilterDialogPreviewBitmap = new Bitmap(previewMs);
 
                 RefreshCanvas();
+                RecordDialogSettingsState(GetCurrentDialogSettingsSnapshot());
             }
             finally
             {
@@ -2224,11 +2314,12 @@ public partial class ImageEditorViewModel
                 AllowMultiple = true,
                 FileTypeFilter =
                 [
-                    new FilePickerFileType("Supported Studio Formats (*.psd, *.abr, *.aco, *.ase, *.grd, *.pat, *.fits, *.pcx, *.kra, *.dds, *.dpx, *.xpm, *.atn, images)")
+                    new FilePickerFileType("Supported Studio Formats (*.psd, *.ora, *.abr, *.aco, *.ase, *.grd, *.pat, *.fits, *.pcx, *.kra, *.dds, *.dpx, *.xpm, *.atn, images)")
                     {
-                        Patterns = ["*.psd", "*.abr", "*.aco", "*.ase", "*.grd", "*.pat", "*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp", "*.gif", "*.tif", "*.tiff", "*.fits", "*.fit", "*.fts", "*.pcx", "*.kra", "*.dds", "*.dpx", "*.xpm", "*.atn"]
+                        Patterns = ["*.psd", "*.ora", "*.abr", "*.aco", "*.ase", "*.grd", "*.pat", "*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp", "*.gif", "*.tif", "*.tiff", "*.fits", "*.fit", "*.fts", "*.pcx", "*.kra", "*.dds", "*.dpx", "*.xpm", "*.atn"]
                     },
                     new FilePickerFileType("Layered Document (*.psd)") { Patterns = ["*.psd"] },
+                    new FilePickerFileType("OpenRaster Document (*.ora)") { Patterns = ["*.ora"] },
                     new FilePickerFileType("DirectDraw Surface (*.dds)") { Patterns = ["*.dds"] },
                     new FilePickerFileType("SMPTE DPX Film/VFX (*.dpx)") { Patterns = ["*.dpx"] },
                     new FilePickerFileType("X PixMap (*.xpm)") { Patterns = ["*.xpm"] },
@@ -2634,6 +2725,49 @@ public partial class ImageEditorViewModel
                     StatusMessage = $"Loaded XPM image ({xpm.Width}x{xpm.Height}, {xpm.ColorsCount} colors).";
                     openedCount++;
                 }
+                else if (ext == ".ora")
+                {
+                    var ora = OraCodec.Decode(stream);
+                    if (Elements.Count == 0)
+                    {
+                        ClearCanvas();
+                        CanvasWidth = Math.Max(200, ora.Width);
+                        CanvasHeight = Math.Max(150, ora.Height);
+                        DocumentTitle = file.Name;
+                    }
+
+                    int z = Elements.Count + 1;
+                    foreach (var layer in ora.Layers)
+                    {
+                        if (layer.PngBytes != null && layer.PngBytes.Length > 0)
+                        {
+                            using var ms = new MemoryStream(layer.PngBytes);
+                            var bmp = new Bitmap(ms);
+
+                            var el = new ImageElement
+                            {
+                                Name = layer.Name,
+                                X = layer.X,
+                                Y = layer.Y,
+                                Width = bmp.PixelSize.Width,
+                                Height = bmp.PixelSize.Height,
+                                NaturalPixelWidth = bmp.PixelSize.Width,
+                                NaturalPixelHeight = bmp.PixelSize.Height,
+                                Source = bmp,
+                                OriginalImageBytes = layer.PngBytes,
+                                Opacity = layer.Opacity,
+                                IsVisible = layer.IsVisible,
+                                ZIndex = z++
+                            };
+
+                            Elements.Add(el);
+                            SelectedElement = el;
+                        }
+                    }
+
+                    openedCount++;
+                    StatusMessage = $"Loaded OpenRaster document '{file.Name}' ({ora.Layers.Count} layers).";
+                }
                 else
                 {
                     // Standard image file
@@ -2793,6 +2927,88 @@ public partial class ImageEditorViewModel
         catch (Exception ex)
         {
             StatusMessage = $"Error saving PSD: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    public async Task SaveOraFileAsync()
+    {
+        try
+        {
+            var topLevel = GetTopLevel();
+            if (topLevel?.StorageProvider is not { } storage) return;
+
+            var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = "Save OpenRaster Document (.ora)",
+                SuggestedFileName = $"{Path.GetFileNameWithoutExtension(DocumentTitle)}.ora",
+                DefaultExtension = ".ora",
+                FileTypeChoices =
+                [
+                    new FilePickerFileType("OpenRaster Document (*.ora)") { Patterns = ["*.ora"] }
+                ]
+            });
+
+            if (file == null) return;
+
+            // Loss protection check (#3806)
+            var losses = OraCodec.CheckLosses(Elements);
+            if (losses.Count > 0)
+            {
+                StatusMessage = $"OpenRaster warning: {losses[0]}";
+            }
+
+            var oraDoc = new OraCodec.OraDocument
+            {
+                Width = (int)CanvasWidth,
+                Height = (int)CanvasHeight
+            };
+
+            var sorted = Elements.OrderBy(e => e.ZIndex).ToList();
+            foreach (var el in sorted)
+            {
+                byte[] pngBytes = [];
+                if (el is ImageElement img && img.OriginalImageBytes != null)
+                {
+                    pngBytes = img.OriginalImageBytes;
+                }
+                else
+                {
+                    int lw = Math.Max(1, (int)el.Width);
+                    int lh = Math.Max(1, (int)el.Height);
+                    using var surface = SKSurface.Create(new SKImageInfo(lw, lh, SKColorType.Bgra8888, SKAlphaType.Premul));
+                    if (surface != null)
+                    {
+                        var canvas = surface.Canvas;
+                        canvas.Clear(SKColors.Transparent);
+                        using var paint = new SKPaint { Color = new SKColor(99, 102, 241, (byte)(el.Opacity * 255)) };
+                        canvas.DrawRect(0, 0, lw, lh, paint);
+                        using var snap = surface.Snapshot();
+                        using var data = snap.Encode(SKEncodedImageFormat.Png, 100);
+                        pngBytes = data.ToArray();
+                    }
+                }
+
+                oraDoc.Layers.Add(new OraCodec.OraLayer
+                {
+                    Name = el.DisplayName,
+                    X = (int)el.X,
+                    Y = (int)el.Y,
+                    Opacity = el.Opacity,
+                    IsVisible = el.IsVisible,
+                    PngBytes = pngBytes
+                });
+            }
+
+            await using var stream = await file.OpenWriteAsync();
+            OraCodec.Encode(oraDoc, stream);
+            StatusMessage = losses.Count > 0
+                ? $"Saved OpenRaster: {file.Name} ({losses.Count} features flattened)."
+                : $"Saved OpenRaster: {file.Name}";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error saving OpenRaster: {ex.Message}";
         }
     }
 }

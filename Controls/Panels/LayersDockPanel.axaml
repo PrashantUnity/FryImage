@@ -134,7 +134,12 @@
                     <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="models:CanvasElement">
                             <StackPanel>
-                                <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" Height="26" VerticalAlignment="Center">
+                                <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" Height="26" VerticalAlignment="Center"
+                                      PointerEntered="OnLayerRowPointerEntered" PointerExited="OnLayerRowPointerExited">
+                                    <!-- Canvas-hovered highlight overlay (#4718, #4719) -->
+                                    <Border Grid.ColumnSpan="5" IsVisible="{Binding IsCanvasHovered}"
+                                            Background="#253B82F6" BorderBrush="{DynamicResource PsAccentBrush}"
+                                            BorderThickness="1" CornerRadius="2" IsHitTestVisible="False" />
                                     <Grid.ContextMenu>
                                         <ContextMenu>
                                             <MenuItem Header="Blending Options..."
@@ -357,8 +362,8 @@
                         <Button Classes="ps-footer-btn" Command="{Binding OpenLayerStyleDialogCommand}" ToolTip.Tip="Add a layer style">
                             <TextBlock Text="fx" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource PsAccentBrush}" VerticalAlignment="Center" />
                         </Button>
-                        <!-- Add Layer Mask -->
-                        <Button Classes="ps-footer-btn" ToolTip.Tip="Add layer mask">
+                        <!-- Add Layer Mask (from path or selection) -->
+                        <Button Classes="ps-footer-btn" Command="{Binding AddLayerMaskCommand}" ToolTip.Tip="Add layer mask (from active path or selection)">
                             <materialIcons:MaterialIcon Kind="SelectCompare" Width="12" Height="12" />
                         </Button>
                         <!-- Create New Adjustment Layer -->

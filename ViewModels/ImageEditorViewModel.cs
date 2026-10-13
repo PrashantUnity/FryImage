@@ -359,9 +359,17 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private void ToggleLayerLock(CanvasElement element)
+    public void ToggleLayerLock(CanvasElement element)
     {
+        if (element.IsBackground)
+        {
+            // Clicking lock on Background converts it to a regular layer and unlocks (#4723, #4734)
+            ConvertBackgroundToLayer(element);
+            return;
+        }
         element.IsLocked = !element.IsLocked;
+        element.IsPositionLocked = element.IsLocked;
+        element.IsTransparencyLocked = element.IsLocked;
         RefreshCanvas();
         OnPropertyChanged(nameof(LayersDescendingZ));
     }
@@ -481,6 +489,20 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(HasSelection))]
     private CanvasElement? _selectedElement;
 
+    /// <summary>Layer currently hovered in the Layers panel (outlines layer on canvas) (#4718, #4719).</summary>
+    [ObservableProperty]
+    private CanvasElement? _hoveredElement;
+
+    /// <summary>Layer currently hovered on the canvas by the Move tool (highlights row in Layers panel) (#4718, #4719).</summary>
+    [ObservableProperty]
+    private CanvasElement? _canvasHoveredElement;
+
+    partial void OnCanvasHoveredElementChanged(CanvasElement? oldValue, CanvasElement? newValue)
+    {
+        if (oldValue != null) oldValue.IsCanvasHovered = false;
+        if (newValue != null) newValue.IsCanvasHovered = true;
+    }
+
     /// <summary>Full multi-selection mirrored from EditorCanvasControl. SelectedElement above
     /// stays the single-target convenience (null when 0 or 2+ are selected).</summary>
     [ObservableProperty]
@@ -488,7 +510,10 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(HasTripleSelection))]
     [NotifyPropertyChangedFor(nameof(HasSelectedElements))]
     [NotifyPropertyChangedFor(nameof(HasSelection))]
+    [NotifyPropertyChangedFor(nameof(CanAlignSelectedElements))]
     private ObservableCollection<CanvasElement> _selectedElements = [];
+
+    public bool CanAlignSelectedElements => SelectedElements.Count > 1;
 
     public bool HasMultiSelection => SelectedElements.Count >= 2;
     public bool HasTripleSelection => SelectedElements.Count >= 3;
@@ -2758,6 +2783,12 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     private Rect ComputeGroupBounds()
     {
         if (SelectedElements.Count == 0) return default;
+        var bg = SelectedElements.FirstOrDefault(e => e.IsBackground);
+        if (bg != null)
+        {
+            // Background is one of several selected layers (#4608, #4637): reference is canvas bounds
+            return new Rect(0, 0, CanvasWidth, CanvasHeight);
+        }
         var result = SelectedElements[0].Bounds;
         for (int i = 1; i < SelectedElements.Count; i++) result = result.Union(SelectedElements[i].Bounds);
         return result;
@@ -2767,8 +2798,14 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     {
         if (SelectedElements.Count < 2) return;
         var before = SelectedElements.ToDictionary(e => e, e => new Point(e.X, e.Y));
-        foreach (var el in SelectedElements) apply(el);
+        foreach (var el in SelectedElements)
+        {
+            // If background is in multiple selection, Background stays fixed and other layers line up with it (#4608)
+            if (el.IsBackground) continue;
+            apply(el);
+        }
         PushMoveCommand(before);
+        RefreshCanvas();
     }
 
     // ── Align single element to the page/canvas bounds (distinct from AlignSelection above,

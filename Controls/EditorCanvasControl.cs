@@ -103,6 +103,12 @@ public partial class EditorCanvasControl : Control
     private PathKnot? _penActiveKnot;
     private bool _isDraggingPathKnot;
     private PathKnot? _selectedPathKnot;
+    private bool _isPenOverFirstKnot;
+
+    // Bidirectional hover highlighting (#4718, #4719)
+    public CanvasElement? HoveredElement { get; set; }
+    public CanvasElement? CanvasHoveredElement { get; set; }
+    public event Action<CanvasElement?>? CanvasHoveredElementChanged;
 
     public event Action<Point>? CloneSourceDefined;
     public event Action<string, IReadOnlyList<Point>>? RetouchStrokeCompleted;
@@ -334,6 +340,12 @@ public partial class EditorCanvasControl : Control
         if (_spaceHeld || _isPanning || ActiveToolMode == "hand")
         {
             Cursor = new Cursor(StandardCursorType.Hand);
+            return;
+        }
+
+        if (_isPenOverFirstKnot && (ActiveToolMode is "pen" or "curvaturepen"))
+        {
+            Cursor = new Cursor(StandardCursorType.Cross);
             return;
         }
 
@@ -946,6 +958,25 @@ public partial class EditorCanvasControl : Control
                 var sampledColor = grid[5, 5];
                 DrawEyedropperLoupe(dc, screenPos, grid, sampledColor);
             }
+        }
+
+        // Bidirectional hover highlight from Layers panel (#4718, #4719)
+        if (HoveredElement != null && HoveredElement.IsVisible && !_isDragging && !_isResizing)
+        {
+            var p0 = CanvasToScreen(new Point(HoveredElement.X, HoveredElement.Y));
+            var p1 = CanvasToScreen(new Point(HoveredElement.X + HoveredElement.Width, HoveredElement.Y + HoveredElement.Height));
+            var highlightRect = new Rect(p0, p1);
+            var accentBrush = Application.Current?.FindResource("PsAccentBrush") as IBrush ?? Brushes.DodgerBlue;
+            dc.DrawRectangle(null, new Pen(accentBrush, 1.5), highlightRect);
+        }
+
+        // Pen tool close-path pointer ring indicator (#4596, #4612)
+        if (_isPenOverFirstKnot && _cursorCanvasPos is { } penCursor && (ActiveToolMode is "pen" or "curvaturepen"))
+        {
+            var sPos = CanvasToScreen(penCursor);
+            var ringCenter = new Point(sPos.X + 9, sPos.Y + 9);
+            dc.DrawEllipse(null, new Pen(Brushes.White, 1.5), ringCenter, 3.5, 3.5);
+            dc.DrawEllipse(null, new Pen(Brushes.Black, 0.75), ringCenter, 3.5, 3.5);
         }
     }
 
@@ -1786,11 +1817,13 @@ public partial class EditorCanvasControl : Control
                 var currentSub = ActiveDocumentPath.Subpaths[^1];
                 double closeHitRadius = 10.0 / _zoom;
 
-                if (currentSub.Knots.Count > 2 && Point.Distance(canvasPt, currentSub.Knots[0].Anchor) <= closeHitRadius)
+                if (currentSub.Knots.Count >= 2 && Point.Distance(canvasPt, currentSub.Knots[0].Anchor) <= closeHitRadius)
                 {
                     currentSub.IsClosed = true;
                     _isDraggingPenHandle = false;
                     _penActiveKnot = null;
+                    _isPenOverFirstKnot = false;
+                    UpdateCursorForTool();
                 }
                 else
                 {
@@ -2134,8 +2167,47 @@ public partial class EditorCanvasControl : Control
             return;
         }
 
+        // Pen / Curvature Pen: hit-test first anchor for close-path (#4596, #4612)
+        bool wasPenOverFirst = _isPenOverFirstKnot;
+        _isPenOverFirstKnot = false;
+        if ((ActiveToolMode is "pen" or "curvaturepen") && ActiveDocumentPath != null && ActiveDocumentPath.Subpaths.Count > 0 && !ActiveDocumentPath.Subpaths[^1].IsClosed)
+        {
+            var currentSub = ActiveDocumentPath.Subpaths[^1];
+            int minKnots = ActiveToolMode == "curvaturepen" ? 3 : 2;
+            if (currentSub.Knots.Count >= minKnots && !_isDraggingPenHandle)
+            {
+                double closeHitRadius = 10.0 / Math.Max(0.01, _zoom);
+                if (Point.Distance(pos, currentSub.Knots[0].Anchor) <= closeHitRadius)
+                {
+                    _isPenOverFirstKnot = true;
+                }
+            }
+        }
+        if (_isPenOverFirstKnot != wasPenOverFirst)
+        {
+            UpdateCursorForTool();
+            InvalidateVisual();
+        }
+
         if (ActiveToolMode == "select" && !_isDragging && !_isResizing && !_isRotating)
         {
+            // Canvas-to-layers hover highlight (#4718, #4719)
+            CanvasElement? hovered = null;
+            for (int i = _elements.Count - 1; i >= 0; i--)
+            {
+                var el = _elements[i];
+                if (el.IsVisible && el.Bounds.Contains(pos))
+                {
+                    hovered = el;
+                    break;
+                }
+            }
+            if (CanvasHoveredElement != hovered)
+            {
+                CanvasHoveredElement = hovered;
+                CanvasHoveredElementChanged?.Invoke(hovered);
+            }
+
             if (UpdateTransformHoverCursor(pos, e.GetPosition(this)))
             {
                 // Handled by resize or rotation handle
@@ -2148,6 +2220,11 @@ public partial class EditorCanvasControl : Control
             {
                 Cursor = Cursor.Default;
             }
+        }
+        else if (CanvasHoveredElement != null)
+        {
+            CanvasHoveredElement = null;
+            CanvasHoveredElementChanged?.Invoke(null);
         }
 
         if ((ActiveToolMode is "brush" or "pencil" or "eraser" or "clonestamp" or "healing" or "historybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" or "bgeraser" or "colorreplacement" or "redeye" or "patch" or "eyedropper") && !_isDrawingDoodle && !_isDrawingRetouch)

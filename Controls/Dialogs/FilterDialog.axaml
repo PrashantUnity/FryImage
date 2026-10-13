@@ -911,6 +911,35 @@
                             </StackPanel>
                         </StackPanel>
 
+                        <!-- 38. Offset (Filter › Other › Offset...) (#4738) -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ActiveFilterMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Offset'}">
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Horizontal" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterOffsetHorizontal, StringFormat='{}{0:0} pixels Right'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="-500" Maximum="500" Value="{Binding FilterOffsetHorizontal, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Vertical" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FilterOffsetVertical, StringFormat='{}{0:0} pixels Down'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                </Grid>
+                                <Slider Minimum="-500" Maximum="500" Value="{Binding FilterOffsetVertical, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Undefined Areas" Classes="ps-label" />
+                                <RadioButton GroupName="OffsetUndefined" Content="Set to Background"
+                                             IsChecked="{Binding FilterOffsetUndefinedMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Background'}" />
+                                <RadioButton GroupName="OffsetUndefined" Content="Repeat Edge Pixels"
+                                             IsChecked="{Binding FilterOffsetUndefinedMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='RepeatEdge'}" />
+                                <RadioButton GroupName="OffsetUndefined" Content="Wrap Around"
+                                             IsChecked="{Binding FilterOffsetUndefinedMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Wrap'}" />
+                            </StackPanel>
+                        </StackPanel>
+
                         <!-- Live Preview Toggle -->
                         <CheckBox Content="Preview" IsChecked="{Binding FilterPreviewEnabled, Mode=TwoWay}" Margin="0,6,0,0" />
                     </StackPanel>

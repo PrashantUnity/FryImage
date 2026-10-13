@@ -9,7 +9,37 @@ namespace PdfEditorApp.Plugins.ImageEditor.Models;
 /// </summary>
 public class ImageElement : CanvasElement
 {
-    public override string ElementType => "Image";
+    public override string ElementType => IsTextLayer ? "Text" : (IsVectorShape ? "Shape" : "Image");
+
+    private bool _isTextLayer;
+    public override bool IsTextLayer
+    {
+        get => _isTextLayer;
+        set
+        {
+            if (_isTextLayer != value)
+            {
+                _isTextLayer = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(ElementType));
+            }
+        }
+    }
+
+    private bool _isVectorShape;
+    public override bool IsVectorShape
+    {
+        get => _isVectorShape;
+        set
+        {
+            if (_isVectorShape != value)
+            {
+                _isVectorShape = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(ElementType));
+            }
+        }
+    }
 
     public Bitmap? Source { get; set; }
     public string? FilePath { get; set; }
@@ -134,6 +164,8 @@ public class ImageElement : CanvasElement
             Hue = Hue, Temperature = Temperature, Tint = Tint,
             ActiveFilterPreset = ActiveFilterPreset,
             BlurRadius = BlurRadius, SharpenAmount = SharpenAmount,
+            IsTextLayer = IsTextLayer,
+            IsVectorShape = IsVectorShape,
             OriginalImageBytes = OriginalImageBytes, // shared by reference — never mutated in place
         };
         CopyBasePropertiesTo(clone);

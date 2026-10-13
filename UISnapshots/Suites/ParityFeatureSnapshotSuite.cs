@@ -1303,7 +1303,7 @@ public static class ParityFeatureSnapshotSuite
                 var realPsdDoc = PsdCodec.Decode(psdStream);
                 if (realPsdDoc.Width != 1800 || realPsdDoc.Height != 1071)
                     throw new InvalidOperationException($"Real PSD dimensions mismatch: {realPsdDoc.Width}x{realPsdDoc.Height}");
-                if (realPsdDoc.Layers.Count != 61)
+                if (realPsdDoc.Layers.Count != 60)
                     throw new InvalidOperationException($"Real PSD layer count mismatch: {realPsdDoc.Layers.Count}");
 
                 // Validate decoded layer pixels
@@ -1329,7 +1329,19 @@ public static class ParityFeatureSnapshotSuite
                 int z = 1;
                 foreach (var l in realPsdDoc.Layers)
                 {
-                    if (l.BgraPixels != null && l.Width > 0 && l.Height > 0)
+                    if (l.IsFolder)
+                    {
+                        var groupEl = new GroupElement
+                        {
+                            Name = l.Name,
+                            GroupId = l.GroupId,
+                            GroupIndentLevel = l.GroupIndentLevel,
+                            IsExpanded = true,
+                            ZIndex = z++
+                        };
+                        vm.Elements.Add(groupEl);
+                    }
+                    else if (l.BgraPixels != null && l.Width > 0 && l.Height > 0)
                     {
                         using var skBmp = new SKBitmap(l.Width, l.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
                         var pin = System.Runtime.InteropServices.GCHandle.Alloc(l.BgraPixels, System.Runtime.InteropServices.GCHandleType.Pinned);
@@ -1351,6 +1363,11 @@ public static class ParityFeatureSnapshotSuite
                                 Height = l.Height,
                                 NaturalPixelWidth = l.Width,
                                 NaturalPixelHeight = l.Height,
+                                GroupId = l.GroupId,
+                                GroupIndentLevel = l.GroupIndentLevel,
+                                IsTextLayer = l.IsTextLayer,
+                                IsVectorShape = l.IsVectorShape,
+                                IsSmartObject = l.IsSmartObject,
                                 Source = avaloniaBmp,
                                 OriginalImageBytes = pngBytes,
                                 Opacity = l.Opacity / 255.0,
@@ -1367,8 +1384,56 @@ public static class ParityFeatureSnapshotSuite
                     }
                 }
 
+                // Populate GroupElement.Children references
+                foreach (var g in vm.Elements.OfType<GroupElement>())
+                {
+                    if (g.GroupId.HasValue)
+                    {
+                        foreach (var child in vm.Elements.Where(e => e.GroupId == g.GroupId && e != g))
+                        {
+                            g.Children.Add(child);
+                        }
+                    }
+                }
+
                 if (vm.Elements.Count == 0)
                     throw new InvalidOperationException("Failed to populate ViewModel elements from real PSD.");
+
+                // Validate Tree Structure and Layer Hierarchy
+                var psdGroup = vm.Elements.OfType<GroupElement>().FirstOrDefault();
+                if (psdGroup == null || psdGroup.Name != "Group 1")
+                    throw new InvalidOperationException("Failed to decode PSD folder 'Group 1' as GroupElement.");
+
+                // Test Create New Group, Indentation, Collapse Filtering, and Ungroup commands
+                var grpLayer1 = vm.Elements.FirstOrDefault(e => e is not GroupElement && e.GroupId == null);
+                var grpLayer2 = vm.Elements.Skip(1).FirstOrDefault(e => e is not GroupElement && e.GroupId == null && e != grpLayer1);
+                if (grpLayer1 != null && grpLayer2 != null)
+                {
+                    vm.SelectedElements.Clear();
+                    vm.SelectedElements.Add(grpLayer1);
+                    vm.SelectedElements.Add(grpLayer2);
+                    vm.CreateNewGroupCommand.Execute(null);
+                    var newGroup = vm.SelectedElement as GroupElement;
+                    if (newGroup == null || newGroup.Children.Count != 2 || grpLayer1.GroupIndentLevel != 1 || grpLayer2.GroupIndentLevel != 1)
+                        throw new InvalidOperationException("CreateNewGroupCommand failed to create group container with indented children.");
+
+                    // Verify reactive collapsing filters out child elements
+                    int countBeforeCollapse = vm.LayersDescendingZ.Count();
+                    vm.ToggleGroupExpandedCommand.Execute(newGroup);
+                    int countCollapsed = vm.LayersDescendingZ.Count();
+                    if (countCollapsed != countBeforeCollapse - 2)
+                        throw new InvalidOperationException($"Collapsing group should hide 2 children (before={countBeforeCollapse}, collapsed={countCollapsed}).");
+
+                    // Verify expanding restores child elements
+                    vm.ToggleGroupExpandedCommand.Execute(newGroup);
+                    if (vm.LayersDescendingZ.Count() != countBeforeCollapse)
+                        throw new InvalidOperationException("Expanding group did not restore child layers.");
+
+                    // Verify ungrouping dissolves group and clears indentation
+                    vm.UngroupSelectedCommand.Execute(null);
+                    if (vm.Elements.Contains(newGroup) || grpLayer1.GroupId != null || grpLayer1.GroupIndentLevel != 0 || grpLayer2.GroupIndentLevel != 0)
+                        throw new InvalidOperationException("UngroupSelectedCommand failed to dissolve group container.");
+                }
 
                 // Test Editing on Real PSD:
                 var targetEl = vm.Elements.FirstOrDefault(e => (e.Name?.Contains("Rectangle") ?? false) || (e.Name?.Contains("Layer") ?? false));

@@ -148,8 +148,64 @@ public abstract class CanvasElement : INotifyPropertyChanged
         }
     }
 
+    private bool _isVectorShape;
     /// <summary>When true, this layer is a vector shape layer and displays the shape badge (#4584).</summary>
-    public virtual bool IsVectorShape => this is VectorShapeElement || ElementType == "Shape";
+    public virtual bool IsVectorShape
+    {
+        get => _isVectorShape || this is VectorShapeElement;
+        set
+        {
+            if (_isVectorShape != value)
+            {
+                _isVectorShape = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    /// <summary>When true, this layer is a group container (folder) with children.</summary>
+    public virtual bool IsGroup => false;
+
+    public virtual Material.Icons.MaterialIconKind ExpandIconKind => Material.Icons.MaterialIconKind.ChevronRight;
+    public virtual Material.Icons.MaterialIconKind FolderIconKind => Material.Icons.MaterialIconKind.FolderOutline;
+
+    private int _groupIndentLevel;
+    /// <summary>Hierarchy indent level (0 = top-level, 1 = direct child of group, 2 = nested).</summary>
+    public int GroupIndentLevel
+    {
+        get => _groupIndentLevel;
+        set
+        {
+            if (_groupIndentLevel != value)
+            {
+                _groupIndentLevel = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(TreeIndentMargin));
+                OnPropertyChanged(nameof(HasTreeGuideline));
+            }
+        }
+    }
+
+    private bool _isTextLayer;
+    /// <summary>Whether this element is a text layer (e.g. from Photoshop TySh block or text tool).</summary>
+    public virtual bool IsTextLayer
+    {
+        get => _isTextLayer || this is TextElement;
+        set
+        {
+            if (_isTextLayer != value)
+            {
+                _isTextLayer = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    /// <summary>Margin for hierarchical tree view indentation in Layers panel.</summary>
+    public Thickness TreeIndentMargin => new Thickness(Math.Max(0, GroupIndentLevel * 14), 0, 0, 0);
+
+    /// <summary>Whether this element is indented inside a tree structure.</summary>
+    public bool HasTreeGuideline => GroupIndentLevel > 0;
 
     /// <summary>Whether this element has an attached raster layer mask (#4575).</summary>
     public bool HasMask => MaskData != null && MaskData.Length > 0;
@@ -192,6 +248,7 @@ public abstract class CanvasElement : INotifyPropertyChanged
         foreach (var sf in SmartFilters) target.SmartFilters.Add(sf.Clone());
         target.Name = Name;
         target.GroupId = GroupId;
+        target.GroupIndentLevel = GroupIndentLevel;
         target.AspectLocked = AspectLocked;
         target.IsClippingMask = IsClippingMask;
         target.LabelColor = LabelColor;

@@ -60,9 +60,27 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private ObservableCollection<CanvasElement> _elements = [];
 
-    /// <summary>Layers list source, topmost element first (matches every other design tool's
-    /// layer-list convention) — the raw Elements collection has no inherent Z order.</summary>
-    public IEnumerable<CanvasElement> LayersDescendingZ => Elements.OrderByDescending(e => e.ZIndex);
+    /// <summary>Layers list source, topmost element first (matches Photoshop and Photocraft
+    /// layer-list convention). When a group is collapsed, its children are hidden.</summary>
+    public IEnumerable<CanvasElement> LayersDescendingZ
+    {
+        get
+        {
+            var collapsedGroupIds = Elements.OfType<GroupElement>()
+                .Where(g => !g.IsExpanded && g.GroupId.HasValue)
+                .Select(g => g.GroupId!.Value)
+                .ToHashSet();
+
+            if (collapsedGroupIds.Count == 0)
+            {
+                return Elements.OrderByDescending(e => e.ZIndex);
+            }
+
+            return Elements
+                .Where(e => e is GroupElement || !e.GroupId.HasValue || !collapsedGroupIds.Contains(e.GroupId.Value))
+                .OrderByDescending(e => e.ZIndex);
+        }
+    }
 
     [RelayCommand]
     private void SelectElementFromLayerPanel(CanvasElement element) => SelectedElement = element;
@@ -351,6 +369,13 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         foreach (var t in targets)
         {
             t.IsVisible = newVisibility;
+            if (t is GroupElement g && g.GroupId.HasValue)
+            {
+                foreach (var child in Elements.Where(e => e.GroupId == g.GroupId && e != g))
+                {
+                    child.IsVisible = newVisibility;
+                }
+            }
         }
 
         RefreshCanvas();
@@ -371,6 +396,15 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         element.IsLocked = !element.IsLocked;
         element.IsPositionLocked = element.IsLocked;
         element.IsTransparencyLocked = element.IsLocked;
+        if (element is GroupElement g && g.GroupId.HasValue)
+        {
+            foreach (var child in Elements.Where(e => e.GroupId == g.GroupId && e != g))
+            {
+                child.IsLocked = element.IsLocked;
+                child.IsPositionLocked = element.IsLocked;
+                child.IsTransparencyLocked = element.IsLocked;
+            }
+        }
         RefreshCanvas();
         OnPropertyChanged(nameof(LayersDescendingZ));
     }
@@ -544,31 +578,95 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     public bool CanUngroupSelection => SelectedElements.Any(e => e.GroupId != null);
 
     [RelayCommand]
-    private void GroupSelection()
+    public void CreateNewGroup()
     {
-        if (SelectedElements.Count < 2) return;
-        var before = SelectedElements.ToDictionary(e => e, e => e.GroupId);
-        var groupId = Guid.NewGuid();
-        foreach (var el in SelectedElements) el.GroupId = groupId;
-        var after = SelectedElements.ToDictionary(e => e, e => e.GroupId);
+        var group = new GroupElement
+        {
+            Name = $"Group {Elements.OfType<GroupElement>().Count() + 1}",
+            GroupId = Guid.NewGuid(),
+            IsExpanded = true
+        };
 
-        if (!_isApplyingHistory) History.Push(new GroupingChangeCommand(before, after));
+        if (SelectedElements.Count > 0)
+        {
+            int maxZ = SelectedElements.Max(e => e.ZIndex);
+            group.ZIndex = maxZ + 1;
+            int indent = 1;
+            foreach (var el in SelectedElements)
+            {
+                el.GroupId = group.GroupId;
+                el.GroupIndentLevel = indent;
+                group.Children.Add(el);
+            }
+            Elements.Add(group);
+            SelectedElement = group;
+            SelectedElements.Clear();
+            SelectedElements.Add(group);
+        }
+        else
+        {
+            int maxZ = Elements.Count > 0 ? Elements.Max(e => e.ZIndex) + 1 : 1;
+            group.ZIndex = maxZ;
+            Elements.Add(group);
+            SelectedElement = group;
+            SelectedElements.Clear();
+            SelectedElements.Add(group);
+        }
+
+        OnPropertyChanged(nameof(LayersDescendingZ));
         OnPropertyChanged(nameof(CanUngroupSelection));
         RefreshCanvas();
+        StatusMessage = $"Created {group.Name}";
     }
 
     [RelayCommand]
-    private void UngroupSelection()
-    {
-        var grouped = SelectedElements.Where(e => e.GroupId != null).ToList();
-        if (grouped.Count == 0) return;
-        var before = grouped.ToDictionary(e => e, e => e.GroupId);
-        foreach (var el in grouped) el.GroupId = null;
-        var after = grouped.ToDictionary(e => e, e => e.GroupId);
+    private void GroupSelection() => CreateNewGroup();
 
-        if (!_isApplyingHistory) History.Push(new GroupingChangeCommand(before, after));
+    [RelayCommand]
+    public void UngroupSelected()
+    {
+        var targetGroups = SelectedElements.OfType<GroupElement>().ToList();
+        var targetChildren = SelectedElements.Where(e => e.GroupId.HasValue && e is not GroupElement).ToList();
+
+        var groupIdsToDissolve = targetGroups.Select(g => g.GroupId!.Value)
+            .Concat(targetChildren.Select(c => c.GroupId!.Value))
+            .Distinct()
+            .ToHashSet();
+
+        if (groupIdsToDissolve.Count == 0 && SelectedElement is GroupElement singleG && singleG.GroupId.HasValue)
+        {
+            groupIdsToDissolve.Add(singleG.GroupId.Value);
+        }
+
+        if (groupIdsToDissolve.Count == 0) return;
+
+        var groupsToRemove = Elements.OfType<GroupElement>().Where(g => g.GroupId.HasValue && groupIdsToDissolve.Contains(g.GroupId.Value)).ToList();
+        foreach (var g in groupsToRemove)
+        {
+            Elements.Remove(g);
+        }
+
+        foreach (var el in Elements.Where(e => e.GroupId.HasValue && groupIdsToDissolve.Contains(e.GroupId.Value)))
+        {
+            el.GroupId = null;
+            el.GroupIndentLevel = 0;
+        }
+
+        OnPropertyChanged(nameof(LayersDescendingZ));
         OnPropertyChanged(nameof(CanUngroupSelection));
         RefreshCanvas();
+        StatusMessage = "Ungrouped layers";
+    }
+
+    [RelayCommand]
+    private void UngroupSelection() => UngroupSelected();
+
+    [RelayCommand]
+    public void ToggleGroupExpanded(GroupElement? group)
+    {
+        if (group == null) return;
+        group.IsExpanded = !group.IsExpanded;
+        OnPropertyChanged(nameof(LayersDescendingZ));
     }
 
     /// <summary>Suppresses the SelectedElement→canvas echo while applying a selection that

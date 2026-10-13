@@ -31,6 +31,14 @@ public static class PsdCodec
         public bool IsVisible { get; set; } = true;
         public string BlendMode { get; set; } = "norm";
         public byte[]? BgraPixels { get; set; }
+        public uint SectionDividerType { get; set; } = 0; // 0=other, 1=open folder, 2=closed folder, 3=bounding divider
+        public bool IsFolder => SectionDividerType is 1 or 2;
+        public bool IsDivider => SectionDividerType == 3;
+        public bool IsTextLayer { get; set; }
+        public bool IsVectorShape { get; set; }
+        public bool IsSmartObject { get; set; }
+        public Guid? GroupId { get; set; }
+        public int GroupIndentLevel { get; set; }
         internal List<(short ChannelId, uint Length)> Channels { get; } = new();
     }
 
@@ -170,7 +178,23 @@ public static class PsdCodec
                         uint tagLen = reader.ReadUInt32();
                         long tagDataStart = stream.Position;
 
-                        if (tagKey == "luni" && tagLen >= 4)
+                        if ((tagKey == "lsct" || tagKey == "lsdk") && tagLen >= 4)
+                        {
+                            layer.SectionDividerType = reader.ReadUInt32();
+                        }
+                        else if (tagKey == "TySh")
+                        {
+                            layer.IsTextLayer = true;
+                        }
+                        else if (tagKey is "vmsk" or "vsms" or "vogk")
+                        {
+                            layer.IsVectorShape = true;
+                        }
+                        else if (tagKey is "SoLd" or "SoLE" or "PlLd")
+                        {
+                            layer.IsSmartObject = true;
+                        }
+                        else if (tagKey == "luni" && tagLen >= 4)
                         {
                             uint uCharCount = reader.ReadUInt32();
                             int byteCount = (int)Math.Min(uCharCount * 2, tagLen - 4);
@@ -299,7 +323,68 @@ public static class PsdCodec
                     layer.BgraPixels = bgra;
                 }
 
-                doc.Layers = layers;
+                // Reconstruct nested layer tree from section dividers (Photoshop & Photocraft tree.rs)
+                var groupStack = new Stack<(Guid GroupId, int Depth, List<PsdLayerInfo> Children)>();
+                var structuredLayers = new List<PsdLayerInfo>();
+
+                foreach (var layer in layers)
+                {
+                    if (layer.IsDivider) // lsct == 3 (</Layer group>)
+                    {
+                        groupStack.Push((Guid.NewGuid(), groupStack.Count + 1, new List<PsdLayerInfo>()));
+                    }
+                    else if (layer.IsFolder) // lsct == 1 (open) or 2 (closed)
+                    {
+                        if (groupStack.Count > 0)
+                        {
+                            var (folderId, folderDepth, children) = groupStack.Pop();
+                            layer.GroupId = folderId;
+                            layer.GroupIndentLevel = Math.Max(0, folderDepth - 1);
+                            foreach (var child in children)
+                            {
+                                child.GroupId = folderId;
+                                child.GroupIndentLevel = Math.Max(0, folderDepth);
+                            }
+
+                            if (groupStack.Count > 0)
+                            {
+                                groupStack.Peek().Children.AddRange(children);
+                                groupStack.Peek().Children.Add(layer);
+                            }
+                            else
+                            {
+                                structuredLayers.AddRange(children);
+                                structuredLayers.Add(layer);
+                            }
+                        }
+                        else
+                        {
+                            layer.GroupId = Guid.NewGuid();
+                            layer.GroupIndentLevel = 0;
+                            structuredLayers.Add(layer);
+                        }
+                    }
+                    else
+                    {
+                        if (groupStack.Count > 0)
+                        {
+                            groupStack.Peek().Children.Add(layer);
+                        }
+                        else
+                        {
+                            layer.GroupIndentLevel = 0;
+                            structuredLayers.Add(layer);
+                        }
+                    }
+                }
+
+                while (groupStack.Count > 0)
+                {
+                    var (_, _, children) = groupStack.Pop();
+                    structuredLayers.AddRange(children);
+                }
+
+                doc.Layers = structuredLayers;
             }
 
             // Seek past layer section if needed

@@ -145,6 +145,11 @@
                                             <MenuItem Header="Blending Options..."
                                                       Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).OpenLayerStyleDialogCommand}" />
                                             <Separator />
+                                            <MenuItem Header="New Group from Layers..." InputGesture="Ctrl+G"
+                                                      Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).CreateNewGroupCommand}" />
+                                            <MenuItem Header="Ungroup Layers" InputGesture="Ctrl+Shift+G"
+                                                      Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).UngroupSelectedCommand}" />
+                                            <Separator />
                                             <MenuItem Header="Convert to Smart Object"
                                                       Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ConvertSelectedToSmartObjectCommand}"
                                                       CommandParameter="{Binding}" />
@@ -232,22 +237,49 @@
                                                                     Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
                                     </Button>
 
-                                    <!-- Layer Thumbnail Frame with Optional Clipping Mask Indent -->
-                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
+                                    <!-- Layer Thumbnail Frame with Tree Indentation & Group Controls -->
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2"
+                                                Margin="{Binding TreeIndentMargin}">
+                                        <!-- Tree Guideline for nested children inside groups -->
+                                        <Border Width="6" Height="20" BorderThickness="1,0,0,0" BorderBrush="#3F3F46"
+                                                IsVisible="{Binding HasTreeGuideline}" Margin="0,0,2,0" VerticalAlignment="Center" />
+
+                                        <!-- Group Expand/Collapse Chevron -->
+                                        <Button Classes="ps-tool-btn" Width="14" Height="14" Padding="0" Margin="0,0,2,0"
+                                                IsVisible="{Binding IsGroup}"
+                                                Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleGroupExpandedCommand}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip.Tip="Expand / Collapse group">
+                                            <materialIcons:MaterialIcon Kind="{Binding ExpandIconKind}" Width="10" Height="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                                        </Button>
+
+                                        <!-- Group Folder Icon (Amber Tint) -->
+                                        <Button Classes="ps-tool-btn" Width="22" Height="20" Padding="0"
+                                                IsVisible="{Binding IsGroup}"
+                                                Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleGroupExpandedCommand}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip.Tip="Layer Group Folder">
+                                            <materialIcons:MaterialIcon Kind="{Binding FolderIconKind}" Width="16" Height="16" Foreground="#F59E0B" />
+                                        </Button>
+
+                                        <!-- Optional Clipping Mask Indent Arrow -->
                                         <materialIcons:MaterialIcon Kind="ArrowBottomLeft" Width="10" Height="10"
                                                                     Foreground="{DynamicResource PsAccentBrush}"
                                                                     IsVisible="{Binding IsClippingMask}"
                                                                     VerticalAlignment="Center" />
+
+                                        <!-- Regular Layer Thumbnail -->
                                         <Button Classes="ps-tool-btn" Width="24" Height="22" Padding="0"
+                                                IsVisible="{Binding !IsGroup}"
                                                 Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).FitLayerToScreenCommand}"
                                                 CommandParameter="{Binding}"
                                                 ToolTip.Tip="Alt-click thumbnail to fit layer on screen">
                                             <Grid Width="22" Height="20">
-                                                <Border Background="#FFFFFF"
+                                                <Border Background="#242424"
                                                         BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1"
                                                         CornerRadius="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                                                     <materialIcons:MaterialIcon Kind="{Binding ElementType, Converter={StaticResource ElementTypeToIconConverter}}"
-                                                                                Width="12" Height="12" Foreground="#333333" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                                                Width="12" Height="12" Foreground="{DynamicResource PsTextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                                 </Border>
                                                 <!-- Shape Layer Badge (#4584) -->
                                                 <Border IsVisible="{Binding IsVectorShape}" Width="8" Height="8"
@@ -371,7 +403,13 @@
                             <materialIcons:MaterialIcon Kind="CircleHalfFull" Width="12" Height="12" />
                         </Button>
                         <!-- Create New Group -->
-                        <Button Classes="ps-footer-btn" ToolTip.Tip="Create a new group">
+                        <Button Classes="ps-footer-btn" Command="{Binding CreateNewGroupCommand}" ToolTip.Tip="Create a new group (Ctrl+G)">
+                            <Button.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="New Group..." Command="{Binding CreateNewGroupCommand}" />
+                                    <MenuItem Header="Ungroup Layers" InputGesture="Ctrl+Shift+G" Command="{Binding UngroupSelectedCommand}" />
+                                </ContextMenu>
+                            </Button.ContextMenu>
                             <materialIcons:MaterialIcon Kind="FolderOutline" Width="12" Height="12" />
                         </Button>
                         <!-- Create New Layer (+) -->

@@ -2426,7 +2426,53 @@ public partial class ImageEditorViewModel
                     int z = Elements.Count + 1;
                     foreach (var layer in psd.Layers)
                     {
-                        if (layer.BgraPixels != null && layer.Width > 0 && layer.Height > 0)
+                        var blendMode = layer.BlendMode.Trim() switch
+                        {
+                            "diss" => LayerBlendMode.Dissolve,
+                            "dark" => LayerBlendMode.Darken,
+                            "mul" => LayerBlendMode.Multiply,
+                            "idiv" => LayerBlendMode.ColorBurn,
+                            "lbrn" => LayerBlendMode.LinearBurn,
+                            "dkCl" => LayerBlendMode.DarkerColor,
+                            "lite" => LayerBlendMode.Lighten,
+                            "scrn" => LayerBlendMode.Screen,
+                            "div" => LayerBlendMode.ColorDodge,
+                            "lddg" => LayerBlendMode.LinearDodge,
+                            "lgCl" => LayerBlendMode.LighterColor,
+                            "over" => LayerBlendMode.Overlay,
+                            "sLit" => LayerBlendMode.SoftLight,
+                            "hLit" => LayerBlendMode.HardLight,
+                            "vLit" => LayerBlendMode.VividLight,
+                            "lLit" => LayerBlendMode.LinearLight,
+                            "pLit" => LayerBlendMode.PinLight,
+                            "hMix" => LayerBlendMode.HardMix,
+                            "diff" => LayerBlendMode.Difference,
+                            "smud" => LayerBlendMode.Exclusion,
+                            "fsub" => LayerBlendMode.Subtract,
+                            "fdiv" => LayerBlendMode.Divide,
+                            "hue" => LayerBlendMode.Hue,
+                            "sat" => LayerBlendMode.Saturation,
+                            "colr" => LayerBlendMode.Color,
+                            "lum" => LayerBlendMode.Luminosity,
+                            _ => LayerBlendMode.Normal
+                        };
+
+                        if (layer.IsFolder)
+                        {
+                            var groupEl = new GroupElement
+                            {
+                                Name = layer.Name,
+                                GroupId = layer.GroupId,
+                                GroupIndentLevel = layer.GroupIndentLevel,
+                                IsExpanded = layer.SectionDividerType == 1,
+                                IsVisible = layer.IsVisible,
+                                Opacity = layer.Opacity / 255.0,
+                                BlendMode = blendMode,
+                                ZIndex = z++
+                            };
+                            Elements.Add(groupEl);
+                        }
+                        else if (!layer.IsDivider && layer.BgraPixels != null && layer.Width > 0 && layer.Height > 0)
                         {
                             using var skBmp = new SKBitmap(layer.Width, layer.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
                             var pin = System.Runtime.InteropServices.GCHandle.Alloc(layer.BgraPixels, System.Runtime.InteropServices.GCHandleType.Pinned);
@@ -2449,39 +2495,15 @@ public partial class ImageEditorViewModel
                                     Height = layer.Height,
                                     NaturalPixelWidth = layer.Width,
                                     NaturalPixelHeight = layer.Height,
+                                    GroupId = layer.GroupId,
+                                    GroupIndentLevel = layer.GroupIndentLevel,
+                                    IsTextLayer = layer.IsTextLayer,
+                                    IsVectorShape = layer.IsVectorShape,
+                                    IsSmartObject = layer.IsSmartObject,
                                     Source = avaloniaBmp,
                                     OriginalImageBytes = pngBytes,
                                     Opacity = layer.Opacity / 255.0,
-                                    BlendMode = layer.BlendMode.Trim() switch
-                                    {
-                                        "diss" => LayerBlendMode.Dissolve,
-                                        "dark" => LayerBlendMode.Darken,
-                                        "mul" => LayerBlendMode.Multiply,
-                                        "idiv" => LayerBlendMode.ColorBurn,
-                                        "lbrn" => LayerBlendMode.LinearBurn,
-                                        "dkCl" => LayerBlendMode.DarkerColor,
-                                        "lite" => LayerBlendMode.Lighten,
-                                        "scrn" => LayerBlendMode.Screen,
-                                        "div" => LayerBlendMode.ColorDodge,
-                                        "lddg" => LayerBlendMode.LinearDodge,
-                                        "lgCl" => LayerBlendMode.LighterColor,
-                                        "over" => LayerBlendMode.Overlay,
-                                        "sLit" => LayerBlendMode.SoftLight,
-                                        "hLit" => LayerBlendMode.HardLight,
-                                        "vLit" => LayerBlendMode.VividLight,
-                                        "lLit" => LayerBlendMode.LinearLight,
-                                        "pLit" => LayerBlendMode.PinLight,
-                                        "hMix" => LayerBlendMode.HardMix,
-                                        "diff" => LayerBlendMode.Difference,
-                                        "smud" => LayerBlendMode.Exclusion,
-                                        "fsub" => LayerBlendMode.Subtract,
-                                        "fdiv" => LayerBlendMode.Divide,
-                                        "hue" => LayerBlendMode.Hue,
-                                        "sat" => LayerBlendMode.Saturation,
-                                        "colr" => LayerBlendMode.Color,
-                                        "lum" => LayerBlendMode.Luminosity,
-                                        _ => LayerBlendMode.Normal
-                                    },
+                                    BlendMode = blendMode,
                                     IsVisible = layer.IsVisible,
                                     ZIndex = z++
                                 };
@@ -2491,6 +2513,18 @@ public partial class ImageEditorViewModel
                             finally
                             {
                                 pin.Free();
+                            }
+                        }
+                    }
+
+                    // Populate GroupElement.Children references
+                    foreach (var g in Elements.OfType<GroupElement>())
+                    {
+                        if (g.GroupId.HasValue)
+                        {
+                            foreach (var child in Elements.Where(e => e.GroupId == g.GroupId && e != g))
+                            {
+                                g.Children.Add(child);
                             }
                         }
                     }

@@ -48,6 +48,8 @@ public class ElementTypeToIconConverter : IValueConverter
             "Star" => Material.Icons.MaterialIconKind.StarOutline,
             "Drawing" => Material.Icons.MaterialIconKind.Brush,
             "Highlighter" => Material.Icons.MaterialIconKind.Marker,
+            "Group" => Material.Icons.MaterialIconKind.FolderOutline,
+            "Shape" => Material.Icons.MaterialIconKind.VectorSquare,
             _ => Material.Icons.MaterialIconKind.ShapeOutline
         };
     }

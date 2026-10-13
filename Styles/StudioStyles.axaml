@@ -397,7 +397,7 @@
 
     <!-- Studio TabControl & TabItem (Dock and Document Tabs) -->
     <Style Selector="TabControl">
-        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Background" Value="{DynamicResource PsPanelBrush}" />
         <Setter Property="Padding" Value="0" />
     </Style>
     <Style Selector="TabItem">

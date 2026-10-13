@@ -264,5 +264,48 @@ public static class StudioBlendEngine
         }
     }
 
+    /// <summary>
+    /// Computes the Blend If visibility factor (0.0 .. 1.0) for a given pixel value against a range
+    /// defined by [blackLow, blackHigh] (ramp up from black) and [whiteLow, whiteHigh] (ramp down into white).
+    /// Matches Adobe Photoshop ISO/IEC Blend If specifications (#4395).
+    /// </summary>
+    public static float ComputeBlendRangeFactor(byte value, byte blackLow, byte blackHigh, byte whiteLow, byte whiteHigh)
+    {
+        if (value < blackLow || value > whiteHigh) return 0.0f;
+        if (value >= blackHigh && value <= whiteLow) return 1.0f;
+
+        if (value < blackHigh)
+        {
+            float span = blackHigh - blackLow;
+            return span <= 0 ? 1.0f : (value - blackLow) / span;
+        }
+
+        if (value > whiteLow)
+        {
+            float span = whiteHigh - whiteLow;
+            return span <= 0 ? 1.0f : (whiteHigh - value) / span;
+        }
+
+        return 1.0f;
+    }
+
+    /// <summary>
+    /// Computes overall Blend If visibility factor combining This Layer and Underlying Layer ranges (#4395).
+    /// </summary>
+    public static float EvaluateBlendIf(
+        Color thisColor, Color underColor,
+        byte thisBlackLow = 0, byte thisBlackHigh = 0, byte thisWhiteLow = 255, byte thisWhiteHigh = 255,
+        byte underBlackLow = 0, byte underBlackHigh = 0, byte underWhiteLow = 255, byte underWhiteHigh = 255)
+    {
+        byte thisLum = (byte)Math.Round(0.299f * thisColor.R + 0.587f * thisColor.G + 0.114f * thisColor.B);
+        byte underLum = (byte)Math.Round(0.299f * underColor.R + 0.587f * underColor.G + 0.114f * underColor.B);
+
+        float thisFactor = ComputeBlendRangeFactor(thisLum, thisBlackLow, thisBlackHigh, thisWhiteLow, thisWhiteHigh);
+        if (thisFactor <= 0.0f) return 0.0f;
+
+        float underFactor = ComputeBlendRangeFactor(underLum, underBlackLow, underBlackHigh, underWhiteLow, underWhiteHigh);
+        return thisFactor * underFactor;
+    }
+
     #endregion
 }

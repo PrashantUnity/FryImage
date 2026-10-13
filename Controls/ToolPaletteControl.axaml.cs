@@ -16,10 +16,15 @@ public partial class ToolPaletteControl : UserControl
         if (sender is Control control)
         {
             var button = control.FindAncestorOfType<Button>();
-            if (button?.ContextMenu != null)
+            if (button != null)
             {
-                button.ContextMenu.Open(button);
-                e.Handled = true;
+                // Holding or clicking the corner flyout selects the tool it shows, as a click would (#4453).
+                button.Command?.Execute(button.CommandParameter);
+                if (button.ContextMenu != null)
+                {
+                    button.ContextMenu.Open(button);
+                    e.Handled = true;
+                }
             }
         }
     }

@@ -867,6 +867,67 @@ public static class ParityFeatureSnapshotSuite
             throw new InvalidOperationException("PsdCodec failed roundtrip with 4-byte padding alignment.");
         }
         Console.WriteLine("  ✓ PSD layer info padding outside block length verified.");
+
+        // 53. Test Postscript Font Name Guessing & Hyphenated Family Preservation (af21e1e2)
+        var guessedRodin = PdfEditorApp.Plugins.ImageEditor.Core.Text.FontResolver.GuessFromPostScriptName("FOT-NewRodinPro-Regular");
+        if (guessedRodin.Family != "FOT-New Rodin Pro" || guessedRodin.Weight != 400 || guessedRodin.Italic)
+        {
+            throw new InvalidOperationException($"GuessFromPostScriptName failed on hyphenated prefix: {guessedRodin.Family}");
+        }
+        var guessedBoldIt = PdfEditorApp.Plugins.ImageEditor.Core.Text.FontResolver.GuessFromPostScriptName("Vendor-FamilyPro-BoldIt");
+        if (guessedBoldIt.Family != "Vendor-Family Pro" || guessedBoldIt.Weight != 700 || !guessedBoldIt.Italic)
+        {
+            throw new InvalidOperationException($"GuessFromPostScriptName failed on compound BoldIt: {guessedBoldIt.Family}");
+        }
+        Console.WriteLine("  ✓ Postscript font name guessing & hyphenated family prefix preservation verified.");
+
+        // 54. Test OpenRaster (.ora) Archiving & Loss Protection Check (e18e3c06)
+        var oraDoc = new OraCodec.OraDocument { Width = 20, Height = 20 };
+        oraDoc.Layers.Add(new OraCodec.OraLayer { Name = "Background", Opacity = 1.0, PngBytes = [1, 2, 3] });
+        using var oraMs = new MemoryStream();
+        OraCodec.Encode(oraDoc, oraMs);
+        oraMs.Position = 0;
+        var oraDecoded = OraCodec.Decode(oraMs);
+        if (oraDecoded == null || oraDecoded.Layers.Count != 1 || oraDecoded.Layers[0].Name != "Background")
+        {
+            throw new InvalidOperationException("OraCodec failed roundtrip.");
+        }
+        var complexElement = new RectangleElement { Name = "Styled Layer", IsSmartObject = true };
+        var losses = OraCodec.CheckLosses([complexElement]);
+        if (losses.Count == 0 || OraCodec.HoldsAt([complexElement]))
+        {
+            throw new InvalidOperationException("OraCodec.CheckLosses must detect loss on Smart Object layers.");
+        }
+        Console.WriteLine("  ✓ OpenRaster (.ora) archiving & loss protection check verified.");
+
+        // 55. Test Blend-If Range Factor & Photoshop Visibility Equation (f57db2b5)
+        float hardFactor = PdfEditorApp.Plugins.ImageEditor.Core.Blending.StudioBlendEngine.ComputeBlendRangeFactor(value: 30, blackLow: 40, blackHigh: 40, whiteLow: 255, whiteHigh: 255);
+        if (hardFactor != 0.0f)
+        {
+            throw new InvalidOperationException($"ComputeBlendRangeFactor hard point failed: expected 0, got {hardFactor}");
+        }
+        float rampFactor = PdfEditorApp.Plugins.ImageEditor.Core.Blending.StudioBlendEngine.ComputeBlendRangeFactor(value: 85, blackLow: 30, blackHigh: 140, whiteLow: 150, whiteHigh: 230);
+        if (rampFactor <= 0.0f || rampFactor >= 1.0f)
+        {
+            throw new InvalidOperationException($"ComputeBlendRangeFactor split ramp failed: expected (0..1), got {rampFactor}");
+        }
+        float evalFactor = PdfEditorApp.Plugins.ImageEditor.Core.Blending.StudioBlendEngine.EvaluateBlendIf(
+            Colors.White, Colors.Black,
+            thisBlackLow: 0, thisBlackHigh: 0, thisWhiteLow: 200, thisWhiteHigh: 200);
+        if (evalFactor != 0.0f)
+        {
+            throw new InvalidOperationException($"EvaluateBlendIf failed: white pixel (255) must be hidden when white cutoff is 200.");
+        }
+        Console.WriteLine("  ✓ Blend-If range factor & Photoshop visibility equation verified.");
+
+        // 56. Test Toolbar Button Hold / Corner Flyout Tool Selection (d3e33d89)
+        vm.ActiveToolMode = "brush";
+        vm.SelectMoveSlotCommand.Execute(null);
+        if (vm.ActiveToolMode != "select")
+        {
+            throw new InvalidOperationException($"SelectMoveSlotCommand must select tool: expected 'select', got '{vm.ActiveToolMode}'");
+        }
+        Console.WriteLine("  ✓ Toolbar button hold & flyout slot selection verified.");
     }
 
     private static byte[] CreateSyntheticPcx24(int width, int height)

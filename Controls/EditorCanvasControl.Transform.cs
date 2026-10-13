@@ -60,6 +60,15 @@ public partial class EditorCanvasControl
                     return true;
                 }
             }
+
+            // Outer rotation band just outside bounding box (5px to 18px outside controls)
+            var innerBand = bounds.Inflate(5 / _zoom);
+            var outerBand = bounds.Inflate(18 / _zoom);
+            if (outerBand.Contains(localPt) && !innerBand.Contains(localPt))
+            {
+                Cursor = new Cursor(StandardCursorType.DragMove);
+                return true;
+            }
         }
         // 2. Multi-element group selection
         else if (_selection.Count > 1)
@@ -84,6 +93,14 @@ public partial class EditorCanvasControl
                     Cursor = GetCursorForHandleIndex(i, 0);
                     return true;
                 }
+            }
+
+            var groupInnerBand = groupBounds.Inflate(5 / _zoom);
+            var groupOuterBand = groupBounds.Inflate(18 / _zoom);
+            if (groupOuterBand.Contains(canvasPt) && !groupInnerBand.Contains(canvasPt))
+            {
+                Cursor = new Cursor(StandardCursorType.DragMove);
+                return true;
             }
         }
 

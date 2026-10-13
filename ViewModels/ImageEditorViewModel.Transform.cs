@@ -8,9 +8,21 @@ using PdfEditorApp.Plugins.ImageEditor.Models.Undo;
 
 namespace PdfEditorApp.Plugins.ImageEditor;
 
+public enum StudioTransformMode
+{
+    Free,
+    Scale,
+    Rotate,
+    Skew,
+    Distort,
+    Perspective,
+    Warp
+}
+
 public partial class ImageEditorViewModel
 {
     [ObservableProperty] private bool _isFreeTransformActive;
+    [ObservableProperty] private StudioTransformMode _currentTransformMode = StudioTransformMode.Free;
     [ObservableProperty] private double _transformX;
     [ObservableProperty] private double _transformY;
     [ObservableProperty] private double _transformWPercent = 100.0;
@@ -27,6 +39,8 @@ public partial class ImageEditorViewModel
     private double _origW;
     private double _origH;
     private double _origRot;
+    private double _origSkewH;
+    private double _origSkewV;
     private bool _isUpdatingTransformFields;
 
     [RelayCommand]
@@ -57,6 +71,8 @@ public partial class ImageEditorViewModel
         _origW = Math.Max(target.Width, 1.0);
         _origH = Math.Max(target.Height, 1.0);
         _origRot = target.RotationDegrees;
+        _origSkewH = target.SkewH;
+        _origSkewV = target.SkewV;
 
         _isUpdatingTransformFields = true;
         try
@@ -67,8 +83,8 @@ public partial class ImageEditorViewModel
             TransformHPercent = 100.0;
             TransformAspectLocked = target.AspectLocked;
             TransformAngle = Math.Round(target.RotationDegrees, 1);
-            TransformSkewH = 0.0;
-            TransformSkewV = 0.0;
+            TransformSkewH = Math.Round(target.SkewH, 1);
+            TransformSkewV = Math.Round(target.SkewV, 1);
             TransformAnchor = "Center";
         }
         finally
@@ -77,7 +93,27 @@ public partial class ImageEditorViewModel
         }
 
         IsFreeTransformActive = true;
-        StatusMessage = "Free Transform: Enter to commit, Esc to cancel.";
+        StatusMessage = CurrentTransformMode switch
+        {
+            StudioTransformMode.Rotate => "Rotate: Drag handles to rotate about reference point. Enter to commit, Esc to cancel.",
+            StudioTransformMode.Skew => "Skew: Drag handles or enter H/V skew degrees. Enter to commit, Esc to cancel.",
+            StudioTransformMode.Scale => "Scale: Drag handles to resize. Enter to commit, Esc to cancel.",
+            _ => "Free Transform: Enter to commit, Esc to cancel."
+        };
+    }
+
+    [RelayCommand]
+    public void BeginTransformMode(string modeStr)
+    {
+        if (Enum.TryParse<StudioTransformMode>(modeStr, true, out var mode))
+        {
+            CurrentTransformMode = mode;
+        }
+        else
+        {
+            CurrentTransformMode = StudioTransformMode.Free;
+        }
+        BeginFreeTransform();
     }
 
     [RelayCommand]
@@ -100,6 +136,7 @@ public partial class ImageEditorViewModel
 
         IsFreeTransformActive = false;
         _transformTargetElement = null;
+        CurrentTransformMode = StudioTransformMode.Free;
         StatusMessage = "Transform committed.";
         RefreshCanvas();
     }
@@ -119,9 +156,12 @@ public partial class ImageEditorViewModel
         el.Width = _origW;
         el.Height = _origH;
         el.RotationDegrees = _origRot;
+        el.SkewH = _origSkewH;
+        el.SkewV = _origSkewV;
 
         IsFreeTransformActive = false;
         _transformTargetElement = null;
+        CurrentTransformMode = StudioTransformMode.Free;
         StatusMessage = "Transform canceled.";
         RefreshCanvas();
     }
@@ -160,6 +200,8 @@ public partial class ImageEditorViewModel
     }
 
     partial void OnTransformAngleChanged(double value) => ApplyTransformValuesToElement();
+    partial void OnTransformSkewHChanged(double value) => ApplyTransformValuesToElement();
+    partial void OnTransformSkewVChanged(double value) => ApplyTransformValuesToElement();
 
     private void ApplyTransformValuesToElement()
     {
@@ -200,6 +242,8 @@ public partial class ImageEditorViewModel
         el.Width = newW;
         el.Height = newH;
         el.RotationDegrees = TransformAngle;
+        el.SkewH = TransformSkewH;
+        el.SkewV = TransformSkewV;
 
         RefreshCanvas();
     }
@@ -218,6 +262,8 @@ public partial class ImageEditorViewModel
             TransformWPercent = Math.Round((el.Width / Math.Max(1.0, _origW)) * 100.0, 1);
             TransformHPercent = Math.Round((el.Height / Math.Max(1.0, _origH)) * 100.0, 1);
             TransformAngle = Math.Round(el.RotationDegrees, 1);
+            TransformSkewH = Math.Round(el.SkewH, 1);
+            TransformSkewV = Math.Round(el.SkewV, 1);
         }
         finally
         {

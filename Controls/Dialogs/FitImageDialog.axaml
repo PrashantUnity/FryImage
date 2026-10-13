@@ -1,0 +1,63 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Dialogs.FitImageDialog"
+             x:DataType="local:ImageEditorViewModel">
+
+    <!-- Modal Backdrop -->
+    <Border Background="#99000000"
+            IsVisible="{Binding IsFitImageDialogOpen}"
+            ZIndex="500">
+        <!-- Narrow compact window matching Photoshop and upstream parity -->
+        <Border Background="{DynamicResource PsPanelBrush}"
+                BorderBrush="{DynamicResource PsBorderLightBrush}"
+                BorderThickness="1"
+                CornerRadius="3"
+                Width="270" Height="220"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                BoxShadow="0 10 32 #80000000">
+            <Grid RowDefinitions="32,*,44">
+
+                <!-- Header -->
+                <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="12,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <materialIcons:MaterialIcon Kind="FitToScreenOutline" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+                            <TextBlock Text="Fit Image" FontWeight="SemiBold" FontSize="12" Foreground="#FFFFFF" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="ps-opt-btn" Command="{Binding CancelFitImageDialogCommand}">
+                            <materialIcons:MaterialIcon Kind="Close" Width="13" Height="13" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Body -->
+                <StackPanel Grid.Row="1" Margin="16,12" Spacing="10">
+                    <TextBlock Text="Constrain Within" Classes="ps-section-header" FontSize="11" />
+
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="0,2">
+                        <!-- Width -->
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Width:" Classes="ps-label" VerticalAlignment="Center" Margin="0,0,8,6" />
+                        <NumericUpDown Grid.Row="0" Grid.Column="1" Value="{Binding FitImageWidth, Mode=TwoWay}" Minimum="1" Maximum="300000" FormatString="{}{0:0} px" Height="22" Margin="0,0,0,6" />
+
+                        <!-- Height -->
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Height:" Classes="ps-label" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding FitImageHeight, Mode=TwoWay}" Minimum="1" Maximum="300000" FormatString="{}{0:0} px" Height="22" />
+                    </Grid>
+
+                    <CheckBox IsChecked="{Binding FitImageDontEnlarge, Mode=TwoWay}" Content="Don't Enlarge" Margin="0,4,0,0" />
+                </StackPanel>
+
+                <!-- Footer -->
+                <Border Grid.Row="2" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="12,0">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" VerticalAlignment="Center">
+                        <Button Classes="ps-btn ps-btn-primary" Content="OK" Padding="16,4" Command="{Binding ConfirmFitImageCommand}" />
+                        <Button Classes="ps-btn" Content="Cancel" Padding="12,4" Command="{Binding CancelFitImageDialogCommand}" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Border>
+</UserControl>

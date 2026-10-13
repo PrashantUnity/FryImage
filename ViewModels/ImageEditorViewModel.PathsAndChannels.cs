@@ -214,7 +214,54 @@ public partial class ImageEditorViewModel
 
         ActiveChannelMode = channelName;
         StatusMessage = $"Active Channel: {channelName}";
+
+        // Photoshop parity (#4538, adaebc08):
+        // Clicking RGB / composite hides the alpha channel overlays and clears their visibility.
+        if (channelName.Equals("RGB", StringComparison.OrdinalIgnoreCase))
+        {
+            foreach (var ch in DocumentChannels)
+            {
+                if (ch.IsAlpha) ch.IsVisible = false;
+                else ch.IsVisible = true;
+            }
+            if (CanvasControl != null)
+            {
+                CanvasControl.IsQuickMaskMode = false;
+            }
+        }
+
         CanvasControl?.InvalidateVisual();
+    }
+
+    [RelayCommand]
+    public void DuplicateChannel(DocumentChannelItem? channel = null)
+    {
+        var target = channel ?? SelectedChannel ?? DocumentChannels.FirstOrDefault();
+        if (target == null) return;
+
+        int docW = (int)Math.Max(1, CanvasWidth);
+        int docH = (int)Math.Max(1, CanvasHeight);
+
+        byte[] dupMask = target.MaskData != null
+            ? (byte[])target.MaskData.Clone()
+            : new byte[docW * docH];
+
+        string dupName = $"{target.Name} copy";
+        var dupItem = new DocumentChannelItem
+        {
+            Name = dupName,
+            Shortcut = $"Ctrl+{Math.Min(9, DocumentChannels.Count + 1)}",
+            IsComposite = false,
+            IsAlpha = true,
+            IsVisible = true,
+            Width = docW,
+            Height = docH,
+            MaskData = dupMask
+        };
+
+        DocumentChannels.Add(dupItem);
+        SelectedChannel = dupItem;
+        StatusMessage = $"Duplicated channel '{target.Name}' as '{dupName}'.";
     }
 
     [RelayCommand]

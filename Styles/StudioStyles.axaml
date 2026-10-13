@@ -291,25 +291,32 @@
         <Setter Property="FontSize" Value="11" />
     </Style>
 
-    <!-- Studio Menu & ContextMenu -->
+    <!-- Studio Menu, ContextMenu & MenuFlyout -->
     <Style Selector="Menu">
         <Setter Property="Background" Value="Transparent" />
     </Style>
     <Style Selector="MenuItem">
         <Setter Property="Foreground" Value="{StaticResource PsTextBrush}" />
         <Setter Property="FontSize" Value="11" />
+        <Setter Property="Padding" Value="8,4" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="MinHeight" Value="22" />
     </Style>
-    <Style Selector="ContextMenu">
+    <Style Selector="MenuItem:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource PsHoverBrush}" />
+        <Setter Property="Foreground" Value="#FFFFFF" />
+    </Style>
+    <Style Selector="ContextMenu, MenuFlyoutPresenter">
         <Setter Property="Background" Value="#222222" />
         <Setter Property="BorderBrush" Value="#383838" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="3" />
-        <Setter Property="Padding" Value="2,3" />
+        <Setter Property="Padding" Value="0,2" />
     </Style>
     <Style Selector="Separator">
         <Setter Property="Background" Value="#333333" />
         <Setter Property="Height" Value="1" />
-        <Setter Property="Margin" Value="4,3" />
+        <Setter Property="Margin" Value="2,2" />
     </Style>
 
     <!-- Layer & History ListBox Row Styling -->
@@ -443,22 +450,24 @@
     <!-- ScrollViewer / ScrollBar Dark Mode Theme -->
     <Style Selector="ScrollBar">
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="AllowAutoHide" Value="True" />
+        <Setter Property="AllowAutoHide" Value="False" />
     </Style>
     <Style Selector="ScrollBar:vertical">
-        <Setter Property="Width" Value="7" />
-        <Setter Property="MinWidth" Value="7" />
+        <Setter Property="Width" Value="8" />
+        <Setter Property="MinWidth" Value="8" />
     </Style>
     <Style Selector="ScrollBar:horizontal">
-        <Setter Property="Height" Value="7" />
-        <Setter Property="MinHeight" Value="7" />
+        <Setter Property="Height" Value="8" />
+        <Setter Property="MinHeight" Value="8" />
     </Style>
     <Style Selector="ScrollBar /template/ Thumb">
-        <Setter Property="Background" Value="#3F3F42" />
-        <Setter Property="CornerRadius" Value="3.5" />
+        <Setter Property="Background" Value="#525255" />
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="Opacity" Value="0.9" />
     </Style>
     <Style Selector="ScrollBar:pointerover /template/ Thumb">
-        <Setter Property="Background" Value="#5C5C62" />
+        <Setter Property="Background" Value="#787880" />
+        <Setter Property="Opacity" Value="1.0" />
     </Style>
     <Style Selector="ScrollBar /template/ RepeatButton">
         <Setter Property="IsVisible" Value="False" />

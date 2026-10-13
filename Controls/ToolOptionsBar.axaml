@@ -99,6 +99,14 @@
 
                     <Rectangle Width="1" Height="16" Fill="{DynamicResource PsBorderSubtleBrush}" Margin="2,0" />
 
+                    <TextBlock Text="H:" Classes="ps-label" VerticalAlignment="Center" ToolTip.Tip="Set horizontal skew" />
+                    <NumericUpDown Classes="ps-numeric" Width="70" Minimum="-89" Maximum="89" Value="{Binding TransformSkewH, Mode=TwoWay}" FormatString="{}{0:0.0}°" ToolTip.Tip="Set horizontal skew" />
+
+                    <TextBlock Text="V:" Classes="ps-label" VerticalAlignment="Center" ToolTip.Tip="Set vertical skew" />
+                    <NumericUpDown Classes="ps-numeric" Width="70" Minimum="-89" Maximum="89" Value="{Binding TransformSkewV, Mode=TwoWay}" FormatString="{}{0:0.0}°" ToolTip.Tip="Set vertical skew" />
+
+                    <Rectangle Width="1" Height="16" Fill="{DynamicResource PsBorderSubtleBrush}" Margin="2,0" />
+
                     <!-- Interpolation dropdown -->
                     <TextBlock Text="Interp:" Classes="ps-label" VerticalAlignment="Center" />
                     <ComboBox SelectedItem="{Binding TransformInterpolation, Mode=TwoWay}" Height="24" FontSize="11" Width="120">

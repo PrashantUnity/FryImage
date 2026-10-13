@@ -1,0 +1,116 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Dialogs.ApplyImageDialog"
+             x:DataType="local:ImageEditorViewModel">
+
+    <!-- Modal Backdrop -->
+    <Border Background="#99000000"
+            IsVisible="{Binding IsApplyImageDialogOpen}"
+            ZIndex="500">
+        <Border Background="{DynamicResource PsPanelBrush}"
+                BorderBrush="{DynamicResource PsBorderLightBrush}"
+                BorderThickness="1"
+                CornerRadius="3"
+                Width="440" Height="410"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                BoxShadow="0 10 32 #80000000">
+            <Grid RowDefinitions="34,*,46">
+
+                <!-- Header -->
+                <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="14,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <materialIcons:MaterialIcon Kind="ImageMultipleOutline" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+                            <TextBlock Text="Apply Image" FontWeight="SemiBold" FontSize="12" Foreground="#FFFFFF" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="ps-opt-btn" Command="{Binding CancelApplyImageDialogCommand}">
+                            <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Body -->
+                <ScrollViewer Grid.Row="1" Margin="16,10,10,10" Padding="0,0,6,0">
+                    <StackPanel Spacing="12">
+
+                        <!-- Source Section -->
+                        <Border Background="{DynamicResource PsFieldBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" CornerRadius="2" Padding="10">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Source" Classes="ps-section-header" FontSize="11" />
+
+                                <Grid ColumnDefinitions="70,*,Auto" RowDefinitions="Auto,Auto">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Layer:" Classes="ps-label" VerticalAlignment="Center" Margin="0,0,6,6" />
+                                    <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding ApplyImageAvailableLayers}" SelectedItem="{Binding ApplyImageSourceLayer, Mode=TwoWay}" Height="22" Margin="0,0,8,6" />
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Channel:" Classes="ps-label" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                    <ComboBox Grid.Row="1" Grid.Column="1" SelectedItem="{Binding ApplyImageSourceChannel, Mode=TwoWay}" Height="22" Margin="0,0,8,0">
+                                        <x:String>RGB</x:String>
+                                        <x:String>Red</x:String>
+                                        <x:String>Green</x:String>
+                                        <x:String>Blue</x:String>
+                                    </ComboBox>
+                                    <CheckBox Grid.Row="1" Grid.Column="2" IsChecked="{Binding ApplyImageInvert, Mode=TwoWay}" Content="Invert" VerticalAlignment="Center" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Blending & Frequency Separation Parameters -->
+                        <Border Background="{DynamicResource PsFieldBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" CornerRadius="2" Padding="10">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Blending" Classes="ps-section-header" FontSize="11" />
+
+                                <Grid ColumnDefinitions="70,*,70,*" RowDefinitions="Auto,Auto,Auto">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Blending:" Classes="ps-label" VerticalAlignment="Center" Margin="0,0,6,6" />
+                                    <ComboBox Grid.Row="0" Grid.Column="1" SelectedItem="{Binding ApplyImageBlending, Mode=TwoWay}" Height="22" Margin="0,0,8,6">
+                                        <x:String>Multiply</x:String>
+                                        <x:String>Screen</x:String>
+                                        <x:String>Overlay</x:String>
+                                        <x:String>Add</x:String>
+                                        <x:String>Subtract</x:String>
+                                        <x:String>Difference</x:String>
+                                        <x:String>Normal</x:String>
+                                        <x:String>Lighten</x:String>
+                                        <x:String>Darken</x:String>
+                                    </ComboBox>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="2" Text="Opacity:" Classes="ps-label" VerticalAlignment="Center" Margin="0,0,6,6" />
+                                    <NumericUpDown Grid.Row="0" Grid.Column="3" Value="{Binding ApplyImageOpacity, Mode=TwoWay}" Minimum="0" Maximum="100" FormatString="{}{0:0}%" Height="22" Margin="0,0,0,6" />
+
+                                    <!-- Scale and Offset for Frequency Separation (Subtract, Scale 2, Offset 128) -->
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Scale:" Classes="ps-label" VerticalAlignment="Center" Margin="0,0,6,6" ToolTip.Tip="Scale divisor for Add and Subtract blends (Photoshop default: 1.0, 2.0 for frequency separation)" />
+                                    <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding ApplyImageScale, Mode=TwoWay}" Minimum="0.1" Maximum="10.0" Increment="0.1" FormatString="{}{0:0.0}" Height="22" Margin="0,0,8,6" ToolTip.Tip="Scale divisor" />
+
+                                    <TextBlock Grid.Row="1" Grid.Column="2" Text="Offset:" Classes="ps-label" VerticalAlignment="Center" Margin="0,0,6,6" ToolTip.Tip="Offset added to Add and Subtract results (Photoshop default: 0, 128 for frequency separation)" />
+                                    <NumericUpDown Grid.Row="1" Grid.Column="3" Value="{Binding ApplyImageOffset, Mode=TwoWay}" Minimum="-255" Maximum="255" FormatString="{}{0:0}" Height="22" Margin="0,0,0,6" ToolTip.Tip="Offset value" />
+
+                                    <CheckBox Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="4" IsChecked="{Binding ApplyImagePreserveTransparency, Mode=TwoWay}" Content="Preserve Transparency" Margin="0,2,0,0" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Mask Option -->
+                        <Border Background="{DynamicResource PsFieldBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" CornerRadius="2" Padding="10">
+                            <StackPanel Spacing="6">
+                                <CheckBox IsChecked="{Binding ApplyImageMaskEnabled, Mode=TwoWay}" Content="Mask" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Footer -->
+                <Border Grid.Row="2" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="14,0">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <CheckBox Grid.Column="0" IsChecked="{Binding ApplyImagePreview, Mode=TwoWay}" Content="Preview" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <Button Classes="ps-btn ps-btn-primary" Content="OK" Padding="18,5" Command="{Binding ConfirmApplyImageCommand}" />
+                            <Button Classes="ps-btn" Content="Cancel" Padding="14,5" Command="{Binding CancelApplyImageDialogCommand}" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+    </Border>
+</UserControl>

@@ -42,9 +42,9 @@
                 <!-- Footer -->
                 <Border Grid.Row="2" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="12,0">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" VerticalAlignment="Center">
-                        <Button Classes="ps-btn ps-btn-primary" Content="Save" Padding="16,5" Command="{Binding SaveAndDiscardCommand}" />
-                        <Button Classes="ps-btn" Content="Don't Save" Padding="14,5" Command="{Binding ConfirmDiscardCommand}" />
-                        <Button Classes="ps-btn" Content="Cancel" Padding="14,5" Command="{Binding CancelDiscardCommand}" />
+                        <Button Classes="ps-btn ps-btn-primary" Content="_Save" Padding="16,5" Command="{Binding SaveAndDiscardCommand}" />
+                        <Button Classes="ps-btn" Content="_Don't Save" Padding="14,5" Command="{Binding ConfirmDiscardCommand}" />
+                        <Button Classes="ps-btn" Content="_Cancel" Padding="14,5" Command="{Binding CancelDiscardCommand}" />
                     </StackPanel>
                 </Border>
             </Grid>

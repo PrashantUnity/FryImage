@@ -32,6 +32,22 @@ public abstract class CanvasElement
     /// <summary>Mirrors the element vertically about its <see cref="Bounds"/> center, applied before rotation.</summary>
     public bool FlipY { get; set; }
 
+    private double _skewH;
+    /// <summary>Horizontal skew angle in degrees (-89..89) about the element's Bounds center.</summary>
+    public double SkewH
+    {
+        get => _skewH;
+        set => _skewH = Math.Clamp(value, -89.0, 89.0);
+    }
+
+    private double _skewV;
+    /// <summary>Vertical skew angle in degrees (-89..89) about the element's Bounds center.</summary>
+    public double SkewV
+    {
+        get => _skewV;
+        set => _skewV = Math.Clamp(value, -89.0, 89.0);
+    }
+
     /// <summary>0 (fully transparent) .. 1 (fully opaque, default). Applied via dc.PushOpacity().</summary>
     public double Opacity { get; set; } = 1.0;
 
@@ -212,15 +228,19 @@ public abstract class CanvasElement
     /// </summary>
     public bool HitTestRotationAware(Point canvasPt)
     {
-        if (RotationDegrees == 0 && !FlipX && !FlipY) return HitTest(canvasPt);
+        if (RotationDegrees == 0 && !FlipX && !FlipY && SkewH == 0 && SkewV == 0) return HitTest(canvasPt);
 
         var center = Bounds.Center;
         double theta = RotationDegrees * Math.PI / 180.0;
         double sx = FlipX ? -1.0 : 1.0;
         double sy = FlipY ? -1.0 : 1.0;
+        double skewHRad = Math.Clamp(SkewH, -89.0, 89.0) * Math.PI / 180.0;
+        double skewVRad = Math.Clamp(SkewV, -89.0, 89.0) * Math.PI / 180.0;
+        var skewMatrix = new Matrix(1, Math.Tan(skewVRad), Math.Tan(skewHRad), 1, 0, 0);
 
         var forward = Matrix.CreateTranslation(-center.X, -center.Y)
                     * Matrix.CreateScale(sx, sy)
+                    * skewMatrix
                     * Matrix.CreateTranslation(center.X, center.Y)
                     * Matrix.CreateRotation(theta, center);
 

@@ -40,7 +40,11 @@
                             <MenuItem Header="Export Layers As Files..." Command="{Binding OpenExportSelectedLayersDialogCommand}" />
                             <Separator />
                             <MenuItem Header="Automate">
+                                <MenuItem Header="Fit Image..." Command="{Binding OpenFitImageDialogCommand}" />
                                 <MenuItem Header="Crop and Straighten Photos" Command="{Binding CropAndStraightenPhotosCommand}" />
+                            </MenuItem>
+                            <MenuItem Header="Scripts">
+                                <MenuItem Header="Load Files into Stack..." Command="{Binding OpenLoadFilesIntoStackDialogCommand}" />
                             </MenuItem>
                             <Separator />
                             <MenuItem Header="Close" InputGesture="Ctrl+W" Command="{Binding CloseOverlayCommand}" />
@@ -67,6 +71,14 @@
                             <MenuItem Header="Fill from History" InputGesture="Ctrl+Alt+Back" Command="{Binding FillFromHistoryCommand}" />
                             <Separator />
                             <MenuItem Header="Free Transform" InputGesture="Ctrl+T" Command="{Binding BeginFreeTransformCommand}" />
+                            <MenuItem Header="Transform">
+                                <MenuItem Header="Scale" Command="{Binding BeginTransformModeCommand}" CommandParameter="Scale" />
+                                <MenuItem Header="Rotate" Command="{Binding BeginTransformModeCommand}" CommandParameter="Rotate" />
+                                <MenuItem Header="Skew" Command="{Binding BeginTransformModeCommand}" CommandParameter="Skew" />
+                                <MenuItem Header="Distort" Command="{Binding BeginTransformModeCommand}" CommandParameter="Distort" />
+                                <MenuItem Header="Perspective" Command="{Binding BeginTransformModeCommand}" CommandParameter="Perspective" />
+                                <MenuItem Header="Warp" Command="{Binding BeginTransformModeCommand}" CommandParameter="Warp" />
+                            </MenuItem>
                             <MenuItem Header="Rotate 90° CW" Command="{Binding RotateArtboardClockwiseCommand}" />
                             <MenuItem Header="Rotate 90° CCW" Command="{Binding RotateArtboardCounterClockwiseCommand}" />
                             <Separator />
@@ -140,6 +152,7 @@
                             <MenuItem Header="Auto Color" Command="{Binding ApplyAutoColorCommand}" />
                             <MenuItem Header="Equalize" Command="{Binding ApplyEqualizeCommand}" />
                             <Separator />
+                            <MenuItem Header="Apply Image..." Command="{Binding OpenApplyImageDialogCommand}" />
                             <MenuItem Header="Canvas Size..." Command="{Binding OpenCanvasSetupCommand}" />
                             <MenuItem Header="Crop and Straighten Photos" Command="{Binding CropAndStraightenPhotosCommand}" />
                             <MenuItem Header="Rotate Canvas 90° CW" Command="{Binding RotateArtboardClockwiseCommand}" />
@@ -226,6 +239,7 @@
                             <MenuItem Header="Select and Mask..." InputGesture="Ctrl+Alt+R" Command="{Binding OpenSelectAndMaskDialogCommand}" />
                             <Separator />
                             <MenuItem Header="Make Work Path from Selection..." Command="{Binding MakeWorkPathFromSelectionCommand}" />
+                            <MenuItem Header="Convert Selection to Shape" Command="{Binding ConvertSelectionToShapeCommand}" />
                             <Separator />
                             <MenuItem Header="Load Luminosity" InputGesture="Ctrl+Alt+2" Command="{Binding LoadLuminositySelectionCommand}" />
                             <MenuItem Header="Save Selection as Channel..." Command="{Binding SaveSelectionAsChannelCommand}" />

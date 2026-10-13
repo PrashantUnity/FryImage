@@ -989,7 +989,7 @@ public partial class EditorCanvasControl : Control
         IDisposable? opacityScope = el.Opacity < 1.0 ? dc.PushOpacity(Math.Clamp(el.Opacity, 0, 1)) : null;
         try
         {
-            if (el.RotationDegrees == 0 && !el.FlipX && !el.FlipY)
+            if (el.RotationDegrees == 0 && !el.FlipX && !el.FlipY && el.SkewH == 0 && el.SkewV == 0)
             {
                 DrawElementWithEffects(dc, el);
                 return;
@@ -999,10 +999,14 @@ public partial class EditorCanvasControl : Control
             double theta = el.RotationDegrees * Math.PI / 180.0;
             double sx = el.FlipX ? -1.0 : 1.0;
             double sy = el.FlipY ? -1.0 : 1.0;
+            double skewHRad = Math.Clamp(el.SkewH, -89.0, 89.0) * Math.PI / 180.0;
+            double skewVRad = Math.Clamp(el.SkewV, -89.0, 89.0) * Math.PI / 180.0;
+            var skewMatrix = new Matrix(1, Math.Tan(skewVRad), Math.Tan(skewHRad), 1, 0, 0);
 
-            // Flip about the element's center, then rotate about the same center.
+            // Flip about the element's center, skew, then rotate about the same center.
             var m = Matrix.CreateTranslation(-center.X, -center.Y)
                   * Matrix.CreateScale(sx, sy)
+                  * skewMatrix
                   * Matrix.CreateTranslation(center.X, center.Y)
                   * Matrix.CreateRotation(theta, center);
 
@@ -1895,6 +1899,17 @@ public partial class EditorCanvasControl : Control
                                   handleSize + pad * 2, handleSize + pad * 2);
                 if (hr.Contains(localPt))
                 {
+                    if (DataContext is ImageEditorViewModel vm && vm.CurrentTransformMode == StudioTransformMode.Rotate)
+                    {
+                        _isRotating = true;
+                        _rotationPivot = single.Bounds.Center;
+                        _rotationStartAngle = Math.Atan2(canvasPt.Y - _rotationPivot.Y, canvasPt.X - _rotationPivot.X);
+                        _rotationOrigins = _selection.ToDictionary(el => el, el => (el.X, el.Y, el.RotationDegrees));
+                        e.Pointer.Capture(this);
+                        e.Handled = true;
+                        return;
+                    }
+
                     _isResizing = true;
                     _resizeHandle = i;
                     _origX = single.X;
@@ -1954,7 +1969,17 @@ public partial class EditorCanvasControl : Control
 
             var handlePt = GetRotationHandlePoint(axisBounds, currentRotation, _zoom);
             double hitRadius = 10 / _zoom;
-            if (Point.Distance(handlePt, canvasPt) <= hitRadius)
+
+            Point localPtForRot = canvasPt;
+            if (currentRotation != 0)
+            {
+                localPtForRot = canvasPt.Transform(Matrix.CreateRotation(-currentRotation * Math.PI / 180.0, axisBounds.Center));
+            }
+            var innerBand = axisBounds.Inflate(5 / _zoom);
+            var outerBand = axisBounds.Inflate(18 / _zoom);
+            bool inRotationBand = outerBand.Contains(localPtForRot) && !innerBand.Contains(localPtForRot);
+
+            if (Point.Distance(handlePt, canvasPt) <= hitRadius || inRotationBand)
             {
                 _isRotating = true;
                 _rotationPivot = axisBounds.Center;

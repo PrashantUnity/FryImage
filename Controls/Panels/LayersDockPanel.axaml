@@ -276,7 +276,7 @@
                                 </Grid>
 
                                 <!-- Smart Filters List (if any) -->
-                                <ItemsControl ItemsSource="{Binding SmartFilters}" Margin="32,2,4,4">
+                                <ItemsControl ItemsSource="{Binding SmartFilters}" Margin="42,2,4,4">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="models:SmartFilter">
                                             <Grid ColumnDefinitions="Auto,*,Auto" Height="18">

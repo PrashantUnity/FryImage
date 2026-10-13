@@ -1,0 +1,91 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Dialogs.LoadFilesIntoStackDialog"
+             x:DataType="local:ImageEditorViewModel">
+
+    <!-- Modal Backdrop -->
+    <Border Background="#99000000"
+            IsVisible="{Binding IsLoadFilesIntoStackDialogOpen}"
+            ZIndex="500">
+        <Border Background="{DynamicResource PsPanelBrush}"
+                BorderBrush="{DynamicResource PsBorderLightBrush}"
+                BorderThickness="1"
+                CornerRadius="3"
+                Width="480" Height="360"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                BoxShadow="0 10 32 #80000000">
+            <Grid RowDefinitions="34,*,46">
+
+                <!-- Header -->
+                <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="14,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <materialIcons:MaterialIcon Kind="LayersTripleOutline" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+                            <TextBlock Text="Load Files into Stack" FontWeight="SemiBold" FontSize="12" Foreground="#FFFFFF" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="ps-opt-btn" Command="{Binding CancelLoadFilesIntoStackDialogCommand}">
+                            <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Body -->
+                <Grid Grid.Row="1" Margin="16,12" RowDefinitions="Auto,*,Auto">
+                    <!-- Source Files & Use Mode -->
+                    <StackPanel Grid.Row="0" Spacing="6" Margin="0,0,0,8">
+                        <TextBlock Text="Source Files" Classes="ps-section-header" FontSize="12" />
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <TextBlock Text="Use:" Classes="ps-label" VerticalAlignment="Center" />
+                            <ComboBox SelectedIndex="{Binding LoadStackUseModeIndex, Mode=TwoWay}" Width="120" Height="22">
+                                <ComboBoxItem Content="Files" />
+                                <ComboBoxItem Content="Folder" />
+                            </ComboBox>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- File List & Side Action Buttons -->
+                    <Grid Grid.Row="1" ColumnDefinitions="*,130" Margin="0,4,0,8">
+                        <!-- File List View -->
+                        <Border Grid.Column="0" Background="{DynamicResource PsFieldBrush}" BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1" CornerRadius="2" Padding="2">
+                            <ListBox ItemsSource="{Binding LoadStackFiles}"
+                                     SelectedItem="{Binding LoadStackSelectedFile, Mode=TwoWay}"
+                                     Background="Transparent"
+                                     BorderThickness="0">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="x:String">
+                                        <TextBlock Text="{Binding}" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding}" />
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Border>
+
+                        <!-- Buttons Column -->
+                        <StackPanel Grid.Column="1" Margin="10,0,0,0" Spacing="6">
+                            <Button Classes="ps-btn" Content="Browse..." HorizontalAlignment="Stretch" Command="{Binding LoadStackBrowseCommand}" />
+                            <Button Classes="ps-btn" Content="Remove" HorizontalAlignment="Stretch" Command="{Binding LoadStackRemoveCommand}" IsEnabled="{Binding CanRemoveLoadStackFile}" />
+                            <Button Classes="ps-btn" Content="Add Open Files" HorizontalAlignment="Stretch" Command="{Binding LoadStackAddOpenFilesCommand}" />
+                            <Button Classes="ps-btn" Content="Sort By Name" HorizontalAlignment="Stretch" Command="{Binding LoadStackSortByNameCommand}" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Align & Smart Object Options -->
+                    <StackPanel Grid.Row="2" Spacing="6" Margin="0,4,0,0">
+                        <CheckBox IsChecked="{Binding LoadStackAlign, Mode=TwoWay}" Content="Attempt to Automatically Align Source Images" />
+                        <CheckBox IsChecked="{Binding LoadStackSmartObject, Mode=TwoWay}" Content="Create Smart Object after Loading Layers" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- Footer -->
+                <Border Grid.Row="2" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="14,0">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" VerticalAlignment="Center">
+                        <Button Classes="ps-btn ps-btn-primary" Content="OK" Padding="18,5" Command="{Binding ConfirmLoadFilesIntoStackCommand}" IsEnabled="{Binding CanConfirmLoadStack}" />
+                        <Button Classes="ps-btn" Content="Cancel" Padding="14,5" Command="{Binding CancelLoadFilesIntoStackDialogCommand}" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Border>
+</UserControl>

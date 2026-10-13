@@ -3093,9 +3093,51 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         var elements = dto.Elements.OrderBy(e => e.ZIndex).Select(CanvasElementMapper.FromDto).ToList();
         ApplyCanvasState(dto.CanvasWidth, dto.CanvasHeight, Color.Parse(dto.BackgroundColor), elements, $"Loaded {sourceName}.");
 
+        // Photoshop parity (#4559, 39f3660d): Check for missing fonts in type elements and warn on open
+        CheckMissingFonts(elements);
+
         foreach (var img in Elements.OfType<ImageElement>().Where(HasNonDefaultAdjustments))
         {
             _ = RecomputeImageAdjustmentsAsync(img);
+        }
+    }
+
+    /// <summary>Warns when opened document uses fonts not installed on the system (Photoshop parity #4559).</summary>
+    public void CheckMissingFonts(IEnumerable<CanvasElement> elements)
+    {
+        try
+        {
+            var systemFonts = FontManager.Current?.SystemFonts;
+            if (systemFonts == null) return;
+            var installedNames = new HashSet<string>(systemFonts.Select(f => f.Name), StringComparer.OrdinalIgnoreCase);
+
+            var missing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var el in elements.OfType<TextElement>())
+            {
+                var familyName = el.FontFamily?.Name;
+                if (!string.IsNullOrWhiteSpace(familyName))
+                {
+                    var primary = familyName.Split(',')[0].Trim().Trim('\'', '"');
+                    if (!string.IsNullOrEmpty(primary) &&
+                        !primary.Equals("sans-serif", StringComparison.OrdinalIgnoreCase) &&
+                        !primary.Equals("serif", StringComparison.OrdinalIgnoreCase) &&
+                        !primary.Equals("monospace", StringComparison.OrdinalIgnoreCase) &&
+                        !installedNames.Contains(primary))
+                    {
+                        missing.Add(primary);
+                    }
+                }
+            }
+
+            if (missing.Count > 0)
+            {
+                var fontList = string.Join(", ", missing);
+                StatusMessage = $"Warning: font '{fontList}' is not installed; text may render using a fallback face";
+            }
+        }
+        catch
+        {
+            // Ignore font inspection failure
         }
     }
 

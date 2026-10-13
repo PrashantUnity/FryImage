@@ -195,6 +195,9 @@
         <dialogs:ColorPickerDialog Grid.Row="0" Grid.RowSpan="4" ZIndex="500" IsVisible="{Binding IsColorPickerVisible}" />
         <dialogs:ConfirmDiscardDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="600" IsVisible="{Binding IsConfirmingDiscard}" />
         <dialogs:CommandPaletteDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="600" IsVisible="{Binding IsCommandPaletteOpen}" />
+        <dialogs:LoadFilesIntoStackDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="600" IsVisible="{Binding IsLoadFilesIntoStackDialogOpen}" />
+        <dialogs:FitImageDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="600" IsVisible="{Binding IsFitImageDialogOpen}" />
+        <dialogs:ApplyImageDialog Grid.Row="0" Grid.RowSpan="5" ZIndex="600" IsVisible="{Binding IsApplyImageDialogOpen}" />
 
     </Grid>
 </UserControl>

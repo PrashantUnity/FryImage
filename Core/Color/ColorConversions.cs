@@ -262,7 +262,7 @@ public static class ColorConversions
     }
 
     /// <summary>
-    /// D50 CIE XYZ to linear sRGB matrix (Photoshop / Photocraft standard).
+    /// D50 CIE XYZ to linear sRGB matrix (Photoshop ICC D50 specification).
     /// </summary>
     private static readonly double[,] XyzD50ToSrgbMatrix =
     {

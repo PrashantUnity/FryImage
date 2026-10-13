@@ -308,4 +308,32 @@ public partial class ImageEditorViewModel
             ColorPickerWorkingColor = ColorPickerOnlyWebColors ? ColorConversions.SnapToWebSafe(c) : c;
         }
     }
+
+    public Color ForegroundColor
+    {
+        get => PrimaryColor;
+        set => PrimaryColor = value;
+    }
+
+    [RelayCommand]
+    public void FillWithForegroundColor()
+    {
+        if (SelectedElement is IHasFill fillable)
+        {
+            fillable.FillColor = PrimaryColor;
+            FillColorField = PrimaryColor;
+            StatusMessage = "Filled layer with foreground color (Alt+Backspace).";
+        }
+    }
+
+    [RelayCommand]
+    public void FillWithBackgroundColor()
+    {
+        if (SelectedElement is IHasFill fillable)
+        {
+            fillable.FillColor = SecondaryColor;
+            FillColorField = SecondaryColor;
+            StatusMessage = "Filled layer with background color (Ctrl+Backspace).";
+        }
+    }
 }

@@ -13,6 +13,8 @@ using PdfEditorApp.Plugins.ImageEditor.Core.Vector;
 using SkiaSharp;
 
 using PdfEditorApp.Plugins.ImageEditor.Core.Codecs;
+using PdfEditorApp.Plugins.ImageEditor.Core.Actions;
+using PdfEditorApp.Plugins.ImageEditor.Core.Canvas;
 using PdfEditorApp.Plugins.ImageEditor.Models;
 using PdfEditorApp.Plugins.ImageEditor.UISnapshots.Core;
 
@@ -350,6 +352,157 @@ public static class ParityFeatureSnapshotSuite
         prefs.MissingGlyphProtection = true;
         prefs.Save();
         Console.WriteLine("  ✓ Studio Preferences (Extras, Narrow Options Bar, Glyph Protection) verified.");
+
+        // 19. Test DDS Texture Codec (Uncompressed RGBA)
+        byte[] testDds = CreateSyntheticDds(8, 8);
+        var ddsDecoded = DdsCodec.Decode(testDds);
+        if (ddsDecoded == null || ddsDecoded.Width != 8 || ddsDecoded.Height != 8 || ddsDecoded.BgraPixels.Length != 8 * 8 * 4)
+        {
+            throw new InvalidOperationException("DdsCodec failed to decode test DDS texture.");
+        }
+        Console.WriteLine("  ✓ DDS uncompressed RGBA texture codec test passed.");
+
+        // 20. Test DPX SMPTE 268M Film/VFX Frame Codec (Encode & Decode Roundtrip)
+        using var dpxSrcBmp = new SKBitmap(8, 8, SKColorType.Bgra8888, SKAlphaType.Premul);
+        dpxSrcBmp.Erase(SKColors.Firebrick);
+        byte[] dpxBytes = DpxCodec.Encode(dpxSrcBmp);
+        var dpxDecoded = DpxCodec.Decode(dpxBytes);
+        if (dpxDecoded == null || dpxDecoded.Width != 8 || dpxDecoded.Height != 8 || dpxDecoded.BitDepth != 8)
+        {
+            throw new InvalidOperationException("DpxCodec failed roundtrip encode/decode.");
+        }
+        Console.WriteLine("  ✓ DPX SMPTE 268M film/VFX frame codec roundtrip test passed.");
+
+        // 21. Test XPM3 X PixMap Decoder with X11 color name resolution
+        string xpmSource = "/* XPM */\nstatic char * test_xpm[] = {\n\"4 4 2 1\",\n\"  c #FFFFFF\",\n\". c red\",\n\"....\",\n\".  .\",\n\".  .\",\n\"....\"\n};";
+        var xpmDecoded = XpmCodec.DecodeFromText(xpmSource);
+        if (xpmDecoded == null || xpmDecoded.Width != 4 || xpmDecoded.Height != 4 || xpmDecoded.ColorsCount != 2)
+        {
+            throw new InvalidOperationException("XpmCodec failed to decode XPM3 image.");
+        }
+        Console.WriteLine("  ✓ XPM3 X PixMap decoder test passed.");
+
+        // 22. Test Photoshop Actions (.atn v16) binary codec roundtrip
+        var atnFile = new AtnCodec.AtnFile { Name = "Automated Test Actions" };
+        var atnAct = new AtnCodec.AtnAction { Name = "Sepia Toning Action" };
+        atnAct.Items.Add(new AtnCodec.AtnItem { Dictionary = "Sepia", EventName = "Sepia", Enabled = true });
+        atnFile.Actions.Add(atnAct);
+        byte[] atnEncoded = AtnCodec.Encode(atnFile);
+        var atnDecoded = AtnCodec.Decode(atnEncoded);
+        if (atnDecoded == null || atnDecoded.Name != "Automated Test Actions" || atnDecoded.Actions.Count != 1)
+        {
+            throw new InvalidOperationException("AtnCodec failed binary serialization roundtrip.");
+        }
+        Console.WriteLine("  ✓ Photoshop Actions (.atn v16) binary codec roundtrip test passed.");
+
+        // 23. Test Photoshop Action Playback Engine
+        vm.Elements.Clear();
+        var targetImg = new ImageElement { Name = "Layer 1", Width = 100, Height = 100, ZIndex = 1 };
+        vm.Elements.Add(targetImg);
+        vm.SelectedElement = targetImg;
+        ActionPlaybackEngine.ExecuteActionAsync(atnAct, vm).GetAwaiter().GetResult();
+        if (targetImg.ActiveFilterPreset != "Sepia")
+        {
+            throw new InvalidOperationException("ActionPlaybackEngine failed to apply Sepia action.");
+        }
+        Console.WriteLine("  ✓ Photoshop Action Playback Engine execution verified.");
+
+        // 24. Test Canvas Viewport Autoscroll Physics Engine
+        var scrollDelta = CanvasAutoscrollEngine.ComputeAutoscrollDelta(new Point(-30, 200), new Rect(0, 0, 800, 600), 0.016);
+        if (scrollDelta.X >= 0 || scrollDelta.Y != 0)
+        {
+            throw new InvalidOperationException($"CanvasAutoscrollEngine delta unexpected: X={scrollDelta.X}, Y={scrollDelta.Y}");
+        }
+        Console.WriteLine("  ✓ Canvas viewport autoscroll physics engine verified.");
+
+        // 25. Test Object Finder Element Segmentation Engine
+        var rectElement = new RectangleElement { Name = "Finder Target", X = 50, Y = 50, Width = 100, Height = 100 };
+        var hit = ObjectFinderEngine.FindObjectAt(new Point(75, 75), [rectElement], 800, 600);
+        if (hit == null || hit.Element != rectElement)
+        {
+            throw new InvalidOperationException("ObjectFinderEngine failed to find element under cursor.");
+        }
+        Console.WriteLine("  ✓ Object Finder element segmentation engine verified.");
+
+        // 26. Test Type on a Path cubic Bézier arc-length parameterization
+        var knots = new List<PathKnot>
+        {
+            new(new Point(0, 50)),
+            new(new Point(100, 50))
+        };
+        var bezierPath = new PathTextEngine.FlattenedPathFrame(knots, isClosed: false);
+        var (sampledPos, tangent) = bezierPath.SampleAt(50.0);
+        if (Math.Abs(sampledPos.X - 50.0) > 2.0 || Math.Abs(sampledPos.Y - 50.0) > 2.0)
+        {
+            throw new InvalidOperationException($"PathTextEngine position mismatch: {sampledPos}");
+        }
+        Console.WriteLine("  ✓ Type on a Path cubic Bézier arc-length parameterization verified.");
+
+        // 27. Test Studio Themes
+        var allThemes = Enum.GetValues<StudioThemeManager.StudioTheme>();
+        if (allThemes.Length != 6)
+        {
+            throw new InvalidOperationException($"Expected 6 studio themes, found {allThemes.Length}.");
+        }
+        vm.SetTheme(StudioThemeManager.StudioTheme.SolarizedDark.ToString());
+        if (vm.CurrentThemeName != "SolarizedDark")
+        {
+            throw new InvalidOperationException("Failed to switch studio theme.");
+        }
+        vm.SetTheme(StudioThemeManager.StudioTheme.ProDark.ToString());
+        Console.WriteLine("  ✓ Studio Themes (Pro Dark, Pro Medium, Pro Light, Soft Dark, Soft Light, Solarized Dark) verified.");
+
+        // 28. Test Spring-Loaded Tool Shortcuts Engine
+        var spring = new SpringToolsEngine();
+        spring.OnToolKeyDown(Avalonia.Input.Key.E, "brush", "eraser");
+        System.Threading.Thread.Sleep(320); // hold past 300ms threshold
+        string? revert = spring.OnToolKeyUp(Avalonia.Input.Key.E, "eraser");
+        if (revert != "brush")
+        {
+            throw new InvalidOperationException($"SpringToolsEngine failed to revert tool: expected 'brush', got '{revert}'");
+        }
+        Console.WriteLine("  ✓ Spring-loaded tool shortcuts engine verified.");
+
+        // 29. Test Color Fill Shortcuts (Foreground & Background)
+        var fillLayer = new RectangleElement { Name = "Fill Target", Width = 100, Height = 100 };
+        vm.Elements.Clear();
+        vm.Elements.Add(fillLayer);
+        vm.SelectedElement = fillLayer;
+        vm.ForegroundColor = Color.FromRgb(255, 128, 0);
+        vm.FillWithForegroundColor();
+        if (fillLayer.FillColor != Color.FromRgb(255, 128, 0))
+        {
+            throw new InvalidOperationException("FillWithForegroundColor failed to update layer FillColor.");
+        }
+        vm.SecondaryColor = Color.FromRgb(0, 128, 255);
+        vm.FillWithBackgroundColor();
+        if (fillLayer.FillColor != Color.FromRgb(0, 128, 255))
+        {
+            throw new InvalidOperationException("FillWithBackgroundColor failed to update layer FillColor.");
+        }
+        Console.WriteLine("  ✓ Color fill shortcuts (Alt+Backspace foreground, Ctrl+Backspace background) verified.");
+
+        // 30. Test Pattern Preview, Tile Grid Overlay, Smart Objects & Smart Filters
+        vm.TogglePatternPreview();
+        if (!vm.IsPatternPreviewEnabled) throw new InvalidOperationException("TogglePatternPreview failed.");
+        vm.TogglePatternPreview();
+
+        vm.ToggleTileGridOverlay();
+        if (!vm.IsTileGridOverlayEnabled) throw new InvalidOperationException("ToggleTileGridOverlay failed.");
+        vm.ToggleTileGridOverlay();
+
+        fillLayer.IsSmartObject = true;
+        var smartFilter = new SmartFilter { Name = "Smart Gaussian Blur", FilterType = "GaussianBlur", Radius = 8.0 };
+        fillLayer.SmartFilters.Add(smartFilter);
+        if (fillLayer.SmartFilters.Count != 1 || !fillLayer.IsSmartObject)
+        {
+            throw new InvalidOperationException("Smart Object and Smart Filter attachment failed.");
+        }
+        vm.ToggleSmartFilterVisibility(smartFilter);
+        if (smartFilter.IsVisible) throw new InvalidOperationException("ToggleSmartFilterVisibility failed.");
+        vm.DeleteSmartFilter(smartFilter);
+        if (fillLayer.SmartFilters.Count != 0) throw new InvalidOperationException("DeleteSmartFilter failed.");
+        Console.WriteLine("  ✓ Pattern Preview, Tile Grid Overlay, Smart Objects & Smart Filters verified.");
     }
 
     private static byte[] CreateSyntheticPcx24(int width, int height)
@@ -462,5 +615,63 @@ public static class ParityFeatureSnapshotSuite
         }
 
         return zipMs.ToArray();
+    }
+
+    private static byte[] CreateSyntheticDds(int width, int height)
+    {
+        using var ms = new MemoryStream();
+        using var writer = new BinaryWriter(ms);
+
+        // Magic "DDS "
+        writer.Write((uint)0x20534444);
+
+        // Header size (124)
+        writer.Write((uint)124);
+
+        // Flags (DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PIXELFORMAT = 0x1007)
+        writer.Write((uint)0x1007);
+
+        // Height & Width
+        writer.Write((uint)height);
+        writer.Write((uint)width);
+
+        // Pitch or LinearSize
+        writer.Write((uint)(width * 4));
+
+        // Depth & MipMapCount
+        writer.Write((uint)0);
+        writer.Write((uint)0);
+
+        // Reserved1 [11 uints = 44 bytes]
+        for (int i = 0; i < 11; i++) writer.Write((uint)0);
+
+        // PixelFormat struct (32 bytes)
+        writer.Write((uint)32); // dwSize
+        writer.Write((uint)0x41); // dwFlags (DDPF_RGB | DDPF_ALPHAPIXELS)
+        writer.Write((uint)0); // dwFourCC
+        writer.Write((uint)32); // dwRGBBitCount
+        writer.Write((uint)0x00FF0000); // dwRBitMask
+        writer.Write((uint)0x0000FF00); // dwGBitMask
+        writer.Write((uint)0x000000FF); // dwBBitMask
+        writer.Write((uint)0xFF000000); // dwABitMask
+
+        // Caps (DDSCAPS_TEXTURE = 0x1000)
+        writer.Write((uint)0x1000);
+        // Caps2, Caps3, Caps4, Reserved2 (4 uints = 16 bytes)
+        writer.Write((uint)0);
+        writer.Write((uint)0);
+        writer.Write((uint)0);
+        writer.Write((uint)0);
+
+        // 32-bit BGRA pixels
+        for (int i = 0; i < width * height; i++)
+        {
+            writer.Write((byte)255); // B
+            writer.Write((byte)128); // G
+            writer.Write((byte)64);  // R
+            writer.Write((byte)255); // A
+        }
+
+        return ms.ToArray();
     }
 }

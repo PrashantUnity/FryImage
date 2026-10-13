@@ -297,7 +297,7 @@ public enum BrushTextureMode
 }
 
 /// <summary>
-/// Brush Settings › Texture matching Photoshop 2026 / Photocraft.
+/// Brush Settings › Texture matching Photoshop 2026 specification.
 /// Supports Height, Linear Height, Subtract, Color Dodge/Burn, Brightness and Contrast levels.
 /// </summary>
 public class BrushTexture

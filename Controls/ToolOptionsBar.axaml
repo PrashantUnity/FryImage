@@ -242,7 +242,8 @@
                         <TextBlock Text="Mode:" Classes="ps-label" />
                         <ComboBox Classes="ps-combo" Width="110" Height="22"
                                   ItemsSource="{Binding AvailableBlendModes}"
-                                  SelectedItem="{Binding BlendModeField, Mode=TwoWay}" />
+                                  SelectedItem="{Binding BlendModeField, Mode=TwoWay}"
+                                  PointerWheelChanged="OnBlendModePointerWheelChanged" />
                     </StackPanel>
 
                     <!-- Opacity -->
@@ -698,7 +699,8 @@
                     <TextBlock Text="Mode:" Classes="ps-label" Margin="4,0,0,0" />
                     <ComboBox Classes="ps-combo" Width="100" Height="22"
                               ItemsSource="{Binding AvailableBlendModes}"
-                              SelectedItem="{Binding BlendModeField, Mode=TwoWay}" />
+                              SelectedItem="{Binding BlendModeField, Mode=TwoWay}"
+                              PointerWheelChanged="OnBlendModePointerWheelChanged" />
                     <TextBlock Text="Opacity:" Classes="ps-label" />
                     <NumericUpDown Classes="ps-num" Width="68" Height="22"
                                    Minimum="0" Maximum="100" Increment="5"

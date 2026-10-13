@@ -248,9 +248,12 @@ public partial class ImageEditorView : UserControl
         {
             CanvasControl.SetElements([.. vm.Elements]);
         };
+
+        CanvasControl.PointerPressed += (_, _) => _springEngine.NoteCanvasUsage();
     }
 
     private bool _isSpaceKeyDown;
+    private readonly PdfEditorApp.Plugins.ImageEditor.Core.Paint.SpringToolsEngine _springEngine = new();
 
     protected override void OnKeyUp(KeyEventArgs e)
     {
@@ -258,6 +261,15 @@ public partial class ImageEditorView : UserControl
         if (e.Key == Key.Space)
         {
             _isSpaceKeyDown = false;
+        }
+
+        if (DataContext is ImageEditorViewModel vm)
+        {
+            string? revertTool = _springEngine.OnToolKeyUp(e.Key, vm.ActiveToolMode);
+            if (revertTool != null)
+            {
+                vm.SetToolCommand.Execute(revertTool);
+            }
         }
     }
 
@@ -479,6 +491,18 @@ public partial class ImageEditorView : UserControl
             e.Handled = true;
             return;
         }
+        if (alt && !ctrl && !shift && (e.Key == Key.Back || e.Key == Key.Delete) && vm.SelectedElement is Models.IHasFill)
+        {
+            vm.FillWithForegroundColorCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+        if (ctrl && !alt && !shift && (e.Key == Key.Back || e.Key == Key.Delete) && vm.SelectedElement is Models.IHasFill)
+        {
+            vm.FillWithBackgroundColorCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
         if (!ctrl && !alt && shift && (e.Key == Key.OemPlus || e.Key == Key.Add))
         {
             vm.CycleBlendModeCommand.Execute(true);
@@ -581,6 +605,7 @@ public partial class ImageEditorView : UserControl
         }
 
         // Single-key FryImage tools (activates the active sub-tool in that slot)
+        string beforeTool = vm.ActiveToolMode;
         switch (e.Key)
         {
             case Key.V: vm.SelectMoveSlotCommand.Execute(null); e.Handled = true; break;
@@ -614,6 +639,11 @@ public partial class ImageEditorView : UserControl
                 }
                 e.Handled = true;
                 break;
+        }
+
+        if (e.Handled && vm.ActiveToolMode != beforeTool)
+        {
+            _springEngine.OnToolKeyDown(e.Key, beforeTool, vm.ActiveToolMode);
         }
     }
 

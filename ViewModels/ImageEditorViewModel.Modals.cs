@@ -2102,11 +2102,15 @@ public partial class ImageEditorViewModel
                 AllowMultiple = true,
                 FileTypeFilter =
                 [
-                    new FilePickerFileType("Supported Studio Formats (*.psd, *.abr, *.aco, *.ase, *.grd, *.pat, *.fits, *.pcx, *.kra, images)")
+                    new FilePickerFileType("Supported Studio Formats (*.psd, *.abr, *.aco, *.ase, *.grd, *.pat, *.fits, *.pcx, *.kra, *.dds, *.dpx, *.xpm, *.atn, images)")
                     {
-                        Patterns = ["*.psd", "*.abr", "*.aco", "*.ase", "*.grd", "*.pat", "*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp", "*.gif", "*.tif", "*.tiff", "*.fits", "*.fit", "*.fts", "*.pcx", "*.kra"]
+                        Patterns = ["*.psd", "*.abr", "*.aco", "*.ase", "*.grd", "*.pat", "*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp", "*.gif", "*.tif", "*.tiff", "*.fits", "*.fit", "*.fts", "*.pcx", "*.kra", "*.dds", "*.dpx", "*.xpm", "*.atn"]
                     },
                     new FilePickerFileType("Layered Document (*.psd)") { Patterns = ["*.psd"] },
+                    new FilePickerFileType("DirectDraw Surface (*.dds)") { Patterns = ["*.dds"] },
+                    new FilePickerFileType("SMPTE DPX Film/VFX (*.dpx)") { Patterns = ["*.dpx"] },
+                    new FilePickerFileType("X PixMap (*.xpm)") { Patterns = ["*.xpm"] },
+                    new FilePickerFileType("Photoshop Actions (*.atn)") { Patterns = ["*.atn"] },
                     new FilePickerFileType("Krita Document (*.kra)") { Patterns = ["*.kra"] },
                     new FilePickerFileType("ZSoft PCX Image (*.pcx)") { Patterns = ["*.pcx"] },
                     new FilePickerFileType("Adobe Photoshop Brushes (*.abr)") { Patterns = ["*.abr"] },
@@ -2383,6 +2387,130 @@ public partial class ImageEditorViewModel
                         StatusMessage = $"Imported {patterns.Count} patterns from {file.Name}.";
                         openedCount++;
                     }
+                }
+                else if (ext == ".atn")
+                {
+                    var atnFile = AtnCodec.Decode(stream);
+                    ActionSets.Add(atnFile);
+                    SelectedActionSet = atnFile;
+                    SelectedAction = atnFile.Actions.FirstOrDefault();
+                    ActiveLayersDockTab = "Actions";
+                    StatusMessage = $"Loaded Photoshop Actions '{atnFile.Name}' ({atnFile.Actions.Count} actions).";
+                    openedCount++;
+                }
+                else if (ext == ".dds")
+                {
+                    var dds = DdsCodec.Decode(stream);
+                    if (Elements.Count == 0)
+                    {
+                        ClearCanvas();
+                        CanvasWidth = Math.Max(200, dds.Width);
+                        CanvasHeight = Math.Max(150, dds.Height);
+                        DocumentTitle = file.Name;
+                    }
+
+                    using var skBmp = dds.ToSkBitmap();
+                    using var img = SKImage.FromBitmap(skBmp);
+                    using var data = img.Encode(SKEncodedImageFormat.Png, 100);
+                    byte[] pngBytes = data.ToArray();
+
+                    using var ms = new MemoryStream(pngBytes);
+                    var avaloniaBmp = new Bitmap(ms);
+
+                    var el = new ImageElement
+                    {
+                        Name = Path.GetFileNameWithoutExtension(file.Name),
+                        X = (CanvasWidth - dds.Width) / 2.0,
+                        Y = (CanvasHeight - dds.Height) / 2.0,
+                        Width = dds.Width,
+                        Height = dds.Height,
+                        NaturalPixelWidth = dds.Width,
+                        NaturalPixelHeight = dds.Height,
+                        Source = avaloniaBmp,
+                        OriginalImageBytes = pngBytes,
+                        ZIndex = Elements.Count + 1
+                    };
+
+                    Elements.Add(el);
+                    SelectedElement = el;
+                    StatusMessage = $"Loaded DDS texture ({dds.FormatName}, {dds.Width}x{dds.Height}).";
+                    openedCount++;
+                }
+                else if (ext == ".dpx")
+                {
+                    var dpx = DpxCodec.Decode(stream);
+                    if (Elements.Count == 0)
+                    {
+                        ClearCanvas();
+                        CanvasWidth = Math.Max(200, dpx.Width);
+                        CanvasHeight = Math.Max(150, dpx.Height);
+                        DocumentTitle = file.Name;
+                    }
+
+                    using var skBmp = dpx.ToSkBitmap();
+                    using var img = SKImage.FromBitmap(skBmp);
+                    using var data = img.Encode(SKEncodedImageFormat.Png, 100);
+                    byte[] pngBytes = data.ToArray();
+
+                    using var ms = new MemoryStream(pngBytes);
+                    var avaloniaBmp = new Bitmap(ms);
+
+                    var el = new ImageElement
+                    {
+                        Name = Path.GetFileNameWithoutExtension(file.Name),
+                        X = (CanvasWidth - dpx.Width) / 2.0,
+                        Y = (CanvasHeight - dpx.Height) / 2.0,
+                        Width = dpx.Width,
+                        Height = dpx.Height,
+                        NaturalPixelWidth = dpx.Width,
+                        NaturalPixelHeight = dpx.Height,
+                        Source = avaloniaBmp,
+                        OriginalImageBytes = pngBytes,
+                        ZIndex = Elements.Count + 1
+                    };
+
+                    Elements.Add(el);
+                    SelectedElement = el;
+                    StatusMessage = $"Loaded DPX frame ({dpx.BitDepth}-bit, {dpx.Width}x{dpx.Height}).";
+                    openedCount++;
+                }
+                else if (ext == ".xpm")
+                {
+                    var xpm = XpmCodec.Decode(stream);
+                    if (Elements.Count == 0)
+                    {
+                        ClearCanvas();
+                        CanvasWidth = Math.Max(200, xpm.Width);
+                        CanvasHeight = Math.Max(150, xpm.Height);
+                        DocumentTitle = file.Name;
+                    }
+
+                    using var skBmp = xpm.ToSkBitmap();
+                    using var img = SKImage.FromBitmap(skBmp);
+                    using var data = img.Encode(SKEncodedImageFormat.Png, 100);
+                    byte[] pngBytes = data.ToArray();
+
+                    using var ms = new MemoryStream(pngBytes);
+                    var avaloniaBmp = new Bitmap(ms);
+
+                    var el = new ImageElement
+                    {
+                        Name = Path.GetFileNameWithoutExtension(file.Name),
+                        X = (CanvasWidth - xpm.Width) / 2.0,
+                        Y = (CanvasHeight - xpm.Height) / 2.0,
+                        Width = xpm.Width,
+                        Height = xpm.Height,
+                        NaturalPixelWidth = xpm.Width,
+                        NaturalPixelHeight = xpm.Height,
+                        Source = avaloniaBmp,
+                        OriginalImageBytes = pngBytes,
+                        ZIndex = Elements.Count + 1
+                    };
+
+                    Elements.Add(el);
+                    SelectedElement = el;
+                    StatusMessage = $"Loaded XPM image ({xpm.Width}x{xpm.Height}, {xpm.ColorsCount} colors).";
+                    openedCount++;
                 }
                 else
                 {

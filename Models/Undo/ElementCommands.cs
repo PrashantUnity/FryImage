@@ -455,3 +455,40 @@ public sealed class RestoreSnapshotCommand : IUndoableCommand
         _onChanged();
     }
 }
+
+public sealed class ReplaceElementUndoableCommand : IUndoableCommand
+{
+    private readonly ImageEditorViewModel _vm;
+    private readonly CanvasElement _oldElement;
+    private readonly CanvasElement _newElement;
+    private readonly int _index;
+
+    public ReplaceElementUndoableCommand(ImageEditorViewModel vm, CanvasElement oldElement, CanvasElement newElement, int index)
+    {
+        _vm = vm;
+        _oldElement = oldElement;
+        _newElement = newElement;
+        _index = index;
+    }
+
+    public string Description => $"Rasterize {_oldElement.Name}";
+
+    public void Undo()
+    {
+        if (_index >= 0 && _index < _vm.Elements.Count)
+        {
+            _vm.Elements[_index] = _oldElement;
+            _vm.SelectedElement = _oldElement;
+        }
+    }
+
+    public void Redo()
+    {
+        if (_index >= 0 && _index < _vm.Elements.Count)
+        {
+            _vm.Elements[_index] = _newElement;
+            _vm.SelectedElement = _newElement;
+        }
+    }
+}
+

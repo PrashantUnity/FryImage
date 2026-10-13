@@ -243,6 +243,8 @@ public partial class EditorCanvasControl : Control
     static EditorCanvasControl()
     {
         FocusableProperty.OverrideDefaultValue<EditorCanvasControl>(true);
+        IsPatternPreviewEnabledProperty.Changed.AddClassHandler<EditorCanvasControl>((x, _) => x.InvalidateVisual());
+        IsTileGridOverlayEnabledProperty.Changed.AddClassHandler<EditorCanvasControl>((x, _) => x.InvalidateVisual());
     }
 
     public EditorCanvasControl()
@@ -641,6 +643,9 @@ public partial class EditorCanvasControl : Control
 
         using (dc.PushTransform(GetViewportMatrix()))
         {
+            // 0. Pattern Preview (3x3 seamless tiling repeat)
+            DrawPatternPreview(dc);
+
             var canvasRect = new Rect(0, 0, _logicalWidth, _logicalHeight);
 
             // Physical artboard drop shadow and depth (gives realistic paper elevation on pasteboard)
@@ -677,6 +682,12 @@ public partial class EditorCanvasControl : Control
             {
                 DrawElement(dc, el);
             }
+
+            // Developer storage tile grid overlay
+            DrawTileGridOverlay(dc);
+
+            // Object Finder hover highlight overlay
+            DrawObjectFinderOverlay(dc);
 
             // Pixel grid overlay at >= 500% zoom (Studio standard)
             DrawPixelGrid(dc);
@@ -1613,6 +1624,30 @@ public partial class EditorCanvasControl : Control
             return;
         }
 
+        // Object Selection: Object Finder click selection
+        if (ActiveToolMode == "objectselection")
+        {
+            if (HoveredDiscoveredObject?.Element != null)
+            {
+                bool shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
+                var el = HoveredDiscoveredObject.Element;
+                if (shift)
+                {
+                    if (_selection.Contains(el)) _selection.Remove(el);
+                    else _selection.Add(el);
+                }
+                else
+                {
+                    _selection.Clear();
+                    _selection.Add(el);
+                }
+                SelectionChanged?.Invoke(_selection);
+                e.Handled = true;
+                InvalidateVisual();
+                return;
+            }
+        }
+
         // Lasso tools (Standard, Polygonal, Magnetic)
         if (ActiveToolMode == "lasso")
         {
@@ -2078,6 +2113,36 @@ public partial class EditorCanvasControl : Control
         if ((ActiveToolMode is "brush" or "pencil" or "eraser" or "clonestamp" or "healing" or "historybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" or "bgeraser" or "colorreplacement" or "redeye" or "patch" or "eyedropper") && !_isDrawingDoodle && !_isDrawingRetouch)
         {
             InvalidateVisual();
+        }
+
+        // Object Selection: Object Finder live hover detection
+        if (ActiveToolMode == "objectselection" && !_isMarqueeSelecting)
+        {
+            var found = Core.Raster.ObjectFinderEngine.FindObjectAt(pos, _elements, _logicalWidth, _logicalHeight);
+            if (found?.Bounds != HoveredDiscoveredObject?.Bounds)
+            {
+                HoveredDiscoveredObject = found;
+                InvalidateVisual();
+            }
+        }
+        else if (HoveredDiscoveredObject != null)
+        {
+            HoveredDiscoveredObject = null;
+            InvalidateVisual();
+        }
+
+        // Canvas Autoscroll when dragging outside or near the viewport edges
+        if (_isDragging || _isResizing || _isMarqueeSelecting || _isDrawingDoodle || _isDrawingRetouch)
+        {
+            var screenPos = e.GetPosition(this);
+            var autoscroll = Core.Canvas.CanvasAutoscrollEngine.ComputeAutoscrollDelta(screenPos, new Rect(0, 0, Bounds.Width, Bounds.Height), 0.016);
+            if (autoscroll != Vector.Zero)
+            {
+                _panOffset = new Point(_panOffset.X - autoscroll.X, _panOffset.Y - autoscroll.Y);
+                ClampPanOffset();
+                CanvasChanged?.Invoke();
+                InvalidateVisual();
+            }
         }
 
         if (_isRotatingView)

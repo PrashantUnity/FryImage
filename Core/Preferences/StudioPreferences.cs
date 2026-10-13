@@ -34,6 +34,7 @@ public sealed class StudioPreferences
     public int CanvasPasteboardColorIndex { get; set; } = 0; // 0=Default, 1=Black, 2=Dark Gray, 3=Medium Gray, 4=Light Gray, 5=Custom
     public bool MissingGlyphProtection { get; set; } = true;
     public int DefaultBitsPerChannel { get; set; } = 8; // 8, 16, or 32
+    public string CurrentTheme { get; set; } = "ProDark";
 
     private static StudioPreferences? _instance;
     public static StudioPreferences Instance => _instance ??= Load();

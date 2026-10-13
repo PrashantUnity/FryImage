@@ -340,6 +340,16 @@
                                     <materialIcons:MaterialIcon Kind="Check" Width="12" Height="12" IsVisible="{Binding ShowPixelGrid}" Foreground="{DynamicResource PsAccentBrush}" />
                                 </MenuItem.Icon>
                             </MenuItem>
+                            <MenuItem Header="Pattern Preview" Command="{Binding TogglePatternPreviewCommand}">
+                                <MenuItem.Icon>
+                                    <materialIcons:MaterialIcon Kind="Check" Width="12" Height="12" IsVisible="{Binding IsPatternPreviewEnabled}" Foreground="{DynamicResource PsAccentBrush}" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Tile Grid Overlay" Command="{Binding ToggleTileGridOverlayCommand}">
+                                <MenuItem.Icon>
+                                    <materialIcons:MaterialIcon Kind="Check" Width="12" Height="12" IsVisible="{Binding IsTileGridOverlayEnabled}" Foreground="{DynamicResource PsAccentBrush}" />
+                                </MenuItem.Icon>
+                            </MenuItem>
                             <Separator />
                             <MenuItem Header="Guides">
                                 <MenuItem Header="Show Guides" Command="{Binding ToggleGuidesCommand}">
@@ -403,10 +413,20 @@
                             <MenuItem Header="Channels" Command="{Binding SelectRightDockTabCommand}" CommandParameter="Channels" />
                             <MenuItem Header="Paths" Command="{Binding SelectRightDockTabCommand}" CommandParameter="Paths" />
                             <MenuItem Header="History" Command="{Binding SelectRightDockTabCommand}" CommandParameter="History" />
+                            <MenuItem Header="Actions" InputGesture="Alt+F9" Command="{Binding SelectRightDockTabCommand}" CommandParameter="Actions" />
                             <Separator />
                             <MenuItem Header="Color" InputGesture="F6" Command="{Binding SelectColorDockTabCommand}" CommandParameter="Color" />
                             <MenuItem Header="Swatches" Command="{Binding SelectColorDockTabCommand}" CommandParameter="Swatches" />
                             <MenuItem Header="Gradients" Command="{Binding SelectColorDockTabCommand}" CommandParameter="Gradients" />
+                            <Separator />
+                            <MenuItem Header="Studio Themes">
+                                <MenuItem Header="Pro Dark" Command="{Binding SetThemeCommand}" CommandParameter="ProDark" />
+                                <MenuItem Header="Pro Medium" Command="{Binding SetThemeCommand}" CommandParameter="ProMedium" />
+                                <MenuItem Header="Pro Light" Command="{Binding SetThemeCommand}" CommandParameter="ProLight" />
+                                <MenuItem Header="Soft Dark" Command="{Binding SetThemeCommand}" CommandParameter="SoftDark" />
+                                <MenuItem Header="Soft Light" Command="{Binding SetThemeCommand}" CommandParameter="SoftLight" />
+                                <MenuItem Header="Solarized Dark" Command="{Binding SetThemeCommand}" CommandParameter="SolarizedDark" />
+                            </MenuItem>
                             <Separator />
                             <MenuItem Header="Color Picker..." Command="{Binding OpenColorPickerCommand}" CommandParameter="Foreground" />
                             <MenuItem Header="Contextual Task Bar" Command="{Binding ToggleContextualTaskBarCommand}" />
@@ -442,8 +462,18 @@
                 <Button Classes="ps-opt-btn" ToolTip.Tip="Discord Community">
                     <materialIcons:MaterialIcon Kind="Forum" Width="14" Height="14" Foreground="{DynamicResource PsTextDimBrush}" />
                 </Button>
-                <Button Classes="ps-opt-btn" ToolTip.Tip="Theme Toggle">
-                    <materialIcons:MaterialIcon Kind="WeatherNight" Width="14" Height="14" Foreground="{DynamicResource PsTextDimBrush}" />
+                <Button Classes="ps-opt-btn" ToolTip.Tip="Studio Themes">
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedRight">
+                            <MenuItem Header="Pro Dark" Command="{Binding SetThemeCommand}" CommandParameter="ProDark" />
+                            <MenuItem Header="Pro Medium" Command="{Binding SetThemeCommand}" CommandParameter="ProMedium" />
+                            <MenuItem Header="Pro Light" Command="{Binding SetThemeCommand}" CommandParameter="ProLight" />
+                            <MenuItem Header="Soft Dark" Command="{Binding SetThemeCommand}" CommandParameter="SoftDark" />
+                            <MenuItem Header="Soft Light" Command="{Binding SetThemeCommand}" CommandParameter="SoftLight" />
+                            <MenuItem Header="Solarized Dark" Command="{Binding SetThemeCommand}" CommandParameter="SolarizedDark" />
+                        </MenuFlyout>
+                    </Button.Flyout>
+                    <materialIcons:MaterialIcon Kind="PaletteOutline" Width="14" Height="14" Foreground="{DynamicResource PsTextDimBrush}" />
                 </Button>
                 <Button Classes="ps-opt-btn" ToolTip.Tip="Search (Ctrl+F)">
                     <materialIcons:MaterialIcon Kind="Magnify" Width="14" Height="14" Foreground="{DynamicResource PsTextDimBrush}" />

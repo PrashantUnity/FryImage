@@ -106,6 +106,15 @@ public abstract class CanvasElement
     /// <summary>Whether this element serves structurally as the document's Background layer.</summary>
     public bool IsBackground { get; set; }
 
+    /// <summary>When true, this layer is a Smart Object container with non-destructive Smart Filters.</summary>
+    public bool IsSmartObject { get; set; }
+
+    /// <summary>Non-destructive Smart Filters applied to this layer.</summary>
+    public System.Collections.ObjectModel.ObservableCollection<SmartFilter> SmartFilters { get; set; } = [];
+
+    /// <summary>Whether smart filters section is expanded in the layers dock panel.</summary>
+    public bool AreSmartFiltersExpanded { get; set; } = true;
+
     /// <summary>
     /// Whether this layer has Photoshop Background traits: an unclipped layer at the bottom with
     /// position and transparency locked, regardless of its localized name.
@@ -132,6 +141,10 @@ public abstract class CanvasElement
         target.IsTransparencyLocked = IsTransparencyLocked;
         target.IsPositionLocked = IsPositionLocked;
         target.IsBackground = IsBackground;
+        target.IsSmartObject = IsSmartObject;
+        target.AreSmartFiltersExpanded = AreSmartFiltersExpanded;
+        target.SmartFilters = new System.Collections.ObjectModel.ObservableCollection<SmartFilter>();
+        foreach (var sf in SmartFilters) target.SmartFilters.Add(sf.Clone());
         target.Name = Name;
         target.GroupId = GroupId;
         target.AspectLocked = AspectLocked;

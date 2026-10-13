@@ -101,6 +101,11 @@ public class TextElement : CanvasElement
     public bool FauxSuperscript { get; set; }              // sups (T¹)
     public bool FauxSubscript { get; set; }                // subs (T₁)
 
+    /// <summary>When non-null, text follows this vector subpath (Type on a Path).</summary>
+    public PdfEditorApp.Plugins.ImageEditor.Core.Vector.VectorSubpath? AttachedPath { get; set; }
+    public double PathStartOffset { get; set; } = 0.0;
+    public bool PathFlip { get; set; } = false;
+
     public TextElement()
     {
         Width = 160;
@@ -176,13 +181,49 @@ public class TextElement : CanvasElement
         var decorations = BuildTextDecorations();
         if (decorations != null) ft.SetTextDecorations(decorations);
 
-        if (Warp != null && Warp.IsActive)
+        if (AttachedPath != null && AttachedPath.Knots.Count >= 2)
+        {
+            DrawPathText(dc);
+        }
+        else if (Warp != null && Warp.IsActive)
         {
             DrawWarpedText(dc, ft);
         }
         else
         {
             dc.DrawText(ft, new Point(X + 4, Y + 2));
+        }
+    }
+
+    private void DrawPathText(DrawingContext dc)
+    {
+        if (AttachedPath == null || string.IsNullOrEmpty(Text)) return;
+
+        var frame = new Core.Vector.PathTextEngine.FlattenedPathFrame(AttachedPath.Knots, AttachedPath.IsClosed, PathStartOffset, PathFlip);
+        var placements = frame.LayoutText(Text, FontSize);
+        var typeface = new Typeface(FontFamily, FontStyle, FontWeight);
+        var brush = new SolidColorBrush(ForegroundColor);
+
+        foreach (var p in placements)
+        {
+            if (!p.IsVisible) continue;
+
+            var charFt = new FormattedText(
+                p.Character.ToString(),
+                System.Globalization.CultureInfo.CurrentCulture,
+                FlowDirection.LeftToRight,
+                typeface,
+                FontSize,
+                brush);
+
+            var m = Matrix.CreateTranslation(-charFt.Width / 2.0, -charFt.Height / 2.0)
+                  * Matrix.CreateRotation(p.AngleRadians)
+                  * Matrix.CreateTranslation(p.Position.X, p.Position.Y);
+
+            using (dc.PushTransform(m))
+            {
+                dc.DrawText(charFt, new Point(0, 0));
+            }
         }
     }
 
@@ -267,6 +308,9 @@ public class TextElement : CanvasElement
         clone.IsWidthAutoFitEnabled = IsWidthAutoFitEnabled;
         clone.IsHeightAutoFitEnabled = IsHeightAutoFitEnabled;
         clone.Warp = Warp?.Clone() ?? new TextWarpSettings();
+        clone.AttachedPath = AttachedPath != null ? new Core.Vector.VectorSubpath(AttachedPath.Knots, AttachedPath.IsClosed) : null;
+        clone.PathStartOffset = PathStartOffset;
+        clone.PathFlip = PathFlip;
         return clone;
     }
 }

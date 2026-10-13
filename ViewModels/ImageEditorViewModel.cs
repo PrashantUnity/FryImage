@@ -109,7 +109,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
                 _ = UpdateHistogramAsync();
             }
         }
-        else if (tab is "Layers" or "Channels" or "Paths" or "History")
+        else if (tab is "Layers" or "Channels" or "Paths" or "History" or "Actions")
         {
             ActiveLayersDockTab = tab;
             if (tab == "History")
@@ -140,6 +140,27 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
 
     [RelayCommand]
     private void ToggleInspector() => IsInspectorCollapsed = !IsInspectorCollapsed;
+
+    // ── Studio Theme Management (Photoshop Studio Parity) ───────────
+    [ObservableProperty]
+    private string _currentThemeName = "ProDark";
+
+    [RelayCommand]
+    public void SetTheme(string themeName)
+    {
+        CurrentThemeName = themeName;
+        if (Enum.TryParse<Core.Preferences.StudioThemeManager.StudioTheme>(themeName, true, out var theme))
+        {
+            if (CanvasControl != null && TopLevel.GetTopLevel(CanvasControl) is { } topLevel)
+            {
+                Core.Preferences.StudioThemeManager.ApplyTheme(topLevel, theme);
+            }
+            var prefs = Core.Preferences.StudioPreferences.Instance;
+            prefs.CurrentTheme = themeName;
+            prefs.Save();
+            StatusMessage = $"Applied theme: {themeName}.";
+        }
+    }
 
     // ── Canvas Rulers & Grid ───────────────────────────────────────────────
     [ObservableProperty]
@@ -2186,6 +2207,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         _enableNarrowOptionsBar = studioPrefs.EnableNarrowOptionsBar;
         _missingGlyphProtection = studioPrefs.MissingGlyphProtection;
         _documentBitsPerChannel = studioPrefs.DefaultBitsPerChannel;
+        _currentThemeName = studioPrefs.CurrentTheme ?? "ProDark";
         LoadSettings();
         AddSampleElements();
         CreateNewSnapshot("Initial State");
@@ -2195,6 +2217,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         BuildStickerGroups();
         LoadTemplateCards();
         RebuildHistoryItems();
+        InitializeDefaultActions();
     }
 
     private void LoadSettings()
@@ -3199,7 +3222,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────
-    private void RefreshCanvas()
+    public void RefreshCanvas()
     {
         if (CanvasControl == null) return;
         CanvasControl.SetElements(Elements.ToList());

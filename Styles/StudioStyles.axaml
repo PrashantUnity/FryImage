@@ -164,9 +164,9 @@
 
     <!-- Studio Field Inputs (Numeric / Text) -->
     <Style Selector="TextBox, TextBox.ps-field, TextBox.ps-input, TextBox.ps-txt">
-        <Setter Property="Background" Value="{StaticResource PsFieldBrush}" />
+        <Setter Property="Background" Value="#181818" />
         <Setter Property="Foreground" Value="{StaticResource PsTextBrush}" />
-        <Setter Property="BorderBrush" Value="{StaticResource PsBorderLightBrush}" />
+        <Setter Property="BorderBrush" Value="#2E2E2E" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="2" />
         <Setter Property="Height" Value="22" />
@@ -174,63 +174,125 @@
         <Setter Property="FontSize" Value="11" />
         <Setter Property="CaretBrush" Value="#FFFFFF" />
         <Setter Property="SelectionBrush" Value="{StaticResource PsSelectionBrush}" />
+        <Setter Property="SelectionForegroundBrush" Value="#FFFFFF" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
     <Style Selector="TextBox:focus, TextBox.ps-field:focus, TextBox.ps-input:focus, TextBox.ps-txt:focus">
         <Setter Property="BorderBrush" Value="{StaticResource PsAccentBrush}" />
+        <Setter Property="Background" Value="#151515" />
     </Style>
     <Style Selector="TextBox:pointerover, TextBox.ps-field:pointerover, TextBox.ps-input:pointerover, TextBox.ps-txt:pointerover">
         <Setter Property="BorderBrush" Value="#4C4C4C" />
     </Style>
+    <Style Selector="TextBox /template/ TextBlock#PART_Watermark">
+        <Setter Property="Foreground" Value="#666666" />
+        <Setter Property="FontSize" Value="11" />
+    </Style>
 
-    <!-- Studio NumericUpDown -->
+    <!-- Studio NumericUpDown & Micro-Stepper Buttons -->
     <Style Selector="NumericUpDown, NumericUpDown.ps-num">
-        <Setter Property="Background" Value="{StaticResource PsFieldBrush}" />
+        <Setter Property="Background" Value="#181818" />
         <Setter Property="Foreground" Value="{StaticResource PsTextBrush}" />
-        <Setter Property="BorderBrush" Value="{StaticResource PsBorderLightBrush}" />
+        <Setter Property="BorderBrush" Value="#2E2E2E" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="2" />
         <Setter Property="Height" Value="22" />
         <Setter Property="Padding" Value="4,1" />
         <Setter Property="FontSize" Value="11" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
     <Style Selector="NumericUpDown:focus, NumericUpDown.ps-num:focus">
         <Setter Property="BorderBrush" Value="{StaticResource PsAccentBrush}" />
+        <Setter Property="Background" Value="#151515" />
     </Style>
     <Style Selector="NumericUpDown:pointerover, NumericUpDown.ps-num:pointerover">
         <Setter Property="BorderBrush" Value="#4C4C4C" />
     </Style>
+    <Style Selector="NumericUpDown /template/ ButtonSpinner, ButtonSpinner">
+        <Setter Property="Background" Value="#202020" />
+        <Setter Property="BorderBrush" Value="#2E2E2E" />
+        <Setter Property="BorderThickness" Value="1,0,0,0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Width" Value="15" />
+    </Style>
+    <Style Selector="ButtonSpinner /template/ RepeatButton">
+        <Setter Property="Background" Value="#202020" />
+        <Setter Property="Foreground" Value="#888888" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="0" />
+    </Style>
+    <Style Selector="ButtonSpinner /template/ RepeatButton:pointerover">
+        <Setter Property="Background" Value="#333333" />
+        <Setter Property="Foreground" Value="#FFFFFF" />
+    </Style>
+    <Style Selector="ButtonSpinner /template/ RepeatButton:pressed">
+        <Setter Property="Background" Value="#161616" />
+        <Setter Property="Foreground" Value="{StaticResource PsAccentBrush}" />
+    </Style>
 
-    <!-- Studio ComboBox -->
+    <!-- Studio ComboBox & Dropdown Popups -->
     <Style Selector="ComboBox, ComboBox.ps-combo">
-        <Setter Property="Background" Value="{StaticResource PsFieldBrush}" />
+        <Setter Property="Background" Value="#1E1E1E" />
         <Setter Property="Foreground" Value="{StaticResource PsTextBrush}" />
         <Setter Property="BorderBrush" Value="{StaticResource PsBorderLightBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="2" />
         <Setter Property="Height" Value="22" />
-        <Setter Property="Padding" Value="5,1" />
+        <Setter Property="Padding" Value="6,1" />
         <Setter Property="FontSize" Value="11" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
     <Style Selector="ComboBox:pointerover, ComboBox.ps-combo:pointerover">
         <Setter Property="BorderBrush" Value="{StaticResource PsAccentBrush}" />
+        <Setter Property="Background" Value="#222222" />
+    </Style>
+    <Style Selector="ComboBox:focus, ComboBox:dropdownopen">
+        <Setter Property="BorderBrush" Value="{StaticResource PsAccentBrush}" />
+    </Style>
+    <Style Selector="ComboBox /template/ Path#DropDownGlyph">
+        <Setter Property="Fill" Value="#888888" />
+    </Style>
+    <Style Selector="ComboBox:pointerover /template/ Path#DropDownGlyph">
+        <Setter Property="Fill" Value="#FFFFFF" />
+    </Style>
+    <Style Selector="ComboBox /template/ PathIcon#DropDownGlyph">
+        <Setter Property="Foreground" Value="#888888" />
+    </Style>
+    <Style Selector="ComboBox:pointerover /template/ PathIcon#DropDownGlyph">
+        <Setter Property="Foreground" Value="#FFFFFF" />
+    </Style>
+    <Style Selector="ComboBox /template/ Popup#PART_Popup Border#PopupBorder, ComboBox /template/ Popup#PART_Popup Border">
+        <Setter Property="Background" Value="#202020" />
+        <Setter Property="BorderBrush" Value="#383838" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="3" />
+        <Setter Property="BoxShadow" Value="0 6 18 #000000" />
+        <Setter Property="Padding" Value="0,2" />
     </Style>
     <Style Selector="ComboBoxItem">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{StaticResource PsTextBrush}" />
         <Setter Property="FontSize" Value="11" />
-        <Setter Property="Padding" Value="6,3" />
+        <Setter Property="Padding" Value="8,3" />
         <Setter Property="MinHeight" Value="22" />
+        <Setter Property="CornerRadius" Value="2" />
     </Style>
     <Style Selector="ComboBoxItem:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="{StaticResource PsHoverBrush}" />
+        <Setter Property="Background" Value="{StaticResource PsAccentBrush}" />
         <Setter Property="Foreground" Value="#FFFFFF" />
     </Style>
     <Style Selector="ComboBoxItem:selected /template/ ContentPresenter">
-        <Setter Property="Background" Value="{StaticResource PsRowSelectedBrush}" />
+        <Setter Property="Background" Value="#2A2A2B" />
+        <Setter Property="Foreground" Value="#FFFFFF" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="ComboBoxItem:selected:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource PsAccentBrush}" />
         <Setter Property="Foreground" Value="#FFFFFF" />
     </Style>
 
-    <!-- Studio CheckBox -->
+    <!-- Studio CheckBox (Commit bb4e55eb: a pressed box darkens feedback) -->
     <Style Selector="CheckBox">
         <Setter Property="Foreground" Value="{StaticResource PsTextBrush}" />
         <Setter Property="FontSize" Value="11" />
@@ -239,7 +301,7 @@
     </Style>
     <Style Selector="CheckBox /template/ Border#NormalRectangle">
         <Setter Property="BorderBrush" Value="{StaticResource PsBorderLightBrush}" />
-        <Setter Property="Background" Value="{StaticResource PsFieldBrush}" />
+        <Setter Property="Background" Value="#1A1A1A" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="2" />
         <Setter Property="Width" Value="13" />
@@ -247,14 +309,24 @@
     </Style>
     <Style Selector="CheckBox:pointerover /template/ Border#NormalRectangle">
         <Setter Property="BorderBrush" Value="{StaticResource PsAccentBrush}" />
+        <Setter Property="Background" Value="#222222" />
+    </Style>
+    <Style Selector="CheckBox:pressed /template/ Border#NormalRectangle">
+        <Setter Property="Background" Value="#121212" />
+        <Setter Property="BorderBrush" Value="{StaticResource PsBorderLightBrush}" />
     </Style>
     <Style Selector="CheckBox:checked /template/ Border#NormalRectangle">
         <Setter Property="Background" Value="{StaticResource PsAccentBrush}" />
         <Setter Property="BorderBrush" Value="{StaticResource PsAccentHoverBrush}" />
     </Style>
+    <Style Selector="CheckBox:checked:pressed /template/ Border#NormalRectangle">
+        <Setter Property="Background" Value="#2573CA" />
+    </Style>
     <Style Selector="CheckBox:checked /template/ Path#CheckGlyph">
         <Setter Property="Fill" Value="#FFFFFF" />
         <Setter Property="Stroke" Value="#FFFFFF" />
+        <Setter Property="StrokeThickness" Value="1.6" />
+        <Setter Property="StrokeJoin" Value="Round" />
     </Style>
 
     <!-- Studio RadioButton -->
@@ -266,18 +338,22 @@
     </Style>
     <Style Selector="RadioButton /template/ Ellipse#OuterEllipse">
         <Setter Property="Stroke" Value="{StaticResource PsBorderLightBrush}" />
-        <Setter Property="Fill" Value="{StaticResource PsFieldBrush}" />
+        <Setter Property="Fill" Value="#1A1A1A" />
         <Setter Property="StrokeThickness" Value="1" />
         <Setter Property="Width" Value="13" />
         <Setter Property="Height" Value="13" />
     </Style>
     <Style Selector="RadioButton:pointerover /template/ Ellipse#OuterEllipse">
         <Setter Property="Stroke" Value="{StaticResource PsAccentBrush}" />
+        <Setter Property="Fill" Value="#222222" />
+    </Style>
+    <Style Selector="RadioButton:pressed /template/ Ellipse#OuterEllipse">
+        <Setter Property="Fill" Value="#121212" />
     </Style>
     <Style Selector="RadioButton:checked /template/ Ellipse#CheckGlyph">
         <Setter Property="Fill" Value="{StaticResource PsAccentBrush}" />
-        <Setter Property="Width" Value="7" />
-        <Setter Property="Height" Value="7" />
+        <Setter Property="Width" Value="6" />
+        <Setter Property="Height" Value="6" />
     </Style>
 
     <!-- Studio ToolTip -->
@@ -317,6 +393,32 @@
         <Setter Property="Background" Value="#333333" />
         <Setter Property="Height" Value="1" />
         <Setter Property="Margin" Value="2,2" />
+    </Style>
+
+    <!-- Studio TabControl & TabItem (Dock and Document Tabs) -->
+    <Style Selector="TabControl">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="TabItem">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Foreground" Value="{StaticResource PsTextDimBrush}" />
+        <Setter Property="Background" Value="{StaticResource PsTabBrush}" />
+        <Setter Property="Padding" Value="10,4" />
+        <Setter Property="Height" Value="26" />
+        <Setter Property="BorderThickness" Value="0,0,1,0" />
+        <Setter Property="BorderBrush" Value="{StaticResource PsBorderBrush}" />
+    </Style>
+    <Style Selector="TabItem:pointerover">
+        <Setter Property="Foreground" Value="#FFFFFF" />
+        <Setter Property="Background" Value="#262626" />
+    </Style>
+    <Style Selector="TabItem:selected">
+        <Setter Property="Foreground" Value="#FFFFFF" />
+        <Setter Property="Background" Value="{StaticResource PsTabActiveBrush}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="BorderBrush" Value="{StaticResource PsAccentBrush}" />
+        <Setter Property="BorderThickness" Value="0,0,0,2" />
     </Style>
 
     <!-- Layer & History ListBox Row Styling -->

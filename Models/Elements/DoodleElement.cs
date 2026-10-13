@@ -361,19 +361,25 @@ public class DoodleElement : CanvasElement, IHasStroke
     }
 
     /// <summary>
-    /// Renders Soft Round Gaussian Falloff stroke via multi-layered alpha falloff.
+    /// Renders Soft Round Gaussian Falloff stroke via multi-layered alpha falloff
+    /// based on Photoshop 27.11's measured tip profile (Commit cf804c4b parity).
     /// </summary>
     private void DrawSoftRoundStroke(DrawingContext dc, IReadOnlyList<Point> pts, Color color)
     {
         var geom = BuildSmoothGeometry(pts);
 
-        // 3 concentric layers mimicking Gaussian falloff
-        double[] sizeMultipliers = { 1.0, 0.70, 0.40 };
-        double[] alphaMultipliers = { 0.25, 0.45, 0.70 };
+        double radius = Math.Max(0.5, StrokeThickness / 2.0);
+        var (core, shoulder) = BrushEngine.GetTipShape(radius, Hardness);
+        double reach = BrushEngine.TipReach(radius, Hardness);
+
+        // 4 concentric layers sampling Photoshop 27.11 Gaussian falloff curve
+        double[] sizeMultipliers = { Math.Max(1.0, reach / radius), 1.0, Math.Max(0.5, (core + shoulder) / radius), Math.Max(0.2, core / radius) };
+        double[] alphaWeights = { 0.15, 0.35, 0.65, 1.0 };
 
         for (int i = 0; i < sizeMultipliers.Length; i++)
         {
-            var layerColor = Color.FromArgb((byte)(color.A * alphaMultipliers[i] * Flow), color.R, color.G, color.B);
+            if (sizeMultipliers[i] <= 0.05) continue;
+            var layerColor = Color.FromArgb((byte)Math.Clamp((int)(color.A * alphaWeights[i] * Flow), 0, 255), color.R, color.G, color.B);
             var layerPen = new Pen(new SolidColorBrush(layerColor), StrokeThickness * sizeMultipliers[i], lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);
             dc.DrawGeometry(null, layerPen, geom);
         }

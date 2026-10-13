@@ -56,6 +56,79 @@ public static class BrushEngine
         return Math.Max(1.0, brushSize * (spacingPercent / 100.0));
     }
 
+    // ── Photoshop 27.11 Measured Round Tip Model (Commit cf804c4b parity) ──
+    private static readonly (double R0, double S)[] TipShapeTable =
+    [
+        (0.00, 0.664), (0.14, 0.58), (0.28, 0.50), (0.40, 0.44), (0.52, 0.36),
+        (0.63, 0.29), (0.70, 0.24), (0.78, 0.19), (0.84, 0.15), (0.89, 0.11), (1.00, 0.0)
+    ];
+
+    private const double TipEdgePx = 1.2;
+
+    /// <summary>
+    /// Core radius and shoulder width (both in pixels) of a round tip with given radius and hardness [0..1].
+    /// </summary>
+    public static (double CoreRadius, double ShoulderWidth) GetTipShape(double radius, double hardness)
+    {
+        double h = double.IsNaN(hardness) ? 0.0 : Math.Clamp(hardness, 0.0, 1.0) * 10.0;
+        int i = Math.Min((int)Math.Floor(h), 9);
+        double t = h - i;
+        var a = TipShapeTable[i];
+        var b = TipShapeTable[i + 1];
+        double r0Norm = a.R0 + (b.R0 - a.R0) * t;
+        double sNorm = a.S + (b.S - a.S) * t;
+
+        double r = double.IsFinite(radius) ? Math.Max(0.0, radius) : 0.0;
+        double edge = Math.Max(0.25, Math.Min(TipEdgePx, 0.3 * r));
+        double core = Math.Max(0.0, Math.Min(r - edge, r0Norm * r));
+        double shoulder = Math.Max(1e-3, Math.Max(edge, sNorm * r));
+        return (core, shoulder);
+    }
+
+    /// <summary>
+    /// Evaluates exp(-u) as (1 - u/64)^64 by 6 squarings for exact cross-platform arithmetic.
+    /// </summary>
+    public static double SoftExp(double u)
+    {
+        double g = Math.Clamp(1.0 - u / 64.0, 0.0, 1.0);
+        for (int i = 0; i < 6; i++)
+        {
+            g *= g;
+        }
+        return g;
+    }
+
+    /// <summary>
+    /// Coverage of a round dab at distance d from its center.
+    /// </summary>
+    public static double DabCoverage(double d, double radius, double hardness)
+    {
+        if (double.IsNaN(d) || d >= TipReach(radius, hardness) + 0.5) return 0.0;
+        var (core, shoulder) = GetTipShape(radius, hardness);
+        if (d <= core) return 1.0;
+        double x = (d - core) / shoulder;
+        return SoftExp(x * x);
+    }
+
+    /// <summary>
+    /// Distance from center where dab falloff drops below 0.1%.
+    /// </summary>
+    public static double TipReach(double radius, double hardness)
+    {
+        var (core, shoulder) = GetTipShape(radius, hardness);
+        return core + 2.6 * shoulder;
+    }
+
+    /// <summary>
+    /// Distance from center where coverage drops to 50% (normal brush cursor outline).
+    /// </summary>
+    public static double HalfCoverageRadius(double radius, double hardness)
+    {
+        var (core, shoulder) = GetTipShape(radius, hardness);
+        double u = 64.0 * (1.0 - Math.Pow(0.5, 1.0 / 64.0));
+        return core + shoulder * Math.Sqrt(u);
+    }
+
     /// <summary>
     /// Fast deterministic pseudo-random generator for reproducible stroke jitter.
     /// </summary>

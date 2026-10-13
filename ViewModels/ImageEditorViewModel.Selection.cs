@@ -258,6 +258,107 @@ public partial class ImageEditorViewModel
         }
     }
 
+    // ── Photoshop Select › Modify Operations ────────────────────────────────
+    [RelayCommand]
+    public void ModifySelectionBorder(int radius = 4)
+    {
+        EnsureSelectionMask();
+        if (CanvasControl?.QuickMaskBuffer == null) return;
+
+        int w = (int)Math.Max(1, CanvasWidth);
+        int h = (int)Math.Max(1, CanvasHeight);
+        CanvasControl.QuickMaskBuffer = SelectionModifyEngine.Border(CanvasControl.QuickMaskBuffer, w, h, Math.Max(1, radius));
+        CanvasControl.IsQuickMaskMode = true;
+        CanvasControl.InvalidateVisual();
+        StatusMessage = $"Select › Modify › Border ({radius} px soft band applied).";
+    }
+
+    [RelayCommand]
+    public void ModifySelectionSmooth(int radius = 4)
+    {
+        EnsureSelectionMask();
+        if (CanvasControl?.QuickMaskBuffer == null) return;
+
+        int w = (int)Math.Max(1, CanvasWidth);
+        int h = (int)Math.Max(1, CanvasHeight);
+        CanvasControl.QuickMaskBuffer = SelectionModifyEngine.Smooth(CanvasControl.QuickMaskBuffer, w, h, Math.Max(1, radius));
+        CanvasControl.IsQuickMaskMode = true;
+        CanvasControl.InvalidateVisual();
+        StatusMessage = $"Select › Modify › Smooth ({radius} px applied).";
+    }
+
+    [RelayCommand]
+    public void ModifySelectionExpand(int radius = 4)
+    {
+        EnsureSelectionMask();
+        if (CanvasControl?.QuickMaskBuffer == null) return;
+
+        int w = (int)Math.Max(1, CanvasWidth);
+        int h = (int)Math.Max(1, CanvasHeight);
+        CanvasControl.QuickMaskBuffer = SelectionModifyEngine.Expand(CanvasControl.QuickMaskBuffer, w, h, Math.Max(1, radius));
+        CanvasControl.IsQuickMaskMode = true;
+        CanvasControl.InvalidateVisual();
+        StatusMessage = $"Select › Modify › Expand ({radius} px applied).";
+    }
+
+    [RelayCommand]
+    public void ModifySelectionContract(int radius = 4)
+    {
+        EnsureSelectionMask();
+        if (CanvasControl?.QuickMaskBuffer == null) return;
+
+        int w = (int)Math.Max(1, CanvasWidth);
+        int h = (int)Math.Max(1, CanvasHeight);
+        CanvasControl.QuickMaskBuffer = SelectionModifyEngine.Contract(CanvasControl.QuickMaskBuffer, w, h, Math.Max(1, radius));
+        CanvasControl.IsQuickMaskMode = true;
+        CanvasControl.InvalidateVisual();
+        StatusMessage = $"Select › Modify › Contract ({radius} px applied).";
+    }
+
+    [RelayCommand]
+    public void ModifySelectionFeather(double radius = 5.0)
+    {
+        EnsureSelectionMask();
+        if (CanvasControl?.QuickMaskBuffer == null) return;
+
+        int w = (int)Math.Max(1, CanvasWidth);
+        int h = (int)Math.Max(1, CanvasHeight);
+        CanvasControl.QuickMaskBuffer = SelectionModifyEngine.Feather(CanvasControl.QuickMaskBuffer, w, h, Math.Max(0.5, radius));
+        CanvasControl.IsQuickMaskMode = true;
+        CanvasControl.InvalidateVisual();
+        StatusMessage = $"Select › Modify › Feather ({radius} px radius applied).";
+    }
+
+    private void EnsureSelectionMask()
+    {
+        if (CanvasControl == null) return;
+        int w = (int)Math.Max(1, CanvasWidth);
+        int h = (int)Math.Max(1, CanvasHeight);
+
+        if (CanvasControl.QuickMaskBuffer == null || CanvasControl.QuickMaskBuffer.Length < w * h)
+        {
+            var mask = new byte[w * h];
+            if (SelectedElement != null)
+            {
+                int minX = Math.Clamp((int)SelectedElement.X, 0, w - 1);
+                int minY = Math.Clamp((int)SelectedElement.Y, 0, h - 1);
+                int maxX = Math.Clamp((int)(SelectedElement.X + SelectedElement.Width), 0, w - 1);
+                int maxY = Math.Clamp((int)(SelectedElement.Y + SelectedElement.Height), 0, h - 1);
+
+                for (int y = minY; y <= maxY; y++)
+                {
+                    int row = y * w;
+                    for (int x = minX; x <= maxX; x++)
+                    {
+                        mask[row + x] = 255;
+                    }
+                }
+            }
+            CanvasControl.QuickMaskBuffer = mask;
+            CanvasControl.IsQuickMaskMode = true;
+        }
+    }
+
     // ── Color Range Workspace State ─────────────────────────────────────────
     [ObservableProperty] private bool _isColorRangeDialogOpen;
     [ObservableProperty] private string _colorRangeSelectMode = "SampledColors";

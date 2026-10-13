@@ -179,4 +179,26 @@ public partial class EditorCanvasControl
         // Text
         dc.DrawText(formattedText, new Point(x + 15, y + (badgeHeight - formattedText.Height) / 2));
     }
+
+    /// <summary>
+    /// Resamples an ImageElement raster with Photoshop's Keys Bicubic and reduction prefiltering (Commit 9c3f9664 parity).
+    /// Prevents moiré and aliasing during transforms and scales.
+    /// </summary>
+    public static void ResampleImageElementBicubic(ImageElement image, int newWidth, int newHeight)
+    {
+        if (image.OriginalImageBytes == null || image.OriginalImageBytes.Length == 0) return;
+        using var srcBmp = SkiaSharp.SKBitmap.Decode(image.OriginalImageBytes);
+        if (srcBmp == null) return;
+
+        using var resizedBmp = PdfEditorApp.Plugins.ImageEditor.Core.Raster.BicubicResampler.ResizeWithPrefilter(srcBmp, newWidth, newHeight);
+        using var img = SkiaSharp.SKImage.FromBitmap(resizedBmp);
+        using var data = img.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+        byte[] bytes = data.ToArray();
+
+        image.OriginalImageBytes = bytes;
+        image.AdjustedSource?.Dispose();
+        image.AdjustedSource = new Avalonia.Media.Imaging.Bitmap(new System.IO.MemoryStream(bytes));
+        image.NaturalPixelWidth = newWidth;
+        image.NaturalPixelHeight = newHeight;
+    }
 }

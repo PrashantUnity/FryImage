@@ -68,8 +68,37 @@ public sealed class LiquifyMesh
     public (double Gc, double Gr) ToGrid(double x, double y) =>
         (x / CellSize, y / CellSize);
 
+    private Point? _lastStrokeEnd;
+    private double _carry = 0.0;
+
+    /// <summary>
+    /// Resets continuous stroke spacing accumulator.
+    /// </summary>
+    public void ResetStroke()
+    {
+        _lastStrokeEnd = null;
+        _carry = 0.0;
+    }
+
+    /// <summary>
+    /// Photoshop falloff curve: blends (1 - t^2)^3 at Density 0 towards (1 - t^4)^2 at Density 100.
+    /// Fades strictly to 0 at the rim with 0 slope, preventing sawtooth edge tears (Commit 599aea00 parity).
+    /// </summary>
+    public static double Falloff(double t2, double density)
+    {
+        t2 = Math.Clamp(t2, 0.0, 1.0);
+        density = double.IsNaN(density) ? 0.5 : Math.Clamp(density, 0.0, 1.0);
+        double oneMinusT2 = 1.0 - t2;
+        double feathered = oneMinusT2 * oneMinusT2 * oneMinusT2;
+        double oneMinusT4 = 1.0 - t2 * t2;
+        double dense = oneMinusT4 * oneMinusT4;
+        return feathered + (dense - feathered) * density;
+    }
+
     /// <summary>
     /// Applies a brush stroke dab or segment between startPt and endPt.
+    /// Implements stroke-continuous spacing (Commit 32552a61 parity) so fast and slow pointer movements
+    /// produce identical smooth deformation fields.
     /// </summary>
     public void ApplyDab(
         LiquifyTool tool,
@@ -81,33 +110,51 @@ public sealed class LiquifyMesh
         double rate = 80.0)
     {
         double radius = Math.Max(1.0, brushSize / 2.0);
-        double dist = Math.Sqrt((endPt.X - startPt.X) * (endPt.X - startPt.X) + (endPt.Y - startPt.Y) * (endPt.Y - startPt.Y));
+        double dx = endPt.X - startPt.X;
+        double dy = endPt.Y - startPt.Y;
+        double dist = Math.Sqrt(dx * dx + dy * dy);
+
+        bool isStationary = tool != LiquifyTool.ForwardWarp && tool != LiquifyTool.PushLeft;
 
         if (dist <= 0.5)
         {
-            ApplySingleDab(tool, endPt, new Avalonia.Vector(0, 0), radius, density, pressure, rate);
+            ApplySingleDab(tool, endPt, new Avalonia.Vector(0, 0), radius, density, pressure, rate, 1.0);
+            _lastStrokeEnd = endPt;
             return;
         }
 
-        double spacing = Math.Max(1.0, radius * 0.25);
-        int steps = Math.Max(1, (int)Math.Ceiling(dist / spacing));
+        double spacing = Math.Max(0.5, radius * 0.05);
+        double weight = isStationary ? (spacing / Math.Max(0.5, radius * 0.2)) : 1.0;
 
-        for (int k = 1; k <= steps; k++)
+        if (_lastStrokeEnd == null || Point.Distance(_lastStrokeEnd.Value, startPt) > 1.0)
         {
-            double t0 = (k - 1.0) / steps;
-            double t1 = (double)k / steps;
-
-            Point curr = new(
-                startPt.X + (endPt.X - startPt.X) * t1,
-                startPt.Y + (endPt.Y - startPt.Y) * t1);
-
-            Avalonia.Vector delta = new(
-                (endPt.X - startPt.X) * (t1 - t0),
-                (endPt.Y - startPt.Y) * (t1 - t0));
-
-            Point center = tool == LiquifyTool.ForwardWarp ? new(curr.X - delta.X, curr.Y - delta.Y) : curr;
-            ApplySingleDab(tool, center, delta, radius, density, pressure, rate);
+            _carry = 0.0;
         }
+
+        double first = Math.Clamp(spacing - _carry, 0.0, spacing);
+        double slack = spacing * 1e-6;
+
+        if (first > dist + slack)
+        {
+            _carry += dist;
+            _lastStrokeEnd = endPt;
+            return;
+        }
+
+        double lastDabDist = 0;
+        for (double s = first; s <= dist + slack; s += spacing)
+        {
+            double t = Math.Clamp(s / dist, 0.0, 1.0);
+            Point curr = new(startPt.X + dx * t, startPt.Y + dy * t);
+            Avalonia.Vector delta = new(dx * (spacing / dist), dy * (spacing / dist));
+            Point center = tool == LiquifyTool.ForwardWarp ? new(curr.X - delta.X, curr.Y - delta.Y) : curr;
+
+            ApplySingleDab(tool, center, delta, radius, density, pressure, rate, weight);
+            lastDabDist = s;
+        }
+
+        _carry = Math.Max(0.0, dist - lastDabDist);
+        _lastStrokeEnd = endPt;
     }
 
     private void ApplySingleDab(
@@ -117,9 +164,10 @@ public sealed class LiquifyMesh
         double radius,
         double density,
         double pressure,
-        double rate)
+        double rate,
+        double weight = 1.0)
     {
-        double strength = Math.Clamp(pressure / 100.0, 0.0, 1.0);
+        double strength = Math.Clamp(pressure / 100.0, 0.0, 1.0) * weight;
         double rateFactor = Math.Clamp(rate / 100.0, 0.0, 1.0);
         double dens = Math.Clamp(density / 100.0, 0.0, 1.0);
 
@@ -145,10 +193,7 @@ public sealed class LiquifyMesh
                 double t2 = distSq / (radius * radius);
                 if (t2 >= 1.0) continue;
 
-                // Photoshop falloff
-                double feathered = Math.Pow(Math.Max(0.0, 1.0 - t2), 3.0);
-                double dense = Math.Pow(Math.Max(0.0, 1.0 - t2 * t2), 2.0);
-                double fall = feathered + (dense - feathered) * dens;
+                double fall = Falloff(t2, dens);
 
                 int idx = row + c;
                 double kRaw = strength * fall;

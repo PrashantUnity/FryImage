@@ -237,6 +237,14 @@
                             <MenuItem Header="Subject" Command="{Binding SelectSubjectCommand}" />
                             <MenuItem Header="Color Range..." Command="{Binding OpenColorRangeDialogCommand}" />
                             <MenuItem Header="Select and Mask..." InputGesture="Ctrl+Alt+R" Command="{Binding OpenSelectAndMaskDialogCommand}" />
+                            <MenuItem Header="Modify">
+                                <MenuItem Header="Border..." Command="{Binding ModifySelectionBorderCommand}" />
+                                <MenuItem Header="Smooth..." Command="{Binding ModifySelectionSmoothCommand}" />
+                                <MenuItem Header="Expand..." Command="{Binding ModifySelectionExpandCommand}" />
+                                <MenuItem Header="Contract..." Command="{Binding ModifySelectionContractCommand}" />
+                                <Separator />
+                                <MenuItem Header="Feather..." InputGesture="Shift+F6" Command="{Binding ModifySelectionFeatherCommand}" />
+                            </MenuItem>
                             <Separator />
                             <MenuItem Header="Make Work Path from Selection..." Command="{Binding MakeWorkPathFromSelectionCommand}" />
                             <MenuItem Header="Convert Selection to Shape" Command="{Binding ConvertSelectionToShapeCommand}" />

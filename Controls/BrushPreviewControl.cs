@@ -209,13 +209,16 @@ public class BrushPreviewControl : Control
                 }
                 else
                 {
-                    // Soft falloff ring
+                    // Photoshop measured round tip profile (Commit cf804c4b parity)
                     double hardnessNorm = Math.Clamp(BrushHardness / 100.0, 0.0, 1.0);
-                    double innerRx = Math.Max(1.0, rX * hardnessNorm);
-                    double innerRy = Math.Max(1.0, rY * hardnessNorm);
+                    var (core, shoulder) = BrushEngine.GetTipShape(rX, hardnessNorm);
+                    double innerRx = Math.Max(1.0, core);
+                    double innerRy = Math.Max(1.0, core * roundness);
+                    double reachX = Math.Min(rX * 1.3, BrushEngine.TipReach(rX, hardnessNorm));
+                    double reachY = Math.Min(rY * 1.3, reachX * roundness);
 
-                    var outerBrush = new SolidColorBrush(Color.FromArgb((byte)(alpha * 0.4), tipColor.R, tipColor.G, tipColor.B));
-                    dc.DrawEllipse(outerBrush, null, new Point(0, 0), rX, rY);
+                    var outerBrush = new SolidColorBrush(Color.FromArgb((byte)(alpha * 0.35), tipColor.R, tipColor.G, tipColor.B));
+                    dc.DrawEllipse(outerBrush, null, new Point(0, 0), reachX, reachY);
                     dc.DrawEllipse(brush, null, new Point(0, 0), innerRx, innerRy);
                 }
             }

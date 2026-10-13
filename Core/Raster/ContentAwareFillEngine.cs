@@ -149,6 +149,10 @@ public static class ContentAwareFillEngine
                     rng);
 
                 uint sampleColor = pixels[bestSy * width + bestSx];
+                if (colorAdaptation)
+                {
+                    sampleColor = AdaptPatchColor(pixels, currentHole, width, height, bx, by, bestSx, bestSy, PatchRadius, sampleColor);
+                }
                 filledThisRound[i] = (bx, by, sampleColor);
             });
 
@@ -260,6 +264,113 @@ public static class ContentAwareFillEngine
         }
 
         return bestMatch;
+    }
+
+    /// <summary>
+    /// Fits channel gain and bias with gradient/sky tint protection (Commit 09db9f14 parity).
+    /// Prevents tinted blotches in smooth gradients when variance ratio is dominated by noise.
+    /// </summary>
+    public static (double Gain, double Bias) FitChannel(double mt, double vt, double ms, double vs, double biasLimit = 20.0)
+    {
+        double g = vs > 1e-6 ? Math.Sqrt(vt / vs) : 1.0;
+        double lo = 0.8;
+        double hi = 1.25;
+
+        const double flatVar = 25.0; // (5 levels / 255)^2 in [0..255] space = ~25.0
+        if (Math.Max(vt, vs) < flatVar && Math.Abs(mt - ms) <= biasLimit && ms > 1e-4)
+        {
+            double glo = (mt - biasLimit) / ms;
+            double ghi = (mt + biasLimit) / ms;
+            if (Math.Max(glo, lo) <= Math.Min(ghi, hi))
+            {
+                lo = Math.Max(glo, lo);
+                hi = Math.Min(ghi, hi);
+            }
+        }
+
+        g = Math.Clamp(g, lo, hi);
+        double b = Math.Clamp(mt - g * ms, -biasLimit, biasLimit);
+        return (g, b);
+    }
+
+    private static uint AdaptPatchColor(
+        uint[] pixels,
+        byte[] hole,
+        int width,
+        int height,
+        int targetX,
+        int targetY,
+        int sourceX,
+        int sourceY,
+        int radius,
+        uint sampleColor)
+    {
+        double sumTr = 0, sumTg = 0, sumTb = 0;
+        double sumTTr = 0, sumTTg = 0, sumTTb = 0;
+        double sumSr = 0, sumSg = 0, sumSb = 0;
+        double sumSSr = 0, sumSSg = 0, sumSSb = 0;
+        int count = 0;
+
+        for (int dy = -radius; dy <= radius; dy++)
+        {
+            int ty = targetY + dy;
+            int sy = sourceY + dy;
+            if (ty < 0 || ty >= height || sy < 0 || sy >= height) continue;
+
+            int tRow = ty * width;
+            int sRow = sy * width;
+
+            for (int dx = -radius; dx <= radius; dx++)
+            {
+                int tx = targetX + dx;
+                int sx = sourceX + dx;
+                if (tx < 0 || tx >= width || sx < 0 || sx >= width) continue;
+
+                if (hole[tRow + tx] == 0)
+                {
+                    uint ct = pixels[tRow + tx];
+                    uint cs = pixels[sRow + sx];
+
+                    double tr = ct & 0xFF;
+                    double tg = (ct >> 8) & 0xFF;
+                    double tb = (ct >> 16) & 0xFF;
+
+                    double sr = cs & 0xFF;
+                    double sg = (cs >> 8) & 0xFF;
+                    double sb = (cs >> 16) & 0xFF;
+
+                    sumTr += tr; sumTg += tg; sumTb += tb;
+                    sumTTr += tr * tr; sumTTg += tg * tg; sumTTb += tb * tb;
+
+                    sumSr += sr; sumSg += sg; sumSb += sb;
+                    sumSSr += sr * sr; sumSSg += sg * sg; sumSSb += sb * sb;
+                    count++;
+                }
+            }
+        }
+
+        if (count < 4) return sampleColor;
+
+        double mTr = sumTr / count, mTg = sumTg / count, mTb = sumTb / count;
+        double vTr = Math.Max(0.0, sumTTr / count - mTr * mTr);
+        double vTg = Math.Max(0.0, sumTTg / count - mTg * mTg);
+        double vTb = Math.Max(0.0, sumTTb / count - mTb * mTb);
+
+        double mSr = sumSr / count, mSg = sumSg / count, mSb = sumSb / count;
+        double vSr = Math.Max(0.0, sumSSr / count - mSr * mSr);
+        double vSg = Math.Max(0.0, sumSSg / count - mSg * mSg);
+        double vSb = Math.Max(0.0, sumSSb / count - mSb * mSb);
+
+        var (gr, br) = FitChannel(mTr, vTr, mSr, vSr);
+        var (gg, bg) = FitChannel(mTg, vTg, mSg, vSg);
+        var (gb, bb) = FitChannel(mTb, vTb, mSb, vSb);
+
+        double r = Math.Clamp(gr * (sampleColor & 0xFF) + br, 0.0, 255.0);
+        double g = Math.Clamp(gg * ((sampleColor >> 8) & 0xFF) + bg, 0.0, 255.0);
+        double b = Math.Clamp(gb * ((sampleColor >> 16) & 0xFF) + bb, 0.0, 255.0);
+        uint a = (sampleColor >> 24) & 0xFF;
+
+        return (uint)Math.Round(r) | ((uint)Math.Round(g) << 8) | ((uint)Math.Round(b) << 16) | (a << 24);
     }
 
     private static void SmoothSeamBoundaries(

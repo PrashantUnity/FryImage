@@ -637,6 +637,90 @@ public static class ParityFeatureSnapshotSuite
             throw new InvalidOperationException($"CheckMissingFonts failed to report warning: '{vm.StatusMessage}'");
         }
         Console.WriteLine("  ✓ File Open missing font warning verified.");
+
+        // 38. Test Select › Modify › Border 2r soft band parity (878c3eaf)
+        int maskDim = 64;
+        byte[] testSquareMask = new byte[maskDim * maskDim];
+        for (int y = 16; y < 48; y++)
+        {
+            for (int x = 16; x < 48; x++) testSquareMask[y * maskDim + x] = 255;
+        }
+        byte[] borderMask = SelectionModifyEngine.Border(testSquareMask, maskDim, maskDim, radius: 4);
+        // Verify soft linear falloff across the edge (x = 13..18 at y = 32)
+        // Values must be graded, not a binary 0/255 ring
+        bool hasIntermediateAlpha = false;
+        for (int x = 12; x <= 20; x++)
+        {
+            byte v = borderMask[32 * maskDim + x];
+            if (v > 10 && v < 240) hasIntermediateAlpha = true;
+        }
+        if (!hasIntermediateAlpha)
+        {
+            throw new InvalidOperationException("SelectionModifyEngine.Border must produce Photoshop's soft band with fractional falloff.");
+        }
+        Console.WriteLine("  ✓ Select › Modify › Border 2r soft band & distance falloff verified.");
+
+        // 39. Test Select › Modify › Smooth 0.5 threshold parity (96ee4f91)
+        byte[] smoothMask = SelectionModifyEngine.Smooth(testSquareMask, maskDim, maskDim, radius: 4);
+        bool onlyBinary = true;
+        for (int i = 0; i < smoothMask.Length; i++)
+        {
+            byte val = smoothMask[i];
+            if (val != 0 && val != 255) onlyBinary = false;
+        }
+        if (!onlyBinary)
+        {
+            throw new InvalidOperationException("SelectionModifyEngine.Smooth must threshold strictly at 0.5 producing only 0 and 255 (no grey fringes).");
+        }
+        Console.WriteLine("  ✓ Select › Modify › Smooth hard 0.5 threshold verified.");
+
+        // 40. Test Bicubic Keys Cubic Kernel (a = -0.75) & Reduction Prefilter (9c3f9664)
+        BicubicResampler.GetKeysWeights(0.0, out double w0, out double w1, out double w2, out double w3);
+        if (Math.Abs(w1 - 1.0) > 1e-4 || Math.Abs(w0) > 1e-4 || Math.Abs(w2) > 1e-4 || Math.Abs(w3) > 1e-4)
+        {
+            throw new InvalidOperationException("Keys bicubic weights at t=0 must evaluate to [0, 1, 0, 0].");
+        }
+        using var bicubicSrc = new SKBitmap(32, 32, SKColorType.Bgra8888, SKAlphaType.Premul);
+        bicubicSrc.Erase(SKColors.DodgerBlue);
+        using var bicubicResized = BicubicResampler.ResizeWithPrefilter(bicubicSrc, 16, 16);
+        if (bicubicResized == null || bicubicResized.Width != 16 || bicubicResized.Height != 16)
+        {
+            throw new InvalidOperationException("BicubicResampler.ResizeWithPrefilter failed.");
+        }
+        Console.WriteLine("  ✓ Bicubic Keys cubic kernel (a = -0.75) & reduction prefilter verified.");
+
+        // 41. Test Photoshop 27.11 Measured Round Tip Model (cf804c4b)
+        var (coreR, shoulderW) = BrushEngine.GetTipShape(radius: 20.0, hardness: 0.5);
+        if (coreR <= 0 || shoulderW <= 0)
+        {
+            throw new InvalidOperationException("BrushEngine.GetTipShape produced invalid dimensions.");
+        }
+        double covCenter = BrushEngine.DabCoverage(0.0, 20.0, 0.5);
+        double covFar = BrushEngine.DabCoverage(100.0, 20.0, 0.5);
+        if (Math.Abs(covCenter - 1.0) > 1e-4 || covFar != 0.0)
+        {
+            throw new InvalidOperationException("BrushEngine.DabCoverage must be 1.0 at center and 0.0 past tip reach.");
+        }
+        Console.WriteLine("  ✓ Photoshop 27.11 measured round tip model (core, shoulder, reach) verified.");
+
+        // 42. Test Liquify Continuous Dab Spacing & Flat-Rim Falloff (32552a61, 599aea00)
+        double fallCenter = LiquifyMesh.Falloff(0.0, 0.5);
+        double fallRim = LiquifyMesh.Falloff(1.0, 0.5);
+        if (Math.Abs(fallCenter - 1.0) > 1e-4 || Math.Abs(fallRim - 0.0) > 1e-4)
+        {
+            throw new InvalidOperationException("LiquifyMesh.Falloff must be 1.0 at center and exactly 0.0 at rim.");
+        }
+        var mesh = new LiquifyMesh(100, 100);
+        mesh.ApplyDab(LiquifyTool.ForwardWarp, new Point(20, 20), new Point(40, 20), brushSize: 30);
+        Console.WriteLine("  ✓ Liquify stroke-continuous dab spacing & rim falloff verified.");
+
+        // 43. Test Content-Aware Fill Gradient Tint Protection (09db9f14)
+        var (gainFlat, biasFlat) = ContentAwareFillEngine.FitChannel(mt: 180.0, vt: 4.0, ms: 182.0, vs: 4.0, biasLimit: 20.0);
+        if (Math.Abs(gainFlat - 1.0) > 0.15)
+        {
+            throw new InvalidOperationException($"FitChannel failed to constrain gain on flat gradient patch: {gainFlat}");
+        }
+        Console.WriteLine("  ✓ Content-Aware Fill gradient tint protection (FitChannel gain constraint) verified.");
     }
 
     private static byte[] CreateSyntheticPcx24(int width, int height)

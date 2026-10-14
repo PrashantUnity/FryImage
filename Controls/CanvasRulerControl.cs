@@ -8,9 +8,14 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.VisualTree;
-using PdfEditorApp.Core.Models;
-
 namespace PdfEditorApp.Plugins.ImageEditor.Controls;
+
+public enum RulerUnit
+{
+    Points,
+    Inches,
+    Millimeters
+}
 
 public class CanvasRulerControl : Control
 {

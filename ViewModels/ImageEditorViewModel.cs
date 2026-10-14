@@ -20,10 +20,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
-using PdfEditorApp.Core.Models;
-using PdfEditorApp.Core.Plugins.Descriptors;
-using PdfEditorApp.Core.Plugins.Settings;
-using PdfEditorApp.Core.Services;
+using FryWorld.Sdk.Services;
 using PdfEditorApp.Plugins.ImageEditor.Controls;
 using PdfEditorApp.Plugins.ImageEditor.Core.Paint;
 using PdfEditorApp.Plugins.ImageEditor.Models;
@@ -44,8 +41,8 @@ namespace PdfEditorApp.Plugins.ImageEditor;
 /// </summary>
 public partial class ImageEditorViewModel : ObservableObject, IDisposable
 {
-    private const string PluginId = "frypdf.overlay.imageeditor";
-    private readonly IPluginSettingsStore? _settingsStore;
+    private const string PluginId = "com.fryworld.imageeditor";
+    private readonly ISettingsManager? _settingsStore;
     private readonly IOverlayRegistry? _overlayRegistry;
 
     /// <summary>Null in the standalone Runner (its minimal IServiceProvider only supplies
@@ -2399,7 +2396,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     // ── Constructor ────────────────────────────────────────────────────────
     public ImageEditorViewModel(IServiceProvider? serviceProvider = null)
     {
-        _settingsStore = serviceProvider?.GetService<IPluginSettingsStore>();
+        _settingsStore = serviceProvider?.GetService<ISettingsManager>();
         _fontPackageService = serviceProvider?.GetService<IFontPackageService>();
         _overlayRegistry = serviceProvider?.GetService<IOverlayRegistry>();
         History.HistoryChanged += (_, _) =>

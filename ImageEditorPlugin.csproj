@@ -17,7 +17,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="FryPdf.PluginSdk" Version="0.0.8" PrivateAssets="all" />
+    <PackageReference Include="FryWorld.Sdk" Version="0.0.2" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>

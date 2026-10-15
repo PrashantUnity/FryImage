@@ -1,10 +1,10 @@
 {
   "id": "com.fryworld.imageeditor",
   "name": "Image Editor",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "author": "FryPDF Team",
-  "description": "Professional layered design and photo editing studio: inpainting Remove tool, Curves, Liquify, Shadows/Highlights, Black & White adjustments, text warp, Grd/Abr/Patterns and FITS/PCX/KRA codecs, OpenType typography, layers panel, and template gallery.",
-  "releaseNotes": "Adds inpainting Remove tool, Shadows/Highlights and Black & White adjustments, Curves and Liquify engines, text warp Bezier distortion, expanded codecs (Grd/Abr/Patterns, FITS, PCX, KRA), OpenType typography features, color range selection, and enhanced studio workflows.",
+  "description": "Professional layered design and photo editing studio: modular docking workspace, inpainting Remove tool, Curves, Liquify, Shadows/Highlights, Black & White adjustments, text warp, Grd/Abr/Patterns and FITS/PCX/KRA codecs, OpenType typography, layers panel, and template gallery.",
+  "releaseNotes": "Adds modular dock workspace layout with tab grouping, edge splitting, and multi-zone docking; restores palette panels (Brushes, Actions, Adjustments, Gradients, Swatches, Navigator, Info, Channels, Paths); expands raster, vector, and codec engines.",
   "entryPoint": "ImageEditorPlugin.dll",
   "icon": "ImageEditOutline",
   "dependencies": [],

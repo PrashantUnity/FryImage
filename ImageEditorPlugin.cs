@@ -54,24 +54,14 @@ public class ImageEditorPlugin : IFryPlugin
 
     public Task ApplyAsync(IFryPluginContext ctx, CancellationToken ct = default)
     {
+        // Opens the studio page in whichever shell hosts the plugin: FryWorld, FryPDF or the standalone runner.
         void NavigateToStudio()
         {
-            var homeType = Type.GetType("PdfEditorApp.ViewModels.HomeViewModel, PdfEditorApp");
-            if (homeType != null)
-            {
-                var home = ctx.GetService(homeType);
-                homeType.GetMethod("SelectNavSection")?.Invoke(home, ["ImageEditorStudio"]);
-            }
-            var fryWorldVmType = Type.GetType("FryWorld.ViewModels.MainViewModel, FryWorld");
-            if (fryWorldVmType != null)
-            {
-                var mainVm = ctx.GetService(fryWorldVmType);
-                fryWorldVmType.GetMethod("NavigateToPlugin")?.Invoke(mainVm, ["com.fryworld.imageeditor"]);
-            }
+            if (ctx.TryGetService<IShellService>(out var shell)) shell.NavigateTo("com.fryworld.imageeditor");
         }
 
         // 0. Register Full-Viewport Workspace Studio Page in Left Navigation Rail
-        var navReg = ctx.RegisterNavigationItem(new NavigationItemDescriptor
+        ctx.RegisterNavigationItem(new NavigationItemDescriptor
         {
             Id = "com.fryworld.imageeditor",
             Title = "Image Editor",
@@ -86,7 +76,7 @@ public class ImageEditorPlugin : IFryPlugin
         });
 
         // 1. Register Shell Overlay
-        var overlayReg = ctx.RegisterOverlay(new OverlayDescriptor
+        ctx.RegisterOverlay(new OverlayDescriptor
         {
             Id = Id,
             Title = "Image Editor",
@@ -104,7 +94,7 @@ public class ImageEditorPlugin : IFryPlugin
         });
 
         // 2. Command Palette
-        var cmdReg = ctx.RegisterCommand(new CommandPaletteDescriptor
+        ctx.RegisterCommand(new CommandPaletteDescriptor
         {
             Id = "cmd.overlay.imageeditor",
             Title = "Open Image Editor",
@@ -116,7 +106,7 @@ public class ImageEditorPlugin : IFryPlugin
         });
 
         // 3. Status Bar Widget
-        var statusReg = ctx.RegisterStatusBarWidget(new StatusBarWidgetDescriptor
+        ctx.RegisterStatusBarWidget(new StatusBarWidgetDescriptor
         {
             Id = "fryworld.status.imageeditor",
             Label = "🎨 Image Editor",
@@ -176,17 +166,9 @@ public class ImageEditorPlugin : IFryPlugin
                 }
             }
         };
-        var ribbonTabReg = ctx.RegisterRibbonTab(ribbonTab);
+        ctx.RegisterRibbonTab(ribbonTab);
 
-        // 5. Reversible effects for clean unmount
-        ctx.RegisterEffect(() =>
-        {
-            navReg.Dispose();
-            overlayReg.Dispose();
-            cmdReg.Dispose();
-            statusReg.Dispose();
-            ribbonTabReg.Dispose();
-        });
+        // Everything registered through ctx is removed automatically when the plugin unmounts.
 
         return Task.CompletedTask;
     }

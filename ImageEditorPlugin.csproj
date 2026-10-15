@@ -10,6 +10,8 @@
     <PackageId>FryPdf.Plugin.ImageEditor</PackageId>
     <RootNamespace>PdfEditorApp.Plugins.ImageEditor</RootNamespace>
     <Version>3.1.0</Version>
+    <!-- FryWorld.Sdk packages the plugin on Release builds; keep the file name the store catalog links to. -->
+    <FryPluginPackageName>ImageEditor</FryPluginPackageName>
     <Company>FryPDF Team</Company>
     <Description>Canva-style layered design editor overlay plugin for FryPDF</Description>
     <DefaultItemExcludes>$(DefaultItemExcludes);Runner/**;UISnapshots/**;IdeaSample/**</DefaultItemExcludes>
@@ -17,7 +19,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="FryWorld.Sdk" Version="0.0.2" PrivateAssets="all" />
+    <PackageReference Include="FryWorld.Sdk" Version="0.1.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -35,26 +37,4 @@
     <None Include="plugin.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
-  <!-- Packaging into .fryplugin distribution archive -->
-  <Target Name="PackageFryPlugin" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
-    <PropertyGroup>
-      <PluginStagingDir>$(TargetDir)staging\</PluginStagingDir>
-      <OutputFryPlugin>$(TargetDir)ImageEditor.fryplugin</OutputFryPlugin>
-    </PropertyGroup>
-
-    <RemoveDir Directories="$(PluginStagingDir)" />
-    <MakeDir Directories="$(PluginStagingDir)" />
-
-    <ItemGroup>
-      <PluginFiles Include="$(TargetDir)ImageEditorPlugin.dll" />
-      <PluginFiles Include="$(ProjectDir)plugin.json" />
-    </ItemGroup>
-
-    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(PluginStagingDir)" />
-    <Delete Files="$(OutputFryPlugin)" Condition="Exists('$(OutputFryPlugin)')" />
-    <ZipDirectory SourceDirectory="$(PluginStagingDir)" DestinationFile="$(OutputFryPlugin)" />
-    <RemoveDir Directories="$(PluginStagingDir)" />
-
-    <Message Importance="High" Text="✨ Successfully packaged FryPDF plugin: $(OutputFryPlugin)" />
-  </Target>
 </Project>

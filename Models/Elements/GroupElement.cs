@@ -9,7 +9,7 @@ namespace PdfEditorApp.Plugins.ImageEditor.Models;
 
 /// <summary>
 /// A layer group (folder) containing nested child elements in the layer hierarchy.
-/// Matches Photoshop and Photocraft layer group semantics.
+/// Matches Studio and Photocraft layer group semantics.
 /// </summary>
 public class GroupElement : CanvasElement
 {

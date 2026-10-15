@@ -6,7 +6,7 @@ using Avalonia.Media;
 namespace PdfEditorApp.Plugins.ImageEditor.Core.Vector;
 
 /// <summary>
-/// Type on a Path engine (Photoshop text curve deformation specification).
+/// Type on a Path engine (Studio text curve deformation specification).
 /// Evaluates cubic Bezier subpaths by arc-length, placing glyphs rigidly on the curve
 /// aligned to tangents and normals.
 /// </summary>

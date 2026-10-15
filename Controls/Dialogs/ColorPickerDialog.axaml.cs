@@ -13,7 +13,7 @@ public partial class ColorPickerDialog : UserControl
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
-        // Right-click dismisses / cancels the picker (Photoshop parity #4291, #4636)
+        // Right-click dismisses / cancels the picker (Studio parity #4291, #4636)
         if (e.GetCurrentPoint(this).Properties.IsRightButtonPressed)
         {
             if (DataContext is ImageEditorViewModel vm)

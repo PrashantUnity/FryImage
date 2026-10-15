@@ -143,7 +143,16 @@ public static class ColorConversions
         color = Color.FromArgb(255, 0, 0, 0);
         if (string.IsNullOrWhiteSpace(hex)) return false;
 
-        var clean = hex.Trim().TrimStart('#');
+        var clean = hex.Trim().TrimStart('#').Trim();
+        if (clean.Length == 3 &&
+            uint.TryParse(clean, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out _))
+        {
+            byte r = Convert.ToByte($"{clean[0]}{clean[0]}", 16);
+            byte g = Convert.ToByte($"{clean[1]}{clean[1]}", 16);
+            byte b = Convert.ToByte($"{clean[2]}{clean[2]}", 16);
+            color = Color.FromArgb(255, r, g, b);
+            return true;
+        }
         if (clean.Length == 6 &&
             uint.TryParse(clean, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var rgb))
         {
@@ -221,7 +230,7 @@ public static class ColorConversions
         return v <= 0.04045 ? v / 12.92 : Math.Pow((v + 0.055) / 1.055, 2.4);
     }
 
-    /// <summary>Standard Rec. 601 luma calculation (Photoshop standard for blend modes).</summary>
+    /// <summary>Standard Rec. 601 luma calculation (Studio standard for blend modes).</summary>
     public static double Rec601Luma(double r, double g, double b) => 0.299 * r + 0.587 * g + 0.114 * b;
 
     /// <summary>
@@ -253,7 +262,7 @@ public static class ColorConversions
     }
 
     /// <summary>
-    /// Implements Photoshop Color blend mode luminosity adjustment: SetLum(c, l).
+    /// Implements Studio Color blend mode luminosity adjustment: SetLum(c, l).
     /// </summary>
     public static (double R, double G, double B) SetLum(double r, double g, double b, double l, double top = 1.0)
     {
@@ -262,7 +271,7 @@ public static class ColorConversions
     }
 
     /// <summary>
-    /// D50 CIE XYZ to linear sRGB matrix (Photoshop ICC D50 specification).
+    /// D50 CIE XYZ to linear sRGB matrix (Studio ICC D50 specification).
     /// </summary>
     private static readonly double[,] XyzD50ToSrgbMatrix =
     {

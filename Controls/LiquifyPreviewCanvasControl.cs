@@ -319,7 +319,7 @@ public sealed class LiquifyPreviewCanvasControl : Control
         _cursorScreenPoint = screenPt;
         _isCursorInside = true;
 
-        // Photoshop Parity: Alt+Right-drag resizes the brush instead of painting (#4707)
+        // Studio Parity: Alt+Right-drag resizes the brush instead of painting (#4707)
         bool isAlt = e.KeyModifiers.HasFlag(KeyModifiers.Alt);
         bool isRightButton = e.GetCurrentPoint(this).Properties.IsRightButtonPressed;
         if (isAlt && isRightButton)

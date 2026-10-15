@@ -62,5 +62,19 @@ public partial class LayersDockPanel : UserControl
             vm.HoveredElement = null;
         }
     }
+
+    private void OnNewLayerButtonPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (DataContext is ImageEditorViewModel vm)
+        {
+            var props = e.GetCurrentPoint(this).Properties;
+            if (props.IsLeftButtonPressed)
+            {
+                bool isCtrlOrCmd = e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta);
+                vm.AddNewBlankLayer(below: isCtrlOrCmd);
+                e.Handled = true;
+            }
+        }
+    }
 }
 

@@ -11,7 +11,7 @@ using PdfEditorApp.Plugins.ImageEditor.Models;
 namespace PdfEditorApp.Plugins.ImageEditor.Controls;
 
 /// <summary>
-/// Photoshop-compatible interactive Gradient Map ramp editor.
+/// Industry-compatible interactive Gradient Map ramp editor.
 /// Supports clicking along the spectrum to add color stops, dragging stops horizontally,
 /// and selecting stops for color/location tuning.
 /// </summary>

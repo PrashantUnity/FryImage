@@ -323,7 +323,7 @@ public static class PsdCodec
                     layer.BgraPixels = bgra;
                 }
 
-                // Reconstruct nested layer tree from section dividers (Photoshop & Photocraft tree.rs)
+                // Reconstruct nested layer tree from section dividers (Studio & Photocraft tree.rs)
                 var groupStack = new Stack<(Guid GroupId, int Depth, List<PsdLayerInfo> Children)>();
                 var structuredLayers = new List<PsdLayerInfo>();
 
@@ -660,7 +660,7 @@ public static class PsdCodec
                 int pad = (4 - (nTotal % 4)) % 4;
                 if (pad > 0) extraWriter.Write(new byte[pad]);
 
-                // Tagged Block: luni (Unicode Layer Name for Photoshop exchange)
+                // Tagged Block: luni (Unicode Layer Name for Studio exchange)
                 extraWriter.Write(Signature8Bim);
                 extraWriter.Write("luni"u8.ToArray());
                 byte[] uniBytes = Encoding.BigEndianUnicode.GetBytes(layer.Name + "\0");
@@ -914,8 +914,8 @@ public static class PsdCodec
     }
 
     /// <summary>
-    /// Parses Photoshop 'phfl' tagged block data (Photo Filter adjustment).
-    /// Version 3 encodes D50 CIE XYZ colors (scaled by 32768) matching Photoshop CS2+ (#3790).
+    /// Parses Studio 'phfl' tagged block data (Photo Filter adjustment).
+    /// Version 3 encodes D50 CIE XYZ colors (scaled by 32768) matching Studio CS2+ (#3790).
     /// </summary>
     public static (Color Color, double Density, bool PreserveLuminosity) DecodePhotoFilterBlock(ReadOnlySpan<byte> data)
     {

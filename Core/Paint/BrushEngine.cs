@@ -56,7 +56,7 @@ public static class BrushEngine
         return Math.Max(1.0, brushSize * (spacingPercent / 100.0));
     }
 
-    // ── Photoshop 27.11 Measured Round Tip Model (Commit cf804c4b parity) ──
+    // ── Calibrated Studio Measured Round Tip Model (Commit cf804c4b parity) ──
     private static readonly (double R0, double S)[] TipShapeTable =
     [
         (0.00, 0.664), (0.14, 0.58), (0.28, 0.50), (0.40, 0.44), (0.52, 0.36),
@@ -173,7 +173,10 @@ public static class BrushEngine
                 settings.Aliased,
                 settings.WetEdges,
                 settings.TipShape,
-                randomSeed));
+                randomSeed,
+                settings.SampledMaskBytes,
+                settings.SampledWidth,
+                settings.SampledHeight));
             return dabs;
         }
 
@@ -325,7 +328,10 @@ public static class BrushEngine
                     settings.Aliased,
                     settings.WetEdges,
                     settings.TipShape,
-                    randomSeed + dabIndex));
+                    randomSeed + dabIndex,
+                    settings.SampledMaskBytes,
+                    settings.SampledWidth,
+                    settings.SampledHeight));
 
                 dabIndex++;
                 accumulated = 0.0;
@@ -434,5 +440,114 @@ public static class BrushEngine
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Creates a sampled brush tip from 8-bit RGBA or BGRA pixel buffer.
+    /// Calculates paint amount as (1.0 - lum) * alpha, crops to painted bounds,
+    /// checks maximum size (2500 px), and returns a configured BrushSettings.
+    /// </summary>
+    public static (BrushSettings Brush, int Width, int Height) CreateSampledBrushTip(
+        byte[] pixelBytes, int width, int height, bool isBgra = false)
+    {
+        if (pixelBytes == null || width <= 0 || height <= 0)
+            throw new ArgumentException("Invalid pixel data or dimensions for sampled brush tip.");
+
+        int bOffset = isBgra ? 0 : 2;
+        int gOffset = 1;
+        int rOffset = isBgra ? 2 : 0;
+        int aOffset = 3;
+
+        float[] paint = new float[width * height];
+        int x0 = width, y0 = height, x1 = 0, y1 = 0;
+
+        for (int y = 0; y < height; y++)
+        {
+            int rowIdx = y * width;
+            int byteRow = y * width * 4;
+            for (int x = 0; x < width; x++)
+            {
+                int bIdx = byteRow + x * 4;
+                float r = pixelBytes[bIdx + rOffset] / 255.0f;
+                float g = pixelBytes[bIdx + gOffset] / 255.0f;
+                float b = pixelBytes[bIdx + bOffset] / 255.0f;
+                float a = pixelBytes[bIdx + aOffset] / 255.0f;
+
+                // ITU-R BT.601 / Rec.709 luminance
+                float lum = 0.299f * r + 0.587f * g + 0.114f * b;
+                float p = Math.Clamp((1.0f - lum) * a, 0.0f, 1.0f);
+                paint[rowIdx + x] = p;
+
+                if (p > 1e-4f)
+                {
+                    if (x < x0) x0 = x;
+                    if (y < y0) y0 = y;
+                    if (x + 1 > x1) x1 = x + 1;
+                    if (y + 1 > y1) y1 = y + 1;
+                }
+            }
+        }
+
+        if (x1 <= x0 || y1 <= y0)
+            throw new InvalidOperationException("The image contains no paint (all white or transparent).");
+
+        int tw = x1 - x0;
+        int th = y1 - y0;
+        const int maxTip = 2500;
+        if (Math.Max(tw, th) > maxTip)
+            throw new InvalidOperationException($"The painted part of the image is too large for a brush tip ({tw}x{th}; max {maxTip} px).");
+
+        byte[] mask = new byte[tw * th];
+        for (int y = 0; y < th; y++)
+        {
+            int srcY = y0 + y;
+            for (int x = 0; x < tw; x++)
+            {
+                int srcX = x0 + x;
+                float p = paint[srcY * width + srcX];
+                mask[y * tw + x] = (byte)Math.Clamp((int)Math.Round(p * 255.0f), 0, 255);
+            }
+        }
+
+        var brush = new BrushSettings
+        {
+            TipShape = TipShapeKind.Sampled,
+            SampledMaskBytes = mask,
+            SampledWidth = tw,
+            SampledHeight = th,
+            Size = Math.Max(tw, th),
+            Spacing = 0.25
+        };
+
+        return (brush, tw, th);
+    }
+
+    /// <summary>
+    /// Creates a sampled brush tip from an image file (PNG, JPEG, TIFF, BMP, PSD, etc.)
+    /// </summary>
+    public static (BrushSettings Brush, int Width, int Height) CreateSampledBrushTipFromFile(string filePath)
+    {
+        if (!System.IO.File.Exists(filePath))
+            throw new System.IO.FileNotFoundException("Brush image file not found", filePath);
+
+        using var bmp = SkiaSharp.SKBitmap.Decode(filePath);
+        if (bmp == null)
+            throw new InvalidOperationException("Failed to decode image file for brush tip.");
+
+        return CreateSampledBrushTipFromBitmap(bmp);
+    }
+
+    /// <summary>
+    /// Creates a sampled brush tip from an SKBitmap.
+    /// </summary>
+    public static (BrushSettings Brush, int Width, int Height) CreateSampledBrushTipFromBitmap(SkiaSharp.SKBitmap bmp)
+    {
+        using var converted = new SkiaSharp.SKBitmap(bmp.Width, bmp.Height, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+        using var canvas = new SkiaSharp.SKCanvas(converted);
+        canvas.DrawBitmap(bmp, 0, 0);
+        canvas.Flush();
+
+        var bytes = converted.Bytes;
+        return CreateSampledBrushTip(bytes, converted.Width, converted.Height, isBgra: true);
     }
 }

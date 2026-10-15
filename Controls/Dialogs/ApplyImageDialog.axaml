@@ -80,10 +80,10 @@
                                     <NumericUpDown Grid.Row="0" Grid.Column="3" Value="{Binding ApplyImageOpacity, Mode=TwoWay}" Minimum="0" Maximum="100" FormatString="{}{0:0}%" Height="22" Margin="0,0,0,6" />
 
                                     <!-- Scale and Offset for Frequency Separation (Subtract, Scale 2, Offset 128) -->
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Scale:" Classes="ps-label" VerticalAlignment="Center" Margin="0,0,6,6" ToolTip.Tip="Scale divisor for Add and Subtract blends (Photoshop default: 1.0, 2.0 for frequency separation)" />
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Scale:" Classes="ps-label" VerticalAlignment="Center" Margin="0,0,6,6" ToolTip.Tip="Scale divisor for Add and Subtract blends (Standard default: 1.0, 2.0 for frequency separation)" />
                                     <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding ApplyImageScale, Mode=TwoWay}" Minimum="0.1" Maximum="10.0" Increment="0.1" FormatString="{}{0:0.0}" Height="22" Margin="0,0,8,6" ToolTip.Tip="Scale divisor" />
 
-                                    <TextBlock Grid.Row="1" Grid.Column="2" Text="Offset:" Classes="ps-label" VerticalAlignment="Center" Margin="0,0,6,6" ToolTip.Tip="Offset added to Add and Subtract results (Photoshop default: 0, 128 for frequency separation)" />
+                                    <TextBlock Grid.Row="1" Grid.Column="2" Text="Offset:" Classes="ps-label" VerticalAlignment="Center" Margin="0,0,6,6" ToolTip.Tip="Offset added to Add and Subtract results (Standard default: 0, 128 for frequency separation)" />
                                     <NumericUpDown Grid.Row="1" Grid.Column="3" Value="{Binding ApplyImageOffset, Mode=TwoWay}" Minimum="-255" Maximum="255" FormatString="{}{0:0}" Height="22" Margin="0,0,0,6" ToolTip.Tip="Offset value" />
 
                                     <CheckBox Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="4" IsChecked="{Binding ApplyImagePreserveTransparency, Mode=TwoWay}" Content="Preserve Transparency" Margin="0,2,0,0" />

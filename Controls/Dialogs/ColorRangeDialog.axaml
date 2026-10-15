@@ -58,6 +58,21 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- Localized Color Clusters (Sampled Colors only) -->
+                        <Border Background="{DynamicResource PsOptionsBrush}" CornerRadius="2" Padding="10,8"
+                                IsVisible="{Binding IsColorRangeSampledMode}">
+                            <StackPanel Spacing="8">
+                                <CheckBox Content="Localized Color Clusters" IsChecked="{Binding ColorRangeLocalized, Mode=TwoWay}" />
+                                <StackPanel Spacing="6" IsVisible="{Binding ColorRangeLocalized}">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="Range" Classes="ps-label" />
+                                        <TextBlock Grid.Column="1" Text="{Binding ColorRangeRange, StringFormat='{}{0:0}%'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                                    </Grid>
+                                    <Slider Minimum="0" Maximum="100" Value="{Binding ColorRangeRange, Mode=TwoWay}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
                         <!-- Invert and Options -->
                         <Border Background="{DynamicResource PsOptionsBrush}" CornerRadius="2" Padding="10,8">
                             <StackPanel Spacing="8">

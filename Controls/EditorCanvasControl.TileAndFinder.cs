@@ -30,7 +30,7 @@ public partial class EditorCanvasControl
 
     /// <summary>
     /// Renders 8 surrounding repeated copies of the canvas for seamless 3x3 pattern design preview.
-    /// Matches Photoshop Pattern Preview specification.
+    /// Matches Seamless Pattern Preview specification.
     /// </summary>
     private void DrawPatternPreview(DrawingContext dc)
     {
@@ -79,7 +79,7 @@ public partial class EditorCanvasControl
 
     /// <summary>
     /// Renders developer sparse storage tile boundaries with coordinate badges [tx, ty].
-    /// Matches Photoshop sparse storage tile overlay specification.
+    /// Matches Studio sparse storage tile overlay specification.
     /// </summary>
     private void DrawTileGridOverlay(DrawingContext dc)
     {

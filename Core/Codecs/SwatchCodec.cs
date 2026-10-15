@@ -10,14 +10,14 @@ namespace PdfEditorApp.Plugins.ImageEditor.Core.Codecs;
 public readonly record struct SwatchItem(string Name, Color Color);
 
 /// <summary>
-/// Professional Swatch Codec supporting Adobe Color Swatch (.aco) and Adobe Swatch Exchange (.ase).
+/// Professional Swatch Codec supporting Color Swatch (.aco) and Swatch Exchange (.ase).
 /// </summary>
 public static class SwatchCodec
 {
     private static readonly byte[] AseSignature = "ASEF"u8.ToArray();
 
     /// <summary>
-    /// Decodes an Adobe Color Swatch (.aco) file.
+    /// Decodes a Color Swatch (.aco) file.
     /// Supports version 1 (unnamed) and version 2 (named UTF-16 swatches).
     /// </summary>
     public static List<SwatchItem> DecodeAco(Stream stream)
@@ -115,7 +115,7 @@ public static class SwatchCodec
     }
 
     /// <summary>
-    /// Decodes an Adobe Swatch Exchange (.ase) file.
+    /// Decodes a Swatch Exchange (.ase) file.
     /// </summary>
     public static List<SwatchItem> DecodeAse(Stream stream)
     {
@@ -191,7 +191,7 @@ public static class SwatchCodec
     }
 
     /// <summary>
-    /// Encodes a list of swatches into a standard Adobe Color Swatch (.aco) format (v1 + v2).
+    /// Encodes a list of swatches into a standard Color Swatch (.aco) format (v1 + v2).
     /// </summary>
     public static void EncodeAco(Stream stream, IReadOnlyList<SwatchItem> swatches)
     {

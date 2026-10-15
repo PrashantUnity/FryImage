@@ -3,8 +3,8 @@ using System;
 namespace PdfEditorApp.Plugins.ImageEditor.Core.Coloring;
 
 /// <summary>
-/// Photoshop-compatible color profile definitions and working gray curves.
-/// Includes Photoshop 27.11 default Dot Gain 20%-compatible gray profile (#4610).
+/// Industry-compatible color profile definitions and working gray curves.
+/// Includes Calibrated Studio default Dot Gain 20%-compatible gray profile (#4610).
 /// </summary>
 public static class ColorProfileEngine
 {
@@ -22,7 +22,7 @@ public static class ColorProfileEngine
 
     /// <summary>
     /// Converts RGB into Dot Gain 20%-compatible grayscale value (gamma 1.732, D50 luminance).
-    /// Matches Adobe Photoshop default Gray working space: sRGB 64/128/192 -> 46/105/177, pure red -> 107 (#4610).
+    /// Matches Standard default Gray working space: sRGB 64/128/192 -> 46/105/177, pure red -> 107 (#4610).
     /// </summary>
     public static byte ConvertRgbToDotGain20Gray(byte r, byte g, byte b)
     {

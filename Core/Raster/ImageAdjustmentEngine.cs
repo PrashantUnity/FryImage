@@ -27,21 +27,17 @@ public static partial class ImageAdjustmentEngine
     private const double LumaG = 0.7152;
     private const double LumaB = 0.0722;
 
-    /// <summary>
-    /// Applies Brightness [-100..100] and Contrast [-100..100].
-    /// </summary>
-    public static byte[] ApplyBrightnessContrast(byte[] bgraPixels, int brightness, int contrast)
-    {
-        byte[] lut = new byte[256];
-        double c = (100.0 + contrast) / 100.0;
-        double cFactor = c * c;
-        double bOffset = brightness * 1.28; // scale to ~[-128..128]
+    private const double BRIGHTNESS_KNEE = 126.0 / 255.0;
+    private const double LEVELS_TOE_POWER = 2.2;
 
-        for (int i = 0; i < 256; i++)
-        {
-            double val = ((i - 128.0) * cFactor + 128.0) + bOffset;
-            lut[i] = (byte)Math.Clamp((int)Math.Round(val), 0, 255);
-        }
+    /// <summary>
+    /// Applies Modern Studio Modern Brightness/Contrast S-curve (Studio Parity #4722, #00c16f2c).
+    /// Pins pure black and pure white, roll-off at knee 126/255, and non-clipping contrast S-curve.
+    /// Also supports legacy linear mode when requested.
+    /// </summary>
+    public static byte[] ApplyBrightnessContrast(byte[] bgraPixels, int brightness, int contrast, bool legacy = false)
+    {
+        byte[] lut = BuildBrightnessContrastLut(brightness, contrast, legacy);
 
         byte[] result = new byte[bgraPixels.Length];
         Parallel.For(0, bgraPixels.Length / 4, p =>
@@ -57,22 +53,99 @@ public static partial class ImageAdjustmentEngine
     }
 
     /// <summary>
-    /// Applies 3-point Levels (black point, midtone gamma, white point) [0..255].
+    /// Builds 256-entry LUT for Brightness/Contrast.
     /// </summary>
-    public static byte[] ApplyLevels(byte[] srgbPixels, int inBlack, double gamma, int inWhite, int outBlack = 0, int outWhite = 255)
+    public static byte[] BuildBrightnessContrastLut(int brightness, int contrast, bool legacy = false)
     {
         byte[] lut = new byte[256];
-        double range = Math.Max(1, inWhite - inBlack);
-        double outRange = outWhite - outBlack;
-        double invGamma = 1.0 / Math.Clamp(gamma, 0.1, 10.0);
+        if (legacy)
+        {
+            double c = (100.0 + contrast) / 100.0;
+            double cFactor = c * c;
+            double bOffset = brightness * 1.28;
+            for (int i = 0; i < 256; i++)
+            {
+                double val = ((i - 128.0) * cFactor + 128.0) + bOffset;
+                lut[i] = (byte)Math.Clamp((int)Math.Round(val), 0, 255);
+            }
+            return lut;
+        }
+
+        double b = Math.Clamp(brightness, -150.0, 150.0);
+        double cVal = Math.Clamp(contrast, -50.0, 100.0);
 
         for (int i = 0; i < 256; i++)
         {
-            double normalized = Math.Clamp((i - inBlack) / range, 0.0, 1.0);
-            double withGamma = Math.Pow(normalized, invGamma);
-            int mapped = (int)Math.Round(outBlack + withGamma * outRange);
-            lut[i] = (byte)Math.Clamp(mapped, 0, 255);
+            double v = i / 255.0;
+            double brightV = EvalModernBrightness(v, b);
+            double finalV = EvalModernContrast(brightV, cVal);
+            lut[i] = (byte)Math.Clamp((int)Math.Round(finalV * 255.0), 0, 255);
         }
+        return lut;
+    }
+
+    private static double EvalModernBrightness(double v, double b)
+    {
+        if (b == 0.0 || double.IsNaN(b) || double.IsInfinity(b)) return v;
+        bool raise = b > 0.0;
+        double absB = Math.Abs(b);
+        double s = Math.Pow(1.375, absB / 50.0);
+        double e = 1.0 / (1.0 + 0.084 * absB);
+        double x0 = Math.Min(1.0, BRIGHTNESS_KNEE / s);
+        double secant = (1.0 - BRIGHTNESS_KNEE) / Math.Max(1e-6, 1.0 - x0);
+        double alpha = s / secant;
+        double beta = e / secant;
+        bool hermite = alpha * alpha + beta * beta <= 9.0;
+
+        double Raised(double x)
+        {
+            if (x <= x0) return Math.Min(BRIGHTNESS_KNEE, s * x);
+            double h = Math.Max(1e-6, 1.0 - x0);
+            double t = Math.Clamp((x - x0) / h, 0.0, 1.0);
+            if (hermite)
+            {
+                double t2 = t * t;
+                double t3 = t2 * t;
+                double y = (2.0 * t3 - 3.0 * t2 + 1.0) * BRIGHTNESS_KNEE +
+                           (t3 - 2.0 * t2 + t) * h * s +
+                           (-2.0 * t3 + 3.0 * t2) +
+                           (t3 - t2) * h * e;
+                return Math.Clamp(y, 0.0, 1.0);
+            }
+            else
+            {
+                return Math.Clamp(1.0 - (1.0 - BRIGHTNESS_KNEE) * Math.Pow(1.0 - t, alpha), 0.0, 1.0);
+            }
+        }
+
+        if (raise) return Raised(v);
+        if (v <= 0.0 || v >= 1.0) return v;
+
+        // Invert raised curve via binary search bisection
+        double lo = 0.0, hi = 1.0;
+        for (int step = 0; step < 32; step++)
+        {
+            double mid = 0.5 * (lo + hi);
+            if (Raised(mid) < v) lo = mid; else hi = mid;
+        }
+        return 0.5 * (lo + hi);
+    }
+
+    private static double EvalModernContrast(double v, double contrast)
+    {
+        if (contrast == 0.0 || double.IsNaN(contrast)) return v;
+        double c = Math.Clamp(contrast, -50.0, 100.0);
+        double k = c > 0 ? (1.0 + c / 25.0) : Math.Pow(2.0, c / 50.0);
+        double half(double x) => 0.5 * Math.Pow(Math.Clamp(x, 0.0, 1.0), k);
+        return v <= 0.5 ? half(v / 0.5) : 1.0 - half((1.0 - v) / 0.5);
+    }
+
+    /// <summary>
+    /// Applies 3-point Levels with Studio's shadow toe gamma and 8-bit quantum rounding (Studio Parity #5143).
+    /// </summary>
+    public static byte[] ApplyLevels(byte[] srgbPixels, int inBlack, double gamma, int inWhite, int outBlack = 0, int outWhite = 255)
+    {
+        byte[] lut = BuildLevelsLut(inBlack, gamma, inWhite, outBlack, outWhite);
 
         byte[] result = new byte[srgbPixels.Length];
         Parallel.For(0, srgbPixels.Length / 4, p =>
@@ -85,6 +158,50 @@ public static partial class ImageAdjustmentEngine
         });
 
         return result;
+    }
+
+    public static byte[] BuildLevelsLut(int inBlack, double gamma, int inWhite, int outBlack = 0, int outWhite = 255)
+    {
+        byte[] lut = new byte[256];
+        double range = Math.Max(1e-6, (inWhite - inBlack) / 255.0);
+        double inB = inBlack / 255.0;
+        double outB = outBlack / 255.0;
+        double outW = outWhite / 255.0;
+        double g = Math.Max(0.01, gamma);
+
+        for (int i = 0; i < 256; i++)
+        {
+            double v = i / 255.0;
+            // Studio quantized step evaluation
+            double vNorm = Math.Round(v * 255.0) / 255.0;
+            double u = Math.Floor((Math.Clamp((vNorm - inB) / range, 0.0, 1.0)) * 255.0 + 0.5 + 1e-3) / 255.0;
+            double t = Math.Floor(LevelsGamma(u, g) * 255.0 + 0.5) / 255.0;
+            double mapped = Math.Floor((outB + t * (outW - outB)) * 255.0 + 0.5);
+            lut[i] = (byte)Math.Clamp((int)mapped, 0, 255);
+        }
+        return lut;
+    }
+
+    /// <summary>
+    /// Levels midtone gamma curve with fitted shadow toe (q = 2.2) matching Studio ground truth (Studio Parity #5143).
+    /// </summary>
+    public static double LevelsGamma(double u, double g)
+    {
+        double c = 1.0 / g;
+        if (g <= 1.0)
+        {
+            return Math.Pow(Math.Clamp(u, 0.0, 1.0), c);
+        }
+        double a = Math.Pow(2.0, g);
+        double q = LEVELS_TOE_POWER;
+        // Where toe meets power curve:
+        double u1 = Math.Pow((1.0 - c / q) / (a * (1.0 - 1.0 / q)), 1.0 / (1.0 - c));
+        if (u >= u1 || u1 <= 0.0)
+        {
+            return Math.Pow(Math.Clamp(u, 0.0, 1.0), c);
+        }
+        double b = (a * u1 - Math.Pow(u1, c)) / Math.Pow(u1, q);
+        return Math.Clamp(a * u - b * Math.Pow(u, q), 0.0, 1.0);
     }
 
     /// <summary>
@@ -126,7 +243,7 @@ public static partial class ImageAdjustmentEngine
 
             if (colorize)
             {
-                // Photoshop Colorize builds at lightened/darkened lightness
+                // Studio Colorize builds at lightened/darkened lightness
                 RgbToHsl(r, g, b, out _, out _, out double ll);
                 double targetL = Lighten(ll, lDelta);
                 double cHue = ((hDelta % 360.0) + 360.0) % 360.0;
@@ -140,7 +257,7 @@ public static partial class ImageAdjustmentEngine
             }
             else
             {
-                // Photoshop applies Lightness first, then rotates hue and scales saturation
+                // Studio applies Lightness first, then rotates hue and scales saturation
                 double lr = Lighten(r / 255.0, lDelta);
                 double lg = Lighten(g / 255.0, lDelta);
                 double lb = Lighten(b / 255.0, lDelta);
@@ -213,7 +330,7 @@ public static partial class ImageAdjustmentEngine
     private const double BalanceLevels = 0.39;
 
     /// <summary>
-    /// Evaluates Photoshop 2026's exact Color Balance channel curve for a given channel (0=R, 1=G, 2=B).
+    /// Evaluates Studio 2026's exact Color Balance channel curve for a given channel (0=R, 1=G, 2=B).
     /// tones is a 3x3 array: [shadows[R,G,B], midtones[R,G,B], highlights[R,G,B]].
     /// </summary>
     public static double ColorBalanceChannel(double[][] tones, bool preserveLuminosity, int ch, double v)
@@ -297,9 +414,9 @@ public static partial class ImageAdjustmentEngine
     }
 
     /// <summary>
-    /// Applies 3-zone Photoshop 2026 Color Balance (Shadows, Midtones, Highlights) with per-channel LUT curves and optional Luminosity Preservation.
+    /// Applies 3-zone Studio 2026 Color Balance (Shadows, Midtones, Highlights) with per-channel LUT curves and optional Luminosity Preservation.
     /// </summary>
-    public static byte[] ApplyColorBalancePhotoshop(byte[] bgraPixels, double[][] tones, bool preserveLuminosity = true)
+    public static byte[] ApplyColorBalanceStandard(byte[] bgraPixels, double[][] tones, bool preserveLuminosity = true)
     {
         byte[] lutR = new byte[256];
         byte[] lutG = new byte[256];
@@ -327,7 +444,7 @@ public static partial class ImageAdjustmentEngine
     }
 
     /// <summary>
-    /// Backward-compatible Color Balance calling Photoshop 2026's per-channel curves engine.
+    /// Backward-compatible Color Balance calling Studio 2026's per-channel curves engine.
     /// </summary>
     public static byte[] ApplyColorBalance(byte[] bgraPixels, int cyanRed, int magentaGreen, int yellowBlue, int toneRange = 1)
     {
@@ -342,11 +459,11 @@ public static partial class ImageAdjustmentEngine
         tones[targetTone][1] = magentaGreen;
         tones[targetTone][2] = yellowBlue;
 
-        return ApplyColorBalancePhotoshop(bgraPixels, tones, preserveLuminosity: true);
+        return ApplyColorBalanceStandard(bgraPixels, tones, preserveLuminosity: true);
     }
 
     /// <summary>
-    /// Applies Photoshop Black &amp; White conversion using primary/secondary range decomposition and optional Color blend tint.
+    /// Applies Studio Black &amp; White conversion using primary/secondary range decomposition and optional Color blend tint.
     /// </summary>
     public static byte[] ApplyBlackAndWhite(
         byte[] bgraPixels,
@@ -380,7 +497,7 @@ public static partial class ImageAdjustmentEngine
 
             if (tint.HasValue)
             {
-                // Photoshop tints like the Color blend mode: tint hue/saturation at gray luminosity
+                // Studio tints like the Color blend mode: tint hue/saturation at gray luminosity
                 double tR = tint.Value.R / 255.0;
                 double tG = tint.Value.G / 255.0;
                 double tB = tint.Value.B / 255.0;
@@ -421,21 +538,26 @@ public static partial class ImageAdjustmentEngine
     }
 
     /// <summary>
-    /// Applies high-contrast 1-bit thresholding [0..255].
+    /// Applies Studio's whole-sample luminosity 1-bit thresholding (Studio Parity #5263, #9954c293).
+    /// Exact on every pixel of Studio oracle corpus: 30*R + 59*G + 11*B > 100*threshold - 50.
     /// </summary>
     public static byte[] ApplyThreshold(byte[] bgraPixels, int threshold = 128)
     {
+        int t = Math.Clamp(threshold, 1, 255);
+        int targetSum = 100 * t - 50;
+
         byte[] result = new byte[bgraPixels.Length];
         Parallel.For(0, bgraPixels.Length / 4, p =>
         {
             int idx = p * 4;
-            byte b = bgraPixels[idx];
-            byte g = bgraPixels[idx + 1];
-            byte r = bgraPixels[idx + 2];
+            int b = bgraPixels[idx];
+            int g = bgraPixels[idx + 1];
+            int r = bgraPixels[idx + 2];
             byte a = bgraPixels[idx + 3];
 
-            int luma = (int)(LumaR * r + LumaG * g + LumaB * b);
-            byte val = luma >= threshold ? (byte)255 : (byte)0;
+            // Studio integer luminosity: 30 R + 59 G + 11 B
+            int sum = 30 * r + 59 * g + 11 * b;
+            byte val = sum > targetSum ? (byte)255 : (byte)0;
 
             result[idx] = val;
             result[idx + 1] = val;
@@ -446,17 +568,17 @@ public static partial class ImageAdjustmentEngine
     }
 
     /// <summary>
-    /// Reduces tonal steps to discrete levels [2..255].
+    /// Reduces tonal steps to discrete levels using Studio's exact input binning floor(k * 255 / (n - 1)) (Studio Parity #5267).
     /// </summary>
     public static byte[] ApplyPosterize(byte[] bgraPixels, int levels = 4)
     {
         int safeLevels = Math.Clamp(levels, 2, 255);
         byte[] lut = new byte[256];
-        double step = 255.0 / (safeLevels - 1);
         for (int i = 0; i < 256; i++)
         {
-            int bucket = (int)Math.Round((i / 255.0) * (safeLevels - 1));
-            lut[i] = (byte)Math.Clamp((int)Math.Round(bucket * step), 0, 255);
+            // Studio posterize: n equal input bins over 0..=255, output levels floor(k * 255 / (n - 1))
+            int k = (int)Math.Floor((double)i * safeLevels / 256.0);
+            lut[i] = (byte)Math.Clamp((int)Math.Floor((double)k * 255.0 / (safeLevels - 1)), 0, 255);
         }
 
         byte[] result = new byte[bgraPixels.Length];
@@ -469,6 +591,18 @@ public static partial class ImageAdjustmentEngine
             result[idx + 3] = bgraPixels[idx + 3];
         });
         return result;
+    }
+
+    /// <summary>
+    /// Applies 16-bit posterization rule as in Studio (Studio Parity #5267, #8504dc61).
+    /// Bins the 16-bit sample (floor(v16 * n / 32768)), landing on 8-bit levels through floor(b * 32768 / (n - 1)).
+    /// </summary>
+    public static ushort Posterize16BitSample(ushort sample16, int levels)
+    {
+        int n = Math.Clamp(levels, 2, 255);
+        int bin = (int)Math.Floor((double)sample16 * n / 32768.0);
+        int step16 = (int)Math.Floor((double)bin * 32768.0 / (n - 1));
+        return (ushort)Math.Clamp(step16, 0, 65535);
     }
 
     /// <summary>
@@ -552,7 +686,7 @@ public static partial class ImageAdjustmentEngine
 
     /// <summary>
     /// Applies Hue/Saturation with per-color ranges (Reds, Yellows, Greens, Cyans, Blues, Magentas).
-    /// Matches Photoshop oracle parity (#4089): range edits apply in full even to dull colors without chroma fading.
+    /// Matches Studio oracle parity (#4089): range edits apply in full even to dull colors without chroma fading.
     /// </summary>
     public static byte[] ApplyHueSaturationWithRanges(
         byte[] bgraPixels,
@@ -579,7 +713,7 @@ public static partial class ImageAdjustmentEngine
             double h = ((h0 + mHue) % 360.0 + 360.0) % 360.0;
             double s = mSat > 0 ? s0 / Math.Max(1.0 - mSat, 1.0 / 512.0) : s0 * (1.0 + mSat);
 
-            // Range-specific edits applied in full (Photoshop #4089: no chroma attenuation damping)
+            // Range-specific edits applied in full (Studio #4089: no chroma attenuation damping)
             if (rangeHues != null && rangeSats != null && rangeLights != null && (r != g || g != b))
             {
                 // Determine dominant hue sector: 0=Reds, 1=Yellows, 2=Greens, 3=Cyans, 4=Blues, 5=Magentas
@@ -698,6 +832,43 @@ public static partial class ImageAdjustmentEngine
         }
 
         return src;
+    }
+
+    /// <summary>
+    /// Applies Calibrated Studio's measured Blur More 3x3 kernel: [1 2 1; 2 2 2; 1 2 1] / 14 (commit 5f2c23e1).
+    /// </summary>
+    public static byte[] ApplyBlurMore(byte[] bgraPixels, int width, int height)
+    {
+        if (width <= 0 || height <= 0) return (byte[])bgraPixels.Clone();
+        byte[] result = new byte[bgraPixels.Length];
+
+        Parallel.For(0, height, y =>
+        {
+            int rowOffset = y * width * 4;
+            for (int x = 0; x < width; x++)
+            {
+                int idx = rowOffset + x * 4;
+                for (int c = 0; c < 3; c++)
+                {
+                    int Sample(int dx, int dy)
+                    {
+                        int sx = Math.Clamp(x + dx, 0, width - 1);
+                        int sy = Math.Clamp(y + dy, 0, height - 1);
+                        return bgraPixels[(sy * width + sx) * 4 + c];
+                    }
+
+                    double sum =
+                        1.0 * Sample(-1, -1) + 2.0 * Sample(0, -1) + 1.0 * Sample(1, -1) +
+                        2.0 * Sample(-1,  0) + 2.0 * Sample(0,  0) + 2.0 * Sample(1,  0) +
+                        1.0 * Sample(-1,  1) + 2.0 * Sample(0,  1) + 1.0 * Sample(1,  1);
+
+                    result[idx + c] = (byte)Math.Clamp((int)Math.Round(sum / 14.0), 0, 255);
+                }
+                result[idx + 3] = bgraPixels[idx + 3];
+            }
+        });
+
+        return result;
     }
 
     /// <summary>

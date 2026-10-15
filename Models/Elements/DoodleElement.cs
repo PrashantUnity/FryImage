@@ -237,7 +237,15 @@ public class DoodleElement : CanvasElement, IHasStroke
 
             var brush = new SolidColorBrush(dabColor);
 
-            if (dab.TipShape == TipShapeKind.Star)
+            if (dab.TipShape == TipShapeKind.Sampled)
+            {
+                // Sampled tip silhouette
+                using (dc.PushTransform(Matrix.CreateRotation(dab.AngleDegrees * Math.PI / 180.0) * Matrix.CreateTranslation(center.X, center.Y)))
+                {
+                    dc.DrawEllipse(brush, null, new Point(0, 0), dab.RadiusX, dab.RadiusY);
+                }
+            }
+            else if (dab.TipShape == TipShapeKind.Star)
             {
                 // Star particle
                 var starGeom = BuildStarDabGeometry(center, dab.RadiusX, dab.AngleDegrees);
@@ -362,7 +370,7 @@ public class DoodleElement : CanvasElement, IHasStroke
 
     /// <summary>
     /// Renders Soft Round Gaussian Falloff stroke via multi-layered alpha falloff
-    /// based on Photoshop 27.11's measured tip profile (Commit cf804c4b parity).
+    /// based on Calibrated Studio's measured tip profile (Commit cf804c4b parity).
     /// </summary>
     private void DrawSoftRoundStroke(DrawingContext dc, IReadOnlyList<Point> pts, Color color)
     {
@@ -372,7 +380,7 @@ public class DoodleElement : CanvasElement, IHasStroke
         var (core, shoulder) = BrushEngine.GetTipShape(radius, Hardness);
         double reach = BrushEngine.TipReach(radius, Hardness);
 
-        // 4 concentric layers sampling Photoshop 27.11 Gaussian falloff curve
+        // 4 concentric layers sampling Calibrated Studio Gaussian falloff curve
         double[] sizeMultipliers = { Math.Max(1.0, reach / radius), 1.0, Math.Max(0.5, (core + shoulder) / radius), Math.Max(0.2, core / radius) };
         double[] alphaWeights = { 0.15, 0.35, 0.65, 1.0 };
 

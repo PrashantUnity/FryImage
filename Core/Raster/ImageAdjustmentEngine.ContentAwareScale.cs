@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 namespace PdfEditorApp.Plugins.ImageEditor.Core.Raster;
 
 /// <summary>
-/// High-performance Content-Aware Scaling via Seam Carving algorithm (Photoshop Edit › Content-Aware Scale).
+/// High-performance Content-Aware Scaling via Seam Carving algorithm (Studio Edit › Content-Aware Scale).
 /// Based on Avidan & Shamir (SIGGRAPH 2007) with dynamic programming vertical and horizontal seam tracking.
 /// </summary>
 public static partial class ImageAdjustmentEngine

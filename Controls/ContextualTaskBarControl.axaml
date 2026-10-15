@@ -10,7 +10,7 @@
         <local:ColorToBrushConverter x:Key="ColorToBrushConverter" />
     </UserControl.Resources>
 
-    <!-- Modern Photoshop Floating Contextual Task Bar -->
+    <!-- Modern Studio Floating Contextual Task Bar -->
     <Border Background="{DynamicResource PsPanelHeaderBrush}"
             BorderBrush="{DynamicResource PsBorderBrush}"
             BorderThickness="1"

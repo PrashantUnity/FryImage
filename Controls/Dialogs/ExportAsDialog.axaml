@@ -93,7 +93,7 @@
                                     </StackPanel>
                                     <TextBlock Grid.Column="1" Text="{Binding ExportEstimatedSizeLabel}" FontSize="11" Foreground="{DynamicResource PsAccentBrush}" VerticalAlignment="Center" />
                                 </Grid>
-                                <!-- Oversized ICO Warning (Photoshop parity #4744) -->
+                                <!-- Oversized ICO Warning (Studio parity #4744) -->
                                 <TextBlock Text="{Binding IcoWarningMessage}"
                                            IsVisible="{Binding IsIcoOversized}"
                                            Foreground="{DynamicResource PsWarningBrush}"

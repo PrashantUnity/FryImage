@@ -6,7 +6,7 @@ namespace PdfEditorApp.Plugins.ImageEditor.Core.Warp;
 
 /// <summary>
 /// High-precision mathematical transformation engine for text warp deformations.
-/// Implements Photoshop 2026's exact 4x4 Bicubic Bezier control grids across all 15 preset styles.
+/// Implements Studio 2026's exact 4x4 Bicubic Bezier control grids across all 15 preset styles.
 /// </summary>
 public static class TextWarpEngine
 {
@@ -18,7 +18,7 @@ public static class TextWarpEngine
     }
 
     /// <summary>
-    /// Transforms a local coordinate into warped coordinate space using Photoshop 2026's Bicubic Bezier patch.
+    /// Transforms a local coordinate into warped coordinate space using Studio 2026's Bicubic Bezier patch.
     /// </summary>
     public static Point TransformPoint(Point pt, Rect bounds, TextWarpSettings settings)
     {

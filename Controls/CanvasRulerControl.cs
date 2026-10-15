@@ -93,6 +93,15 @@ public class CanvasRulerControl : Control
     private static readonly IBrush s_defLabelBrush = new SolidColorBrush(Color.Parse("#9A9A9A"));
     private static readonly Typeface s_typeface = new("Segoe UI, -apple-system, sans-serif");
 
+    public static readonly StyledProperty<double> OriginOffsetProperty =
+        AvaloniaProperty.Register<CanvasRulerControl, double>(nameof(OriginOffset), 0.0);
+
+    public double OriginOffset
+    {
+        get => GetValue(OriginOffsetProperty);
+        set => SetValue(OriginOffsetProperty, value);
+    }
+
     static CanvasRulerControl()
     {
         AffectsRender<CanvasRulerControl>(
@@ -101,7 +110,8 @@ public class CanvasRulerControl : Control
             ZoomLevelProperty,
             CursorPositionProperty,
             PageOffsetProperty,
-            PageDimensionProperty);
+            PageDimensionProperty,
+            OriginOffsetProperty);
     }
 
     private Pen? _borderPen;
@@ -190,13 +200,16 @@ public class CanvasRulerControl : Control
             context.DrawLine(borderPen, new Point(startX, 0), new Point(startX, bounds.Height));
             context.DrawLine(borderPen, new Point(endX, 0), new Point(endX, bounds.Height));
 
-            double maxPts = PageDimension + (bounds.Width / zoom);
-            for (double pt = 0; pt <= maxPts; pt += minorStepPts)
+            double minPt = -startX / zoom;
+            double maxPts = (bounds.Width - startX) / zoom;
+            double firstPt = Math.Floor(minPt / minorStepPts) * minorStepPts;
+            for (double pt = firstPt; pt <= maxPts; pt += minorStepPts)
             {
                 double x = startX + (pt * zoom);
                 if (x < 0 || x > bounds.Width) continue;
 
-                bool isMajor = Math.Abs(pt % stepPts) < 0.01;
+                double val = pt - OriginOffset;
+                bool isMajor = Math.Abs(val % stepPts) < 0.001 || Math.Abs(Math.Abs(val % stepPts) - stepPts) < 0.001;
                 double tickH = isMajor ? bounds.Height * 0.55 : bounds.Height * 0.25;
 
                 context.DrawLine(isMajor ? majorTickPen : tickPen, new Point(x, bounds.Height - tickH), new Point(x, bounds.Height));
@@ -205,9 +218,9 @@ public class CanvasRulerControl : Control
                 {
                     string label = Unit switch
                     {
-                        RulerUnit.Inches => $"{pt / 72.0:0.#}\"",
-                        RulerUnit.Millimeters => $"{pt * 25.4 / 72.0:0}",
-                        _ => $"{pt:0}"
+                        RulerUnit.Inches => $"{val / 72.0:0.#}\"",
+                        RulerUnit.Millimeters => $"{val * 25.4 / 72.0:0}",
+                        _ => $"{val:0}"
                     };
 
                     context.DrawText(GetCachedLabel(label, labelBrush), new Point(x + 2, 2));
@@ -240,13 +253,16 @@ public class CanvasRulerControl : Control
             context.DrawLine(borderPen, new Point(0, startY), new Point(bounds.Width, startY));
             context.DrawLine(borderPen, new Point(0, endY), new Point(bounds.Width, endY));
 
-            double maxPts = PageDimension + (bounds.Height / zoom);
-            for (double pt = 0; pt <= maxPts; pt += minorStepPts)
+            double minPt = -startY / zoom;
+            double maxPts = (bounds.Height - startY) / zoom;
+            double firstPt = Math.Floor(minPt / minorStepPts) * minorStepPts;
+            for (double pt = firstPt; pt <= maxPts; pt += minorStepPts)
             {
                 double y = startY + (pt * zoom);
                 if (y < 0 || y > bounds.Height) continue;
 
-                bool isMajor = Math.Abs(pt % stepPts) < 0.01;
+                double val = pt - OriginOffset;
+                bool isMajor = Math.Abs(val % stepPts) < 0.001 || Math.Abs(Math.Abs(val % stepPts) - stepPts) < 0.001;
                 double tickW = isMajor ? bounds.Width * 0.55 : bounds.Width * 0.25;
 
                 context.DrawLine(isMajor ? majorTickPen : tickPen, new Point(bounds.Width - tickW, y), new Point(bounds.Width, y));
@@ -255,9 +271,9 @@ public class CanvasRulerControl : Control
                 {
                     string label = Unit switch
                     {
-                        RulerUnit.Inches => $"{pt / 72.0:0.#}\"",
-                        RulerUnit.Millimeters => $"{pt * 25.4 / 72.0:0}",
-                        _ => $"{pt:0}"
+                        RulerUnit.Inches => $"{val / 72.0:0.#}\"",
+                        RulerUnit.Millimeters => $"{val * 25.4 / 72.0:0}",
+                        _ => $"{val:0}"
                     };
 
                     context.DrawText(GetCachedLabel(label, labelBrush, fontSize: 8.0), new Point(2, y + 2));
@@ -302,7 +318,12 @@ public class CanvasRulerControl : Control
 
         // For Horizontal ruler, dragging down creates a Horizontal guide (isVertical = false).
         // For Vertical ruler, dragging right creates a Vertical guide (isVertical = true).
+        // Alt-drag inverts orientation (e.g. Alt-drag from horizontal ruler creates vertical guide).
         bool isGuideVertical = Orientation == Orientation.Vertical;
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Alt))
+        {
+            isGuideVertical = !isGuideVertical;
+        }
 
         var ptOnCanvas = this.TranslatePoint(e.GetPosition(this), canvas);
         if (ptOnCanvas.HasValue)
@@ -323,6 +344,10 @@ public class CanvasRulerControl : Control
         if (canvas == null) return;
 
         bool isGuideVertical = Orientation == Orientation.Vertical;
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Alt))
+        {
+            isGuideVertical = !isGuideVertical;
+        }
         var ptOnCanvas = this.TranslatePoint(e.GetPosition(this), canvas);
         if (ptOnCanvas.HasValue)
         {

@@ -6,9 +6,9 @@ using System.Text;
 namespace PdfEditorApp.Plugins.ImageEditor.Core.Codecs;
 
 /// <summary>
-/// Photoshop Actions (.atn) binary parser and writer.
-/// Supports Photoshop action sets (version 16: Photoshop 6 through Photoshop 2026).
-/// Clean-room implementation matching Photoshop Actions v16 binary specification.
+/// Actions (.atn) binary parser and writer.
+/// Supports Studio action sets (version 16: Studio 6 through Studio 2026).
+/// Clean-room implementation matching Studio Actions v16 binary specification.
 /// </summary>
 public static class AtnCodec
 {

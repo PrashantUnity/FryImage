@@ -44,6 +44,7 @@ public static class CanvasElementMapper
         dto.RotationDegrees = el.RotationDegrees; dto.FlipX = el.FlipX; dto.FlipY = el.FlipY;
         dto.Opacity = el.Opacity; dto.IsVisible = el.IsVisible; dto.IsLocked = el.IsLocked;
         dto.IsTransparencyLocked = el.IsTransparencyLocked;
+        dto.IsPixelsLocked = el.IsPixelsLocked;
         dto.IsPositionLocked = el.IsPositionLocked;
         dto.IsBackground = el.IsBackground;
         dto.Name = el.Name; dto.GroupId = el.GroupId; dto.AspectLocked = el.AspectLocked;
@@ -65,6 +66,7 @@ public static class CanvasElementMapper
         el.RotationDegrees = dto.RotationDegrees; el.FlipX = dto.FlipX; el.FlipY = dto.FlipY;
         el.Opacity = dto.Opacity; el.IsVisible = dto.IsVisible; el.IsLocked = dto.IsLocked;
         el.IsTransparencyLocked = dto.IsTransparencyLocked;
+        el.IsPixelsLocked = dto.IsPixelsLocked;
         el.IsPositionLocked = dto.IsPositionLocked;
         el.IsBackground = dto.IsBackground;
         el.Name = dto.Name; el.GroupId = dto.GroupId; el.AspectLocked = dto.AspectLocked;
@@ -128,6 +130,7 @@ public static class CanvasElementMapper
             {
                 IsEnabled = effects.BevelEmboss.IsEnabled,
                 Style = effects.BevelEmboss.Style.ToString(),
+                Technique = effects.BevelEmboss.Technique.ToString(),
                 Depth = effects.BevelEmboss.Depth,
                 Size = effects.BevelEmboss.Size,
                 Soften = effects.BevelEmboss.Soften,
@@ -261,6 +264,7 @@ public static class CanvasElementMapper
             {
                 IsEnabled = dto.BevelEmboss.IsEnabled,
                 Style = Enum.TryParse<BevelEmbossType>(dto.BevelEmboss.Style, true, out var bs) ? bs : BevelEmbossType.InnerBevel,
+                Technique = Enum.TryParse<BevelTechnique>(dto.BevelEmboss.Technique, true, out var bt) ? bt : BevelTechnique.Smooth,
                 Depth = dto.BevelEmboss.Depth,
                 Size = dto.BevelEmboss.Size,
                 Soften = dto.BevelEmboss.Soften,

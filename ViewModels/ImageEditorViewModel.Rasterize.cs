@@ -12,7 +12,7 @@ namespace PdfEditorApp.Plugins.ImageEditor;
 
 public partial class ImageEditorViewModel
 {
-    // ── Rasterize Prompt Modal State (Photoshop Parity #4303 & crates/ui-egui/src/rasterize_prompt.rs) ──
+    // ── Rasterize Prompt Modal State (Studio Parity #4303 & crates/ui-egui/src/rasterize_prompt.rs) ──
     [ObservableProperty] private bool _isRasterizePromptOpen;
     [ObservableProperty] private string _rasterizePromptTitle = "Rasterize Layer";
     [ObservableProperty] private string _rasterizePromptMessage = "";

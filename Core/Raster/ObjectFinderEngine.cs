@@ -7,7 +7,7 @@ using SkiaSharp;
 namespace PdfEditorApp.Plugins.ImageEditor.Core.Raster;
 
 /// <summary>
-/// Object Selection › Object Finder engine (Photoshop hover silhouette boundary detection).
+/// Object Selection › Object Finder engine (Studio hover silhouette boundary detection).
 /// Detects distinct objects, elements, and foreground subjects under the pointer for interactive
 /// hover preview and one-click smart selection.
 /// </summary>

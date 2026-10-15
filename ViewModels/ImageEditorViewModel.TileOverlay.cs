@@ -5,7 +5,7 @@ namespace PdfEditorApp.Plugins.ImageEditor;
 
 public partial class ImageEditorViewModel
 {
-    // ── Seamless Pattern Preview & Developer Tile Grid State (Photoshop Parity) ──
+    // ── Seamless Pattern Preview & Developer Tile Grid State (Studio Parity) ──
     [ObservableProperty]
     private bool _isPatternPreviewEnabled;
 

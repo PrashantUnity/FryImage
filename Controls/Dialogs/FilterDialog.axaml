@@ -40,7 +40,7 @@
                 <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Margin="16,12,6,12" Padding="0,0,14,0">
                     <StackPanel Spacing="14">
 
-                        <!-- Interactive In-Dialog Filter Preview (Photoshop standard) -->
+                        <!-- Interactive In-Dialog Filter Preview (Studio standard) -->
                         <Border Background="{DynamicResource PsFieldBrush}"
                                 BorderBrush="{DynamicResource PsBorderBrush}"
                                 BorderThickness="1"
@@ -432,6 +432,10 @@
                                 <TextBlock Grid.Column="1" Text="{Binding FilterCrystallizeCellSize, StringFormat='{}{0} px'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
                             </Grid>
                             <Slider Minimum="3" Maximum="100" Value="{Binding FilterCrystallizeCellSize, Mode=TwoWay}" />
+                            <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                                <TextBlock Grid.Column="0" Text="Random Seed" Classes="ps-label" VerticalAlignment="Center" />
+                                <Button Grid.Column="1" Classes="ps-opt-btn" Content="Random" Command="{Binding RandomizeFilterSeedCommand}" Height="24" Padding="12,0" />
+                            </Grid>
                         </StackPanel>
 
                         <!-- 17. Pointillize -->
@@ -441,6 +445,10 @@
                                 <TextBlock Grid.Column="1" Text="{Binding FilterPointillizeCellSize, StringFormat='{}{0} px'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
                             </Grid>
                             <Slider Minimum="3" Maximum="80" Value="{Binding FilterPointillizeCellSize, Mode=TwoWay}" />
+                            <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                                <TextBlock Grid.Column="0" Text="Random Seed" Classes="ps-label" VerticalAlignment="Center" />
+                                <Button Grid.Column="1" Classes="ps-opt-btn" Content="Random" Command="{Binding RandomizeFilterSeedCommand}" Height="24" Padding="12,0" />
+                            </Grid>
                         </StackPanel>
 
                         <!-- 18. Camera Raw Filter -->
@@ -629,11 +637,19 @@
                         <StackPanel Spacing="8" IsVisible="{Binding ActiveFilterMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Clouds'}">
                             <TextBlock Text="Generates organic fractal turbulence clouds blending foreground and background colors."
                                        TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" />
+                            <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                                <TextBlock Grid.Column="0" Text="Random Seed" Classes="ps-label" VerticalAlignment="Center" />
+                                <Button Grid.Column="1" Classes="ps-opt-btn" Content="Random" Command="{Binding RandomizeFilterSeedCommand}" Height="24" Padding="12,0" />
+                            </Grid>
                         </StackPanel>
 
                         <StackPanel Spacing="8" IsVisible="{Binding ActiveFilterMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='DifferenceClouds'}">
                             <TextBlock Text="Generates organic fractal turbulence clouds and inverts existing layer pixels with difference mode."
                                        TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" />
+                            <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                                <TextBlock Grid.Column="0" Text="Random Seed" Classes="ps-label" VerticalAlignment="Center" />
+                                <Button Grid.Column="1" Classes="ps-opt-btn" Content="Random" Command="{Binding RandomizeFilterSeedCommand}" Height="24" Padding="12,0" />
+                            </Grid>
                         </StackPanel>
 
                         <!-- 26. Wind -->
@@ -726,6 +742,10 @@
                                 </Grid>
                                 <Slider Minimum="1" Maximum="50" Value="{Binding FilterFibersStrength, Mode=TwoWay}" />
                             </StackPanel>
+                            <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                                <TextBlock Grid.Column="0" Text="Random Seed" Classes="ps-label" VerticalAlignment="Center" />
+                                <Button Grid.Column="1" Classes="ps-opt-btn" Content="Random" Command="{Binding RandomizeFilterSeedCommand}" Height="24" Padding="12,0" />
+                            </Grid>
                         </StackPanel>
 
                         <!-- 31. ZigZag -->

@@ -3,7 +3,7 @@ using Avalonia.Media;
 namespace PdfEditorApp.Plugins.ImageEditor.Models;
 
 /// <summary>
-/// FryImage Complete Photoshop Layer Styles (10 Layer Effects Stack).
+/// FryImage Complete Studio Layer Styles (10 Layer Effects Stack).
 /// Bottom to top render order: Drop Shadow, Outer Glow, Bevel & Emboss, Color Overlay,
 /// Gradient Overlay, Pattern Overlay, Satin, Inner Glow, Inner Shadow, Stroke.
 /// </summary>
@@ -152,10 +152,18 @@ public enum BevelEmbossType
     StrokeEmboss
 }
 
+public enum BevelTechnique
+{
+    Smooth,
+    ChiselHard,
+    ChiselSoft
+}
+
 public sealed class BevelEmbossStyle
 {
     public bool IsEnabled { get; set; } = true;
     public BevelEmbossType Style { get; set; } = BevelEmbossType.InnerBevel;
+    public BevelTechnique Technique { get; set; } = BevelTechnique.Smooth;
     public double Depth { get; set; } = 100.0;
     public double Size { get; set; } = 5.0;
     public double Soften { get; set; } = 0.0;
@@ -173,6 +181,7 @@ public sealed class BevelEmbossStyle
     {
         IsEnabled = IsEnabled,
         Style = Style,
+        Technique = Technique,
         Depth = Depth,
         Size = Size,
         Soften = Soften,

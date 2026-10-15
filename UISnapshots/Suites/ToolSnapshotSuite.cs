@@ -17,12 +17,12 @@ public static class ToolSnapshotSuite
         vm.SetToolCommand.Execute("select");
         ctx.Capture("01_main_window_move_tool.png");
 
-        // 1b. Two-Column Tool Palette Mode (Photoshop Parity - Image 1)
+        // 1b. Two-Column Tool Palette Mode (Studio Parity - Image 1)
         vm.IsTwoColumnToolPalette = true;
         vm.ActivateSubToolCommand.Execute("objectselection");
         ctx.Capture("01b_two_column_palette_object_selection.png");
 
-        // 1c. Tool Flyout Context Menu (Photoshop Parity - Image 2)
+        // 1c. Tool Flyout Context Menu (Studio Parity - Image 2)
         var toolPalette = ctx.Window.GetVisualDescendants().OfType<PdfEditorApp.Plugins.ImageEditor.Controls.ToolPaletteControl>().FirstOrDefault();
         if (toolPalette != null)
         {

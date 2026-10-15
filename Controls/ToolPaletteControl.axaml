@@ -14,7 +14,7 @@
     <Border BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,1,0">
         <Grid RowDefinitions="Auto,*,Auto">
 
-            <!-- Top: Collapse/Expand Chevron Header (Photoshop « / » 1-Col / 2-Col Toggle) -->
+            <!-- Top: Collapse/Expand Chevron Header (Studio « / » 1-Col / 2-Col Toggle) -->
             <Border Grid.Row="0" Height="22" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1">
                 <Button Classes="ps-opt-btn" HorizontalAlignment="Center"
                         Command="{Binding ToggleToolPaletteColumnsCommand}"
@@ -182,7 +182,7 @@
                         </Grid>
                     </Button>
 
-                    <!-- 4. Object Selection / Quick Selection / Magic Wand Group (W) (Photoshop Reference Slot!) -->
+                    <!-- 4. Object Selection / Quick Selection / Magic Wand Group (W) (Reference Slot!) -->
                     <Button Classes="ps-tool-btn"
                             Classes.active="{Binding IsWandSlotActive}"
                             Command="{Binding SelectWandSlotCommand}"

@@ -186,7 +186,7 @@
                                 </ToggleButton>
                             </StackPanel>
 
-                            <!-- 4. OpenType Typography Features (Photoshop standard) -->
+                            <!-- 4. OpenType Typography Features (Studio standard) -->
                             <StackPanel Orientation="Horizontal" Spacing="2">
                                 <ToggleButton Classes="ps-tool-btn" Width="22" Height="20"
                                               IsChecked="{Binding StandardLigaturesField, Mode=TwoWay}"
@@ -593,11 +593,11 @@
                         <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="6">
                             <StackPanel Grid.Row="0" Grid.Column="0">
                                 <TextBlock Text="CURSOR X" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource PsTextDimBrush}" />
-                                <TextBlock Text="{Binding CursorCanvasX, StringFormat='{}{0:0} px'}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource PsTextBrush}" />
+                                <TextBlock Text="{Binding CursorInfoX, StringFormat='{}{0:0} px'}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource PsTextBrush}" />
                             </StackPanel>
                             <StackPanel Grid.Row="0" Grid.Column="1">
                                 <TextBlock Text="CURSOR Y" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource PsTextDimBrush}" />
-                                <TextBlock Text="{Binding CursorCanvasY, StringFormat='{}{0:0} px'}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource PsTextBrush}" />
+                                <TextBlock Text="{Binding CursorInfoY, StringFormat='{}{0:0} px'}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource PsTextBrush}" />
                             </StackPanel>
 
                             <StackPanel Grid.Row="1" Grid.Column="0">

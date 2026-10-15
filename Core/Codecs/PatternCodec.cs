@@ -17,8 +17,8 @@ public sealed class ParsedPattern
 }
 
 /// <summary>
-/// Professional Adobe Pattern (.pat) codec.
-/// Decodes Photoshop pattern libraries for pattern overlay and stamp painting.
+/// Professional Pattern (.pat) codec.
+/// Decodes Studio pattern libraries for pattern overlay and stamp painting.
 /// </summary>
 public static class PatternCodec
 {

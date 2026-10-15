@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace PdfEditorApp.Plugins.ImageEditor.Models;
 
 /// <summary>
-/// Non-destructive Smart Filter applied to a Smart Object or layer (Photoshop specification parity).
+/// Non-destructive Smart Filter applied to a Smart Object or layer (Studio specification parity).
 /// Allows toggling visibility, re-ordering, re-editing parameters, and dragging/duplicating between layers.
 /// </summary>
 public sealed class SmartFilter

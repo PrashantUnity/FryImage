@@ -17,8 +17,8 @@ public sealed class ParsedGradient
 }
 
 /// <summary>
-/// Professional Adobe Gradient (.grd) decoder.
-/// Parses Photoshop gradient files into gradient stop lists.
+/// Professional Gradient (.grd) decoder.
+/// Parses Studio gradient files into gradient stop lists.
 /// </summary>
 public static class GrdCodec
 {
@@ -67,7 +67,7 @@ public static class GrdCodec
     }
 
     /// <summary>
-    /// Gets the built-in library of default Photoshop-compatible gradient presets.
+    /// Gets the built-in library of default Industry-compatible gradient presets.
     /// </summary>
     public static List<ParsedGradient> DefaultPresets => GetDefaultPresets();
 
@@ -154,7 +154,7 @@ public static class GrdCodec
     {
         try
         {
-            var grad = new ParsedGradient { Name = "Photoshop Gradient" };
+            var grad = new ParsedGradient { Name = "Studio Gradient" };
 
             // Scan for RGB stop signatures in stream
             while (reader.BaseStream.Position + 10 < sectionEnd && reader.BaseStream.Position + 10 < reader.BaseStream.Length)

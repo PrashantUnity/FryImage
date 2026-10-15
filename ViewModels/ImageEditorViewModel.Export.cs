@@ -17,10 +17,15 @@ namespace PdfEditorApp.Plugins.ImageEditor;
 
 public partial class ImageEditorViewModel
 {
-    // ── Export As Studio Modal (Photoshop Parity) ────────
+    // ── Export As Studio Modal (Studio Parity) ────────
     [ObservableProperty] private bool _isExportDialogOpen;
-    [ObservableProperty] private string _exportFormat = "PNG"; // PNG, JPEG, WEBP, FITS, BMP, ICO, TIFF, TGA
+    [ObservableProperty] private string _exportFormat = "PNG"; // PNG, JPEG, WEBP, FITS, BMP, ICO, TIFF, PDF
     [ObservableProperty] private double _exportScale = 1.0; // 0.5, 1.0, 2.0, 3.0
+    [ObservableProperty] private int _exportPixelWidth = 1920;
+    [ObservableProperty] private int _exportPixelHeight = 1080;
+    [ObservableProperty] private bool _isExportAspectLocked = true;
+    [ObservableProperty] private bool _exportEmbedProfile = true;
+    [ObservableProperty] private bool _exportConvertToSrgb = true;
     [ObservableProperty] private int _exportQuality = 90;
     [ObservableProperty] private bool _exportWebpLossless = false;
     [ObservableProperty] private bool _isBatchLayerExport = false;
@@ -39,6 +44,7 @@ public partial class ImageEditorViewModel
     public bool IsQualityVisible => ExportFormat is "JPEG" or "JPG" || (ExportFormat is "WEBP" && !ExportWebpLossless);
     public bool IsWebpFormat => ExportFormat is "WEBP";
     public bool IsIcoFormat => ExportFormat.Equals("ICO", StringComparison.OrdinalIgnoreCase);
+    public bool IsPdfFormat => ExportFormat.Equals("PDF", StringComparison.OrdinalIgnoreCase);
     public bool CanConfirmExport => !(IsIcoFormat && IsIcoOversized);
 
     public string ExportScaleStr
@@ -232,9 +238,60 @@ public partial class ImageEditorViewModel
         return rtb;
     }
 
+    public void SetExportPixelWidth(int width)
+    {
+        if (width <= 0) return;
+        ExportPixelWidth = width;
+        if (IsExportAspectLocked && _canvasWidth > 0 && _canvasHeight > 0)
+        {
+            ExportPixelHeight = Math.Max(1, (int)Math.Round((double)width * _canvasHeight / _canvasWidth));
+            ExportScale = (double)width / _canvasWidth;
+        }
+        else if (_canvasWidth > 0)
+        {
+            ExportScale = (double)width / _canvasWidth;
+        }
+        UpdateExportMetrics();
+        OnPropertyChanged(nameof(ExportScaleStr));
+    }
+
+    public void SetExportPixelHeight(int height)
+    {
+        if (height <= 0) return;
+        ExportPixelHeight = height;
+        if (IsExportAspectLocked && _canvasWidth > 0 && _canvasHeight > 0)
+        {
+            ExportPixelWidth = Math.Max(1, (int)Math.Round((double)height * _canvasWidth / _canvasHeight));
+            ExportScale = (double)height / _canvasHeight;
+        }
+        else if (_canvasHeight > 0)
+        {
+            ExportScale = (double)height / _canvasHeight;
+        }
+        UpdateExportMetrics();
+        OnPropertyChanged(nameof(ExportScaleStr));
+    }
+
     private async Task SaveBitmapToStreamAsync(RenderTargetBitmap rtb, string fmt, Stream outStream)
     {
-        if (fmt == "ICO")
+        if (fmt == "PDF")
+        {
+            using var pngMs = new MemoryStream();
+            rtb.Save(pngMs, new PngBitmapEncoderOptions());
+            pngMs.Position = 0;
+            using var skBmp = SKBitmap.Decode(pngMs);
+            byte[] pdfBytes = PdfCodec.Encode(skBmp, 72.0);
+            await outStream.WriteAsync(pdfBytes);
+        }
+        else if (fmt is "TIFF" or "TIF")
+        {
+            using var pngMs = new MemoryStream();
+            rtb.Save(pngMs, new PngBitmapEncoderOptions());
+            pngMs.Position = 0;
+            using var skBmp = SKBitmap.Decode(pngMs);
+            TiffLabCodec.WriteTiffUncompressed(skBmp, outStream);
+        }
+        else if (fmt == "ICO")
         {
             using var pngMs = new MemoryStream();
             rtb.Save(pngMs, new PngBitmapEncoderOptions());
@@ -356,12 +413,14 @@ public partial class ImageEditorViewModel
 
             string ext = fmt switch
             {
+                "PDF" => "pdf",
+                "TIFF" or "TIF" => "tif",
+                "CIN" or "CINEON" => "cin",
                 "JPEG" or "JPG" => "jpg",
                 "WEBP" => "webp",
                 "FITS" => "fits",
                 "BMP" => "bmp",
                 "ICO" => "ico",
-                "TIFF" or "TIF" => "tif",
                 "TGA" => "tga",
                 _ => "png"
             };
@@ -384,6 +443,10 @@ public partial class ImageEditorViewModel
                 if (file == null) return;
 
                 string primaryPath = file.Path.LocalPath;
+                if (!primaryPath.EndsWith($".{ext}", StringComparison.OrdinalIgnoreCase))
+                {
+                    primaryPath += $".{ext}";
+                }
                 string? dir = Path.GetDirectoryName(primaryPath);
                 string baseStem = Path.GetFileNameWithoutExtension(primaryPath);
 

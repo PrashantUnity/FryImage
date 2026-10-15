@@ -209,7 +209,7 @@ public class BrushPreviewControl : Control
                 }
                 else
                 {
-                    // Photoshop measured round tip profile (Commit cf804c4b parity)
+                    // Studio measured round tip profile (Commit cf804c4b parity)
                     double hardnessNorm = Math.Clamp(BrushHardness / 100.0, 0.0, 1.0);
                     var (core, shoulder) = BrushEngine.GetTipShape(rX, hardnessNorm);
                     double innerRx = Math.Max(1.0, core);

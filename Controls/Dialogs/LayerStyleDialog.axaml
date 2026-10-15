@@ -255,29 +255,33 @@
                                     <ComboBox Classes="ps-combo" HorizontalAlignment="Stretch" ItemsSource="{Binding AvailableBevelTypes}" SelectedItem="{Binding FxBevelEmbossStyle, Mode=TwoWay}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Spacing="2" Margin="6,0,0,0">
+                                    <TextBlock Text="Technique" Classes="ps-label" />
+                                    <ComboBox Classes="ps-combo" HorizontalAlignment="Stretch" ItemsSource="{Binding AvailableBevelTechniques}" SelectedItem="{Binding FxBevelEmbossTechnique, Mode=TwoWay}" />
+                                </StackPanel>
+                            </Grid>
+                            <Grid ColumnDefinitions="*,*">
+                                <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,6,0">
                                     <Grid ColumnDefinitions="*,Auto">
                                         <TextBlock Grid.Column="0" Text="Depth" Classes="ps-label" />
                                         <TextBlock Grid.Column="1" Text="{Binding FxBevelEmbossDepth, StringFormat='{}{0:0}%'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" />
                                     </Grid>
                                     <Slider Minimum="1" Maximum="1000" Value="{Binding FxBevelEmbossDepth, Mode=TwoWay}" />
                                 </StackPanel>
-                            </Grid>
-                            <Grid ColumnDefinitions="*,*">
-                                <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,6,0">
+                                <StackPanel Grid.Column="1" Spacing="2" Margin="6,0,0,0">
                                     <Grid ColumnDefinitions="*,Auto">
                                         <TextBlock Grid.Column="0" Text="Size" Classes="ps-label" />
                                         <TextBlock Grid.Column="1" Text="{Binding FxBevelEmbossSize, StringFormat='{}{0:0} px'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" />
                                     </Grid>
                                     <Slider Minimum="0" Maximum="100" Value="{Binding FxBevelEmbossSize, Mode=TwoWay}" />
                                 </StackPanel>
-                                <StackPanel Grid.Column="1" Spacing="2" Margin="6,0,0,0">
-                                    <Grid ColumnDefinitions="*,Auto">
-                                        <TextBlock Grid.Column="0" Text="Soften" Classes="ps-label" />
-                                        <TextBlock Grid.Column="1" Text="{Binding FxBevelEmbossSoften, StringFormat='{}{0:0} px'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" />
-                                    </Grid>
-                                    <Slider Minimum="0" Maximum="50" Value="{Binding FxBevelEmbossSoften, Mode=TwoWay}" />
-                                </StackPanel>
                             </Grid>
+                            <StackPanel Spacing="2">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Soften" Classes="ps-label" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FxBevelEmbossSoften, StringFormat='{}{0:0} px'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                                </Grid>
+                                <Slider Minimum="0" Maximum="50" Value="{Binding FxBevelEmbossSoften, Mode=TwoWay}" />
+                            </StackPanel>
                         </StackPanel>
 
                         <!-- Satin Settings -->

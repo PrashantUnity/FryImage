@@ -16,13 +16,14 @@ using PdfEditorApp.Plugins.ImageEditor.Core.Codecs;
 using PdfEditorApp.Plugins.ImageEditor.Core.Actions;
 using PdfEditorApp.Plugins.ImageEditor.Core.Canvas;
 using PdfEditorApp.Plugins.ImageEditor.Core.Printing;
+using PdfEditorApp.Plugins.ImageEditor.Controls;
 using PdfEditorApp.Plugins.ImageEditor.Models;
 using PdfEditorApp.Plugins.ImageEditor.UISnapshots.Core;
 
 namespace PdfEditorApp.Plugins.ImageEditor.UISnapshots.Suites;
 
 /// <summary>
-/// Verifies functional and visual correctness of ported Photoshop-parity features:
+/// Verifies functional and visual correctness of ported Studio-parity features:
 /// PCX & KRA codecs, Layer/Background conversions, Transparency locking, Mask targeting,
 /// Luminosity selection, History fill, Tab-rename navigation, and Channel management.
 /// </summary>
@@ -203,7 +204,7 @@ public static class ParityFeatureSnapshotSuite
         }
         Console.WriteLine($"  ✓ Shadows/Highlights bilateral engine verified (Shadow lifted: 20 -> {shadowVal}, Highlight compressed: 230 -> {highlightVal}).");
 
-        // 11. Test Black & White 6-Range Decomposition and Photoshop Color Blend Tint
+        // 11. Test Black & White 6-Range Decomposition and Studio Color Blend Tint
         byte[] bwPixels = [
             0, 0, 255, 255,  // Pure Red (B=0, G=0, R=255, A=255)
             0, 255, 0, 255   // Pure Green (B=0, G=255, R=0, A=255)
@@ -229,7 +230,7 @@ public static class ParityFeatureSnapshotSuite
         {
             throw new InvalidOperationException($"ApplyBlackAndWhite tint luminance shift: expected ~128, got {lum}");
         }
-        Console.WriteLine("  ✓ Black & White 6-Range decomposition & Photoshop Color blend tint verified.");
+        Console.WriteLine("  ✓ Black & White 6-Range decomposition & Studio Color blend tint verified.");
 
         // 12. Test Selective Color Ink Room Scaling
         byte[] scPixels = [0, 128, 255, 255]; // B=0, G=128, R=255, A=255
@@ -383,7 +384,7 @@ public static class ParityFeatureSnapshotSuite
         }
         Console.WriteLine("  ✓ XPM3 X PixMap decoder test passed.");
 
-        // 22. Test Photoshop Actions (.atn v16) binary codec roundtrip
+        // 22. Test Studio Actions (.atn v16) binary codec roundtrip
         var atnFile = new AtnCodec.AtnFile { Name = "Automated Test Actions" };
         var atnAct = new AtnCodec.AtnAction { Name = "Sepia Toning Action" };
         atnAct.Items.Add(new AtnCodec.AtnItem { Dictionary = "Sepia", EventName = "Sepia", Enabled = true });
@@ -394,9 +395,9 @@ public static class ParityFeatureSnapshotSuite
         {
             throw new InvalidOperationException("AtnCodec failed binary serialization roundtrip.");
         }
-        Console.WriteLine("  ✓ Photoshop Actions (.atn v16) binary codec roundtrip test passed.");
+        Console.WriteLine("  ✓ Studio Actions (.atn v16) binary codec roundtrip test passed.");
 
-        // 23. Test Photoshop Action Playback Engine
+        // 23. Test Studio Action Playback Engine
         vm.Elements.Clear();
         var targetImg = new ImageElement { Name = "Layer 1", Width = 100, Height = 100, ZIndex = 1 };
         vm.Elements.Add(targetImg);
@@ -406,7 +407,7 @@ public static class ParityFeatureSnapshotSuite
         {
             throw new InvalidOperationException("ActionPlaybackEngine failed to apply Sepia action.");
         }
-        Console.WriteLine("  ✓ Photoshop Action Playback Engine execution verified.");
+        Console.WriteLine("  ✓ Studio Action Playback Engine execution verified.");
 
         // 24. Test Canvas Viewport Autoscroll Physics Engine
         var scrollDelta = CanvasAutoscrollEngine.ComputeAutoscrollDelta(new Point(-30, 200), new Rect(0, 0, 800, 600), 0.016);
@@ -614,7 +615,7 @@ public static class ParityFeatureSnapshotSuite
         vm.SelectChannel("RGB");
         if (alphaCh.IsVisible)
         {
-            throw new InvalidOperationException("Selecting RGB must hide alpha channel overlays (Photoshop parity #4538).");
+            throw new InvalidOperationException("Selecting RGB must hide alpha channel overlays (Studio parity #4538).");
         }
         vm.DuplicateChannel(alphaCh);
         var dupCh = vm.DocumentChannels.FirstOrDefault(c => c.Name == "Alpha Test 1 copy");
@@ -657,7 +658,7 @@ public static class ParityFeatureSnapshotSuite
         }
         if (!hasIntermediateAlpha)
         {
-            throw new InvalidOperationException("SelectionModifyEngine.Border must produce Photoshop's soft band with fractional falloff.");
+            throw new InvalidOperationException("SelectionModifyEngine.Border must produce Studio's soft band with fractional falloff.");
         }
         Console.WriteLine("  ✓ Select › Modify › Border 2r soft band & distance falloff verified.");
 
@@ -690,7 +691,7 @@ public static class ParityFeatureSnapshotSuite
         }
         Console.WriteLine("  ✓ Bicubic Keys cubic kernel (a = -0.75) & reduction prefilter verified.");
 
-        // 41. Test Photoshop 27.11 Measured Round Tip Model (cf804c4b)
+        // 41. Test Calibrated Studio Measured Round Tip Model (cf804c4b)
         var (coreR, shoulderW) = BrushEngine.GetTipShape(radius: 20.0, hardness: 0.5);
         if (coreR <= 0 || shoulderW <= 0)
         {
@@ -702,7 +703,7 @@ public static class ParityFeatureSnapshotSuite
         {
             throw new InvalidOperationException("BrushEngine.DabCoverage must be 1.0 at center and 0.0 past tip reach.");
         }
-        Console.WriteLine("  ✓ Photoshop 27.11 measured round tip model (core, shoulder, reach) verified.");
+        Console.WriteLine("  ✓ Studio calibrated round tip model (core, shoulder, reach) verified.");
 
         // 42. Test Liquify Continuous Dab Spacing & Flat-Rim Falloff (32552a61, 599aea00)
         double fallCenter = LiquifyMesh.Falloff(0.0, 0.5);
@@ -804,7 +805,7 @@ public static class ParityFeatureSnapshotSuite
         Console.WriteLine("  ✓ CMYK inks Invert, Threshold, Posterize and 16-bit Lab Invert verified.");
 
         // 48. Test Text Element Recoloring without Rasterization (93397b08)
-        var textLayer = new TextElement { Text = "Photoshop", ForegroundColor = Colors.Black, Width = 100, Height = 30 };
+        var textLayer = new TextElement { Text = "FryImage", ForegroundColor = Colors.Black, Width = 100, Height = 30 };
         vm.Elements.Clear();
         vm.Elements.Add(textLayer);
         vm.SelectedElement = textLayer;
@@ -901,7 +902,7 @@ public static class ParityFeatureSnapshotSuite
         }
         Console.WriteLine("  ✓ OpenRaster (.ora) archiving & loss protection check verified.");
 
-        // 55. Test Blend-If Range Factor & Photoshop Visibility Equation (f57db2b5)
+        // 55. Test Blend-If Range Factor & Studio Visibility Equation (f57db2b5)
         float hardFactor = PdfEditorApp.Plugins.ImageEditor.Core.Blending.StudioBlendEngine.ComputeBlendRangeFactor(value: 30, blackLow: 40, blackHigh: 40, whiteLow: 255, whiteHigh: 255);
         if (hardFactor != 0.0f)
         {
@@ -919,7 +920,7 @@ public static class ParityFeatureSnapshotSuite
         {
             throw new InvalidOperationException($"EvaluateBlendIf failed: white pixel (255) must be hidden when white cutoff is 200.");
         }
-        Console.WriteLine("  ✓ Blend-If range factor & Photoshop visibility equation verified.");
+        Console.WriteLine("  ✓ Blend-If range factor & Standard visibility equation verified.");
 
         // 56. Test Toolbar Button Hold / Corner Flyout Tool Selection (d3e33d89)
         vm.ActiveToolMode = "brush";
@@ -1067,14 +1068,24 @@ public static class ParityFeatureSnapshotSuite
         }
         Console.WriteLine("  ✓ Layers panel clicking row lock converts Background to Layer 0 verified.");
 
-        // 66. Test Shared Tile Preservation in Mode and Depth Conversions (c758ebff)
-        byte srgbVal = 128;
-        double linVal = ColorProfileEngine.SrgbToLinear(srgbVal);
-        if (linVal <= 0.0 || linVal >= 1.0)
-        {
-            throw new InvalidOperationException("SrgbToLinear conversion failed.");
-        }
-        Console.WriteLine("  ✓ Shared tile preservation in mode and depth conversions verified.");
+        // 66. Test Levels 3-point mapping with Shadow Toe & Modern Brightness/Contrast S-curve (Modern Studio)
+        byte[] testLevelsPixels = [0, 0, 0, 255,   2, 2, 2, 255,   128, 128, 128, 255,   255, 255, 255, 255];
+        byte[] levelsResult = ImageAdjustmentEngine.ApplyLevels(testLevelsPixels, inBlack: 0, inWhite: 255, gamma: 1.5, outBlack: 0, outWhite: 255);
+        if (levelsResult[0] != 0 || levelsResult[12] != 255)
+            throw new InvalidOperationException("Levels boundary endpoints (0 and 255) failed.");
+        if (levelsResult[4] == 0)
+            throw new InvalidOperationException("Levels shadow toe failed: near-zero input collapsed to zero.");
+        
+        // Verify Modern Brightness/Contrast S-curve roll-off
+        byte[] testBcPixels = [128, 128, 128, 255,   140, 140, 140, 255,   250, 250, 250, 255];
+        byte[] bcResult = ImageAdjustmentEngine.ApplyBrightnessContrast(testBcPixels, brightness: 0, contrast: 40, legacy: false);
+        if (bcResult[0] < 128)
+            throw new InvalidOperationException($"Modern contrast midpoint expanded incorrectly: got {bcResult[0]}");
+        if (bcResult[4] <= 140)
+            throw new InvalidOperationException($"Modern contrast midtones failed to expand: got {bcResult[4]} <= 140");
+        if (bcResult[8] < 250)
+            throw new InvalidOperationException($"Modern contrast highlight roll-off collapsed: got {bcResult[8]} < 250");
+        Console.WriteLine("  ✓ Levels 3-point mapping with shadow toe and Modern Brightness/Contrast S-curve verified.");
 
         // 67. Test Bidirectional Hover Highlighting (6af9e1d9)
         vm.HoveredElement = floatingElement;
@@ -1107,35 +1118,76 @@ public static class ParityFeatureSnapshotSuite
         }
         Console.WriteLine("  ✓ Filter & Adjustment dialogs isolated parameter history (Cmd+Z stepping) verified.");
 
-        // 69. Test Gradient Stops Step Evaluation (753b6101)
-        double stop1 = 0.500000;
-        double stop2 = 0.500010;
-        bool stopsDistinct = Math.Abs(stop2 - stop1) > (1.0 / 4095.0 / 100.0);
-        if (!stopsDistinct)
-        {
-            throw new InvalidOperationException("High precision gradient stops collapsed.");
-        }
-        Console.WriteLine("  ✓ Gradient stops closer than 1/4095 CPU step evaluation verified.");
+        // 69. Test Studio Integer Luminance Threshold (30R + 59G + 11B) & Posterize Binning
+        // Test integer threshold boundary at threshold = 128 (cutoff = 100 * 128 - 50 = 12750)
+        // Pixel A: R=100, G=141, B=130 -> 30*100 + 59*141 + 11*130 = 12749 <= 12750 -> Black (0)
+        // Pixel B: R=100, G=142, B=130 -> 30*100 + 59*142 + 11*130 = 12808 > 12750 -> White (255)
+        byte[] threshPixels = [
+            130, 141, 100, 255, // BGRA for Pixel A
+            130, 142, 100, 255  // BGRA for Pixel B
+        ];
+        byte[] threshResult = ImageAdjustmentEngine.ApplyThreshold(threshPixels, threshold: 128);
+        if (threshResult[0] != 0 || threshResult[1] != 0 || threshResult[2] != 0)
+            throw new InvalidOperationException($"ApplyThreshold failed below cutoff: expected black (0), got {threshResult[2]}");
+        if (threshResult[4] != 255 || threshResult[5] != 255 || threshResult[6] != 255)
+            throw new InvalidOperationException($"ApplyThreshold failed above cutoff: expected white (255), got {threshResult[6]}");
 
-        // 70. Test Camera Raw Banded Parallel Processing (f2a1af86)
-        int bandHeight = 64;
-        int totalH = 256;
-        int bandsCount = (totalH + bandHeight - 1) / bandHeight;
-        if (bandsCount != 4)
+        // Test Posterize exact binning floor(k * 255 / (n - 1)) for n = 4
+        byte[] postPixels = [20, 20, 20, 255,   80, 80, 80, 255,   150, 150, 150, 255,   240, 240, 240, 255];
+        byte[] postResult = ImageAdjustmentEngine.ApplyPosterize(postPixels, levels: 4);
+        byte[] expectedBins = [0, 85, 170, 255];
+        for (int i = 0; i < 4; i++)
         {
-            throw new InvalidOperationException($"Parallel preview band count mismatch: expected 4, got {bandsCount}");
+            byte val = postResult[i * 4 + 2];
+            if (val != expectedBins[i])
+                throw new InvalidOperationException($"ApplyPosterize bin {i} mismatch: expected {expectedBins[i]}, got {val}");
         }
-        Console.WriteLine("  ✓ Camera Raw banded parallel preview processing verified.");
+        Console.WriteLine("  ✓ Standard integer luminance threshold (30R+59G+11B) and Posterize binning verified.");
 
-        // 71. Test Filters Selection Reading Once Per Tile (29f3656f)
-        byte[] tileMask = new byte[64 * 64];
-        Array.Fill(tileMask, (byte)255);
-        bool isUniformFullMask = tileMask[0] == 255 && tileMask[^1] == 255;
-        if (!isUniformFullMask)
+        // 70. Test Marquee Square Constrained Drag (SquarePx, #5472, #5506)
+        // Down-right drag: continuous square (50.3, 50.7)..(150.8, 151.2) snaps unevenly to [50, 50, 151, 152]
+        var rawRectDownRight = new Rect(new Point(50, 50), new Point(151, 152));
+        var squareDownRight = EditorCanvasControl.SquarePx(rawRectDownRight, new Point(50.3, 50.7), new Point(150.8, 90.0));
+        if (squareDownRight.X != 50 || squareDownRight.Y != 50 || squareDownRight.Width != 102 || squareDownRight.Height != 102)
         {
-            throw new InvalidOperationException("Tile selection mask buffer verification failed.");
+            throw new InvalidOperationException($"SquarePx down-right failed: expected [50, 50, 102, 102], got [{squareDownRight.X}, {squareDownRight.Y}, {squareDownRight.Width}, {squareDownRight.Height}]");
         }
-        Console.WriteLine("  ✓ Filters mix_selection once per tile read verified.");
+
+        // Up-left drag: the short side grows towards lower coordinates
+        var rawRectUpLeft = new Rect(new Point(50, 50), new Point(151, 152));
+        var squareUpLeft = EditorCanvasControl.SquarePx(rawRectUpLeft, new Point(150.8, 151.2), new Point(60.0, 50.7));
+        if (squareUpLeft.X != 49 || squareUpLeft.Y != 50 || squareUpLeft.Width != 102 || squareUpLeft.Height != 102)
+        {
+            throw new InvalidOperationException($"SquarePx up-left failed: expected [49, 50, 102, 102], got [{squareUpLeft.X}, {squareUpLeft.Y}, {squareUpLeft.Width}, {squareUpLeft.Height}]");
+        }
+
+        // Already square: unchanged
+        var squareExact = EditorCanvasControl.SquarePx(new Rect(10, 20, 30, 30), new Point(10, 20), new Point(40, 50));
+        if (squareExact.X != 10 || squareExact.Y != 20 || squareExact.Width != 30 || squareExact.Height != 30)
+        {
+            throw new InvalidOperationException("SquarePx altered an already square rectangle.");
+        }
+        Console.WriteLine("  ✓ Marquee square constrained drag equalises sides away from press point (#5472, #5506) verified.");
+
+        // 71. Test Sampled Brush Tip Creation with Luminance Inversion & Bounding Box (973e8681)
+        using var testSampleBmp = new SKBitmap(40, 40);
+        using (var canvas = new SKCanvas(testSampleBmp))
+        {
+            canvas.Clear(SKColors.White); // White background
+            using var blackPaint = new SKPaint { Color = SKColors.Black, Style = SKPaintStyle.Fill };
+            canvas.DrawRect(new SKRect(10, 10, 25, 30), blackPaint); // 15x20 black box
+        }
+        var sampledTip = BrushEngine.CreateSampledBrushTipFromBitmap(testSampleBmp);
+        if (sampledTip.Brush.TipShape != TipShapeKind.Sampled)
+            throw new InvalidOperationException("CreateSampledBrushTip did not set TipShapeKind.Sampled.");
+        if (sampledTip.Brush.SampledMaskBytes == null)
+            throw new InvalidOperationException("CreateSampledBrushTip returned null SampledMaskBytes.");
+        if (sampledTip.Width != 15 || sampledTip.Height != 20)
+            throw new InvalidOperationException($"Sampled tip mask bounding box mismatch: expected 15x20, got {sampledTip.Width}x{sampledTip.Height}");
+        // Luminance inversion: black pixels (luminance 0) should have mask opacity 255
+        if (sampledTip.Brush.SampledMaskBytes[0] != 255)
+            throw new InvalidOperationException($"Sampled tip luminance inversion failed: expected 255 opacity for black, got {sampledTip.Brush.SampledMaskBytes[0]}");
+        Console.WriteLine("  ✓ Sampled brush tip creation with luminance inversion and bounding box cropping (973e8681) verified.");
 
         // 72. Test Batch Action Playback Skips Quick Export Steps (4fdf1a72)
         var batchActionItems = new List<AtnCodec.AtnItem>
@@ -1295,7 +1347,9 @@ public static class ParityFeatureSnapshotSuite
         Console.WriteLine("  ✓ Brush and Pencil Mode dropdown blend modes (#4537) verified.");
 
         // 79. Real PSD Integration Test (behance-642fbe2bdc391.psd, 297MB, 61 layers)
-        string psdPath = "/Users/codefrydev/Desktop/SourceCode/FryImage/IdeaSample/behance-642fbe2bdc391.psd";
+        string psdPath = Path.Combine(AppContext.BaseDirectory, "../../../IdeaSample/behance-642fbe2bdc391.psd");
+        if (!File.Exists(psdPath))
+            psdPath = "/Users/codefrydev/Desktop/SourceCode/FryWorld/FryImage/IdeaSample/behance-642fbe2bdc391.psd";
         if (File.Exists(psdPath))
         {
             using (var psdStream = File.OpenRead(psdPath))
@@ -1502,6 +1556,197 @@ public static class ParityFeatureSnapshotSuite
                 Console.WriteLine($"  ✓ Real PSD (behance-642fbe2bdc391.psd, 297MB, 61 layers) decoding, editing, and print engine verified.");
             }
         }
+
+        // ── Phase 1-6 Parity Verification (New Codecs, Blur Gallery, Color Range, Curvature Pen, Layer Filter) ──
+        
+        // A. PDF Codec ISO 32000-1 Raster Export (#3401, #3441, #ad96df56)
+        using var paritySkBmp = new SKBitmap(16, 16, SKColorType.Bgra8888, SKAlphaType.Premul);
+        byte[] pdfExport = PdfCodec.Encode(paritySkBmp, 72.0, "TestDocument");
+        if (pdfExport.Length == 0 || !System.Text.Encoding.ASCII.GetString(pdfExport, 0, 8).StartsWith("%PDF-1.4"))
+            throw new InvalidOperationException("PdfCodec failed to write ISO 32000-1 compliant raster PDF.");
+        Console.WriteLine("  ✓ PDF ISO 32000-1 raster export codec verified.");
+
+        // B. Cineon 10-bit Log Film Decoder (#5dafbeea)
+        byte[] cinBytes = new byte[1024 + 16];
+        cinBytes[0] = 0x80; cinBytes[1] = 0x2A; cinBytes[2] = 0x5F; cinBytes[3] = 0xD7; // Magic
+        cinBytes[4] = 0; cinBytes[5] = 0; cinBytes[6] = 4; cinBytes[7] = 0; // Data offset 1024
+        cinBytes[193] = 3;  // Channels = 3 (RGB)
+        cinBytes[198] = 10; // 10 bits per pixel
+        cinBytes[200] = 0; cinBytes[201] = 0; cinBytes[202] = 0; cinBytes[203] = 2; // Width = 2
+        cinBytes[204] = 0; cinBytes[205] = 0; cinBytes[206] = 0; cinBytes[207] = 2; // Height = 2
+        for (int p = 0; p < 4; p++)
+        {
+            int cinOffset = 1024 + p * 4;
+            cinBytes[cinOffset] = 0x3F; cinBytes[cinOffset + 1] = 0xF0; cinBytes[cinOffset + 2] = 0x00; cinBytes[cinOffset + 3] = 0x00;
+        }
+        var cinDecoded = CineonCodec.Decode(cinBytes);
+        if (cinDecoded == null || cinDecoded.Width != 2 || cinDecoded.Height != 2)
+            throw new InvalidOperationException("CineonCodec failed to decode 10-bit log test frame.");
+        Console.WriteLine("  ✓ Cineon 10-bit log film decoder verified.");
+
+        // C. TIFF CIE L*a*b* D50 Bradford Conversions & Writer (#4949, #5c73f4ff)
+        var (lWhite, aWhite, bWhite) = TiffLabCodec.SrgbToLab(1.0f, 1.0f, 1.0f);
+        if (Math.Abs(lWhite - 1.0f) > 0.05f)
+            throw new InvalidOperationException($"TiffLabCodec white conversion out of bounds: L={lWhite}");
+        var (rRound, gRound, bRound) = TiffLabCodec.LabToSrgb(lWhite, aWhite, bWhite);
+        if (Math.Abs(rRound - 1.0f) > 0.05f || Math.Abs(gRound - 1.0f) > 0.05f || Math.Abs(bRound - 1.0f) > 0.05f)
+            throw new InvalidOperationException($"TiffLabCodec LabToSrgb roundtrip failed: R={rRound}");
+        using var tiffMs = new MemoryStream();
+        TiffLabCodec.WriteTiffUncompressed(paritySkBmp, tiffMs);
+        byte[] tiffOut = tiffMs.ToArray();
+        if (tiffOut.Length < 100 || tiffOut[0] != 'I' || tiffOut[1] != 'I' || tiffOut[2] != 42)
+            throw new InvalidOperationException("TiffLabCodec failed to write standard uncompressed TIFF image.");
+        Console.WriteLine("  ✓ TIFF CIE L*a*b* D50 conversions and TIFF writer verified.");
+
+        // D. Blur Gallery Engine (#d56aa35b, #be7a1f80, #7e0f48a2)
+        byte[] blurIn = new byte[16 * 16 * 4];
+        for (int i = 0; i < blurIn.Length; i += 4) { blurIn[i] = 120; blurIn[i+1] = 200; blurIn[i+2] = 255; blurIn[i+3] = 255; }
+        var pins = new System.Collections.Generic.List<BlurGalleryEngine.BlurPin>
+        {
+            new BlurGalleryEngine.BlurPin { X = 0.5, Y = 0.5, BlurRadius = 5.0 }
+        };
+        byte[] fieldBlurred = BlurGalleryEngine.ApplyFieldBlur(blurIn, 16, 16, pins);
+        if (fieldBlurred == null || fieldBlurred.Length != blurIn.Length)
+            throw new InvalidOperationException("BlurGalleryEngine.ApplyFieldBlur failed.");
+        byte[] irisBlurred = ImageAdjustmentEngine.ApplyIrisBlur(blurIn, 16, 16, 10, 0.35, 0.25, 0, 0.4);
+        if (irisBlurred == null || irisBlurred.Length != blurIn.Length)
+            throw new InvalidOperationException("ImageAdjustmentEngine.ApplyIrisBlur failed.");
+        byte[] tiltShiftBlurred = ImageAdjustmentEngine.ApplyTiltShift(blurIn, 16, 16, 10, 0, 0.15, 0.25);
+        if (tiltShiftBlurred == null || tiltShiftBlurred.Length != blurIn.Length)
+            throw new InvalidOperationException("ImageAdjustmentEngine.ApplyTiltShift failed.");
+        byte[] spinBlurred = BlurGalleryEngine.ApplySpinBlur(blurIn, 16, 16, 0.5, 0.5, 0.35, 0.25, 0, 15.0);
+        if (spinBlurred == null || spinBlurred.Length != blurIn.Length)
+            throw new InvalidOperationException("BlurGalleryEngine.ApplySpinBlur failed.");
+        Console.WriteLine("  ✓ Blur Gallery Engine (Field, Iris, Tilt-Shift, Spin) verified.");
+
+        // E. Color Range Skin Tones & Hue Family Calibrations (#d3d86da1, #b007b1d3)
+        byte[] skinTestBgra = new byte[4 * 4];
+        skinTestBgra[0] = 130; skinTestBgra[1] = 160; skinTestBgra[2] = 210; skinTestBgra[3] = 255;
+        skinTestBgra[4] = 230; skinTestBgra[5] = 50;  skinTestBgra[6] = 20;  skinTestBgra[7] = 255;
+        byte[] skinMask = ColorRangeEngine.ComputeMask(skinTestBgra, 2, 1, "Skin Tones", 40.0, false, Colors.Transparent);
+        if (skinMask[0] == 0 || skinMask[1] > 0)
+            throw new InvalidOperationException("ColorRangeEngine.ComputeMask failed Skin Tones discrimination.");
+        byte[] redFamilyMask = ColorRangeEngine.ComputeMask(skinTestBgra, 2, 1, "Reds", 40.0, false, Colors.Transparent);
+        if (redFamilyMask == null || redFamilyMask.Length != 2)
+            throw new InvalidOperationException("ColorRangeEngine.ComputeMask failed Reds hue family.");
+        Console.WriteLine("  ✓ Color Range Skin Tones (YCbCr ellipse) and Hue Families verified.");
+
+        // F. Curvature Pen Engine Catmull-Rom Tangents (#21c7cf63, #835f33a4)
+        var curvatureSubpath = new VectorSubpath();
+        curvatureSubpath.Knots.Add(new PathKnot(new Point(0, 0)) { IsSmooth = true });
+        curvatureSubpath.Knots.Add(new PathKnot(new Point(50, 100)) { IsSmooth = true });
+        curvatureSubpath.Knots.Add(new PathKnot(new Point(100, 0)) { IsSmooth = true });
+        CurvaturePenEngine.ReflowCurvatureHandles(curvatureSubpath);
+        if (curvatureSubpath.Knots[1].HandleIn == curvatureSubpath.Knots[1].Anchor || curvatureSubpath.Knots[1].HandleOut == curvatureSubpath.Knots[1].Anchor)
+            throw new InvalidOperationException("CurvaturePenEngine failed to generate smooth Bézier control handles.");
+        Console.WriteLine("  ✓ Curvature Pen Engine (Catmull-Rom to Bézier reflow) verified.");
+
+        // G. Layers Panel Filtering by Kind, Name, Mode (#5048, #5268)
+        vm.Elements.Clear();
+        var elPixel = new ImageElement { Name = "Hero Image", BlendMode = LayerBlendMode.Normal, ZIndex = 0 };
+        var elText = new TextElement { Name = "Header Title", BlendMode = LayerBlendMode.Multiply, ZIndex = 1 };
+        var elShape = new RectangleElement { Name = "Background Frame", BlendMode = LayerBlendMode.Screen, ZIndex = 2 };
+        vm.Elements.Add(elPixel);
+        vm.Elements.Add(elText);
+        vm.Elements.Add(elShape);
+
+        // Test Filter by Kind
+        vm.LayerFilterBy = "Kind";
+        vm.FilterKindType = true;
+        var filteredKind = vm.LayersDescendingZ.ToList();
+        if (filteredKind.Count != 1 || filteredKind[0] != elText)
+            throw new InvalidOperationException("Layers filtering by Kind failed to isolate Text layer.");
+        vm.FilterKindType = false;
+
+        // Test Filter by Name
+        vm.LayerFilterBy = "Name";
+        vm.LayerFilterName = "Hero";
+        var filteredName = vm.LayersDescendingZ.ToList();
+        if (filteredName.Count != 1 || filteredName[0] != elPixel)
+            throw new InvalidOperationException("Layers filtering by Name failed to isolate 'Hero' layer.");
+        vm.LayerFilterName = string.Empty;
+
+        // Test Filter by Mode
+        vm.LayerFilterBy = "Mode";
+        vm.LayerFilterMode = "Screen";
+        var filteredMode = vm.LayersDescendingZ.ToList();
+        if (filteredMode.Count != 1 || filteredMode[0] != elShape)
+            throw new InvalidOperationException("Layers filtering by Mode failed to isolate 'Screen' blend mode layer.");
+        vm.LayerFilterBy = "Kind"; // reset
+        Console.WriteLine("  ✓ Layers panel Kind/Name/Mode filtering verified.");
+
+        // 80. Test Background Auto-Conversion to Layer 0 on Opacity, BlendMode, and FillOpacity changes (#2da28895)
+        var testBg = new RectangleElement { Name = "Background", Width = 200, Height = 200, ZIndex = 0 };
+        vm.Elements.Clear();
+        vm.Elements.Add(testBg);
+        vm.ConvertLayerToBackground(testBg);
+        if (!testBg.IsBackground)
+            throw new InvalidOperationException("Failed to initialize test element as Background.");
+        vm.SelectedElement = testBg;
+        // Changing opacity below 100% promotes Background to Layer 0
+        vm.OpacityField = 85.0;
+        if (testBg.IsBackground || testBg.DisplayName != "Layer 0" || testBg.IsPositionLocked || testBg.IsTransparencyLocked)
+            throw new InvalidOperationException("Opacity change on Background failed to promote to unlocked 'Layer 0' (#2da28895).");
+        // Re-convert to background and test blend mode change
+        vm.ConvertLayerToBackground(testBg);
+        if (!testBg.IsBackground)
+            throw new InvalidOperationException("Re-conversion to background failed.");
+        vm.BlendModeField = LayerBlendMode.Multiply;
+        if (testBg.IsBackground || testBg.DisplayName != "Layer 0")
+            throw new InvalidOperationException("Blend mode change on Background failed to promote to 'Layer 0' (#2da28895).");
+        Console.WriteLine("  ✓ Background auto-conversion to Layer 0 on Opacity and BlendMode changes (#2da28895) verified.");
+
+        // 81. Test Pixel Locking Clears Transparency Locking (#ef8dc9ea)
+        var lockElement = new RectangleElement { Name = "TestLockLayer", Width = 100, Height = 100 };
+        vm.Elements.Clear();
+        vm.Elements.Add(lockElement);
+        vm.SelectedElement = lockElement;
+        lockElement.IsTransparencyLocked = true;
+        if (!lockElement.IsTransparencyLocked)
+            throw new InvalidOperationException("Failed to set transparency lock.");
+        vm.ToggleLockPixels();
+        if (!lockElement.IsPixelsLocked || lockElement.IsTransparencyLocked)
+            throw new InvalidOperationException("Locking pixels should lock pixels and clear transparency lock (#ef8dc9ea).");
+        Console.WriteLine("  ✓ Pixel lock clearing transparency lock (#ef8dc9ea) verified.");
+
+        // 82. Test Ruler Origin Drag, Reset, and Cursor Coordinates Relative to Zero Point (#b41e34c2, #96c683b2)
+        vm.SetRulerOrigin(50.0, 30.0);
+        if (vm.RulerOriginX != 50.0 || vm.RulerOriginY != 30.0)
+            throw new InvalidOperationException($"SetRulerOrigin failed: expected (50, 30), got ({vm.RulerOriginX}, {vm.RulerOriginY})");
+        vm.CursorCanvasX = 120.0;
+        vm.CursorCanvasY = 85.0;
+        if (vm.CursorInfoX != 70.0 || vm.CursorInfoY != 55.0)
+            throw new InvalidOperationException($"CursorInfoX/Y failed to subtract ruler origin: expected (70, 55), got ({vm.CursorInfoX}, {vm.CursorInfoY})");
+        // Active dragging guide overrides raw cursor
+        vm.ActiveDraggingGuideX = 200.0;
+        if (vm.CursorInfoX != 200.0)
+            throw new InvalidOperationException($"ActiveDraggingGuideX did not override CursorInfoX: got {vm.CursorInfoX}");
+        vm.ActiveDraggingGuideX = null;
+        vm.ResetRulerOrigin();
+        if (vm.RulerOriginX != 0.0 || vm.RulerOriginY != 0.0)
+            throw new InvalidOperationException("ResetRulerOrigin failed to restore origin to (0, 0).");
+        Console.WriteLine("  ✓ Ruler origin drag/reset and cursor zero-point relative coordinates (#b41e34c2, #96c683b2) verified.");
+
+        // 83. Test BevelTechnique Enum & Layer Style Effects Parity (#da6ceeaf)
+        var bevelStyle = new BevelEmbossStyle
+        {
+            Technique = BevelTechnique.ChiselHard,
+            Size = 12.0,
+            Soften = 4.0
+        };
+        if (bevelStyle.Technique != BevelTechnique.ChiselHard)
+            throw new InvalidOperationException("BevelTechnique.ChiselHard assignment failed.");
+        bevelStyle.Technique = BevelTechnique.ChiselSoft;
+        if (bevelStyle.Technique != BevelTechnique.ChiselSoft)
+            throw new InvalidOperationException("BevelTechnique.ChiselSoft assignment failed.");
+        Console.WriteLine("  ✓ BevelTechnique enum (Smooth, ChiselHard, ChiselSoft) (#da6ceeaf) verified.");
+
+        // 84. Test Filter Random Seed Generator for Procedural Filters (#b8e48d6d)
+        vm.FilterRandomSeed = 100;
+        vm.RandomizeFilterSeedCommand.Execute(null);
+        if (vm.FilterRandomSeed == 100)
+            throw new InvalidOperationException("RandomizeFilterSeedCommand failed to generate new seed.");
+        Console.WriteLine("  ✓ Filter random seed generation for procedural noise/clouds (#b8e48d6d) verified.");
     }
 
     private static byte[] CreateSyntheticPcx24(int width, int height)

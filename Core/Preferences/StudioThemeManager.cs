@@ -5,7 +5,7 @@ using Avalonia.Media;
 namespace PdfEditorApp.Plugins.ImageEditor.Core.Preferences;
 
 /// <summary>
-/// Design system theme manager for FryImage Studio (Photoshop color themes parity).
+/// Design system theme manager for FryImage Studio (Studio color themes parity).
 /// Supports Pro Dark, Pro Medium Gray, Pro Light, Soft Dark, Soft Light, and Solarized Dark palettes.
 /// </summary>
 public static class StudioThemeManager
@@ -21,6 +21,28 @@ public static class StudioThemeManager
     }
 
     public static StudioTheme CurrentTheme { get; private set; } = StudioTheme.ProDark;
+
+    public static void DarkenInterface(Avalonia.Controls.Control rootControl)
+    {
+        var next = CurrentTheme switch
+        {
+            StudioTheme.ProLight => StudioTheme.ProMedium,
+            StudioTheme.ProMedium => StudioTheme.ProDark,
+            _ => StudioTheme.ProDark
+        };
+        ApplyTheme(rootControl, next);
+    }
+
+    public static void LightenInterface(Avalonia.Controls.Control rootControl)
+    {
+        var next = CurrentTheme switch
+        {
+            StudioTheme.ProDark => StudioTheme.ProMedium,
+            StudioTheme.ProMedium => StudioTheme.ProLight,
+            _ => StudioTheme.ProLight
+        };
+        ApplyTheme(rootControl, next);
+    }
 
     public static void ApplyTheme(Avalonia.Controls.Control rootControl, StudioTheme theme)
     {

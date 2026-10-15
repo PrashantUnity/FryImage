@@ -1150,7 +1150,7 @@ public static class RetouchEngine
     }
 
     /// <summary>
-    /// Executes the measured Photoshop 27.x Remove Tool inpainting algorithm:
+    /// Executes the measured Studio 27.x Remove Tool inpainting algorithm:
     /// Accumulates strokes, closes loops, dilates borders, and in-fills missing texture and color.
     /// </summary>
     public static void ApplyRemoveJob(

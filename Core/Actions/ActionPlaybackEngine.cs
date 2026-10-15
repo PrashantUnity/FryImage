@@ -9,7 +9,7 @@ using PdfEditorApp.Plugins.ImageEditor.Models.Shapes;
 namespace PdfEditorApp.Plugins.ImageEditor.Core.Actions;
 
 /// <summary>
-/// Execution engine for Photoshop Actions (.atn) and macro batch sequences.
+/// Execution engine for Actions (.atn) and macro batch sequences.
 /// Translates recorded steps into ImageEditorViewModel commands and Skia adjustment filters.
 /// </summary>
 public static class ActionPlaybackEngine

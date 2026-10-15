@@ -13,7 +13,7 @@ public static class DialogSnapshotSuite
     {
         var vm = ctx.ViewModel;
 
-        // 0. Photoshop-Grade New Layer Dialog (with Label Color & Mode-neutral color prompt)
+        // 0. Studio-Grade New Layer Dialog (with Label Color & Mode-neutral color prompt)
         vm.OpenNewLayerDialogCommand.Execute(null);
         vm.NewLayerName = "Highlights Layer";
         vm.NewLayerColorIndex = (int)LayerLabelColor.Violet;
@@ -21,7 +21,7 @@ public static class DialogSnapshotSuite
         ctx.Capture("dialog_new_layer.png");
         vm.CancelNewLayerDialogCommand.Execute(null);
 
-        // 0b. Photoshop-Grade Layer Properties / Rename Layer Dialog
+        // 0b. Studio-Grade Layer Properties / Rename Layer Dialog
         vm.OpenRenameLayerDialogCommand.Execute(null);
         vm.RenameLayerName = "Foreground Elements";
         vm.RenameLayerColorIndex = (int)LayerLabelColor.Orange;
@@ -78,12 +78,12 @@ public static class DialogSnapshotSuite
         ctx.Capture("dialog_adjustment_hue_saturation.png");
         vm.CancelAdjustmentDialogCommand.Execute(null);
 
-        // 5b. Adjustment - Shadows / Highlights (Photoshop 25.4 Algorithmic Model)
+        // 5b. Adjustment - Shadows / Highlights (Standard Studio Algorithmic Model)
         vm.OpenAdjustmentDialogCommand.Execute("ShadowsHighlights");
         ctx.Capture("dialog_adjustment_shadows_highlights.png");
         vm.CancelAdjustmentDialogCommand.Execute(null);
 
-        // 5c. Adjustment - Black & White (Photoshop 6-Range Decomposition & Tint)
+        // 5c. Adjustment - Black & White (Standard 6-Range Decomposition & Tint)
         vm.OpenAdjustmentDialogCommand.Execute("BlackAndWhite");
         ctx.Capture("dialog_adjustment_black_and_white.png");
         vm.CancelAdjustmentDialogCommand.Execute(null);
@@ -144,7 +144,7 @@ public static class DialogSnapshotSuite
         ctx.Capture("dialog_confirm_discard.png");
         vm.CancelDiscardCommand.Execute(null);
 
-        // 15. Photoshop Studio Color Picker Dialog
+        // 15. Studio Studio Color Picker Dialog
         vm.OpenColorPicker("Foreground");
         ctx.Capture("dialog_color_picker_foreground.png");
         vm.CancelColorPickerCommand.Execute(null);

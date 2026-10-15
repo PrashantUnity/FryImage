@@ -25,6 +25,6 @@ public interface IEditHistory
     /// <summary>Discards all history without undoing anything (e.g. on ClearCanvas).</summary>
     void Clear();
 
-    /// <summary>Deletes the current state, rolling back to the previous state without keeping redo (Photoshop linear history delete).</summary>
+    /// <summary>Deletes the current state, rolling back to the previous state without keeping redo (Studio linear history delete).</summary>
     void DeleteCurrentState();
 }

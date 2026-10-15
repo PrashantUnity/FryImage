@@ -772,7 +772,9 @@ public static partial class ImageAdjustmentEngine
                 {
                     double dx = x - cx;
                     double dy = y - cy;
-                    double theta = (Math.Atan2(dx, -dy) % tau + tau) % tau;
+                    // Calibrated Studio: angle turns counter-clockwise from 12 o'clock (commit 5f2c23e1)
+                    double theta = Math.Atan2(-dx, -dy);
+                    if (theta <= 0.0) theta += tau;
                     double r = Math.Sqrt(dx * dx + dy * dy);
 
                     sx = (theta / tau) * width;
@@ -780,10 +782,11 @@ public static partial class ImageAdjustmentEngine
                 }
                 else
                 {
-                    double theta = (x / (double)width) * tau;
+                    // Calibrated Studio: angle is one column ahead of radius row (commit 5f2c23e1)
+                    double theta = ((x + 1.0) / (double)width) * tau;
                     double r = (y / (double)height) * rmax;
 
-                    sx = cx + r * Math.Sin(theta);
+                    sx = cx - r * Math.Sin(theta);
                     sy = cy - r * Math.Cos(theta);
                 }
 
@@ -883,7 +886,7 @@ public static partial class ImageAdjustmentEngine
     /// <summary>
     /// Applies Crystallize / Pointillize Voronoi cell mosaic clustering.
     /// </summary>
-    public static byte[] ApplyCrystallize(byte[] bgraPixels, int width, int height, int cellSize = 20)
+    public static byte[] ApplyCrystallize(byte[] bgraPixels, int width, int height, int cellSize = 20, uint seed = 991u)
     {
         if (width <= 0 || height <= 0 || cellSize <= 1) return (byte[])bgraPixels.Clone();
 
@@ -897,8 +900,8 @@ public static partial class ImageAdjustmentEngine
         {
             for (int gx = 0; gx < gridW; gx++)
             {
-                double jx = Hash01(gx, gy, 1, 991);
-                double jy = Hash01(gx, gy, 2, 991);
+                double jx = Hash01(gx, gy, 1, seed);
+                double jy = Hash01(gx, gy, 2, seed);
                 sites[gy * gridW + gx] = ((gx - 1 + jx) * cs, (gy - 1 + jy) * cs);
             }
         }
@@ -951,9 +954,9 @@ public static partial class ImageAdjustmentEngine
     /// <summary>
     /// Applies Pointillize filter: smaller Voronoi dot cells on canvas background.
     /// </summary>
-    public static byte[] ApplyPointillize(byte[] bgraPixels, int width, int height, int cellSize = 10)
+    public static byte[] ApplyPointillize(byte[] bgraPixels, int width, int height, int cellSize = 10, uint seed = 991u)
     {
-        return ApplyCrystallize(bgraPixels, width, height, cellSize);
+        return ApplyCrystallize(bgraPixels, width, height, cellSize, seed);
     }
 
     #endregion
@@ -976,7 +979,7 @@ public static partial class ImageAdjustmentEngine
         double shadows = 0.0,        // -100 .. +100
         double whites = 0.0,         // -100 .. +100
         double blacks = 0.0,         // -100 .. +100
-        double texture = 0.0,        // -100 .. +100 (Photoshop 25.4 measured fine-grain texture)
+        double texture = 0.0,        // -100 .. +100 (Studio calibrated fine-grain texture)
         double clarity = 0.0,        // -100 .. +100
         double dehaze = 0.0,         // -100 .. +100
         double vibrance = 0.0,       // -100 .. +100
@@ -1042,7 +1045,7 @@ public static partial class ImageAdjustmentEngine
                 }
             }
 
-            // 4. Texture fine-grain detail enhancement (Photoshop 25.4 measured: clamped to [-0.1, 0.1] to prevent edge halos)
+            // 4. Texture fine-grain detail enhancement (Studio calibrated: clamped to [-0.1, 0.1] to prevent edge halos)
             if (textureBase != null)
             {
                 double bFine = Math.Pow(textureBase[idx] / 255.0, 2.2);
@@ -1054,7 +1057,7 @@ public static partial class ImageAdjustmentEngine
                 bLin += Math.Clamp(bLin - bFine, -0.1, 0.1) * textureAmount;
             }
 
-            // 5. Clarity bandpass (Photoshop 25.4 measured: midtone-weighted parabolic envelope)
+            // 5. Clarity bandpass (Studio calibrated: midtone-weighted parabolic envelope)
             if (clarityBase != null)
             {
                 double bBlur = Math.Pow(clarityBase[idx] / 255.0, 2.2);
@@ -1292,7 +1295,8 @@ public static partial class ImageAdjustmentEngine
                     int gx = (get(1, -1) + 2 * get(1, 0) + get(1, 1)) - (get(-1, -1) + 2 * get(-1, 0) + get(-1, 1));
                     int gy = (get(-1, 1) + 2 * get(0, 1) + get(1, 1)) - (get(-1, -1) + 2 * get(0, -1) + get(1, -1));
 
-                    double mag = Math.Sqrt(gx * gx + gy * gy) / 4.0;
+                    // Calibrated Studio: full Sobel magnitude (commit 5f2c23e1)
+                    double mag = Math.Sqrt(gx * gx + gy * gy);
                     double outVal = Math.Clamp(255.0 - mag, 0.0, 255.0);
 
                     result[idx + c] = (byte)Math.Round(outVal);
@@ -1420,7 +1424,7 @@ public static partial class ImageAdjustmentEngine
                 }
                 else
                 {
-                    // Photoshop absolute mode: scaled by the room the ink has (adding: min(1, 2*(1-ink)), removing: min(1, 2*ink))
+                    // Studio absolute mode: scaled by the room the ink has (adding: min(1, 2*(1-ink)), removing: min(1, 2*ink))
                     dC *= dC > 0.0 ? Math.Min(1.0, 2.0 * (1.0 - inkR)) : Math.Min(1.0, 2.0 * inkR);
                     dM *= dM > 0.0 ? Math.Min(1.0, 2.0 * (1.0 - inkG)) : Math.Min(1.0, 2.0 * inkG);
                     dY *= dY > 0.0 ? Math.Min(1.0, 2.0 * (1.0 - inkB)) : Math.Min(1.0, 2.0 * inkB);
@@ -1893,7 +1897,7 @@ public static partial class ImageAdjustmentEngine
     #region Stylize & Optical Filters: Wind, Diffuse, Extrude, Tiles, Fibers, ZigZag, Shear, Mezzotint, TraceContour, WaterPaper
 
     /// <summary>
-    /// Applies Photoshop-comparable Wind filter (Wind, Blast, Stagger from Left/Right).
+    /// Applies Studio-comparable Wind filter (Wind, Blast, Stagger from Left/Right).
     /// </summary>
     public static byte[] ApplyWind(byte[] bgra, int width, int height, int direction, int method, int strength = 20)
     {
@@ -1955,7 +1959,7 @@ public static partial class ImageAdjustmentEngine
     }
 
     /// <summary>
-    /// Applies Photoshop-comparable Diffuse filter (Normal, Darken Only, Lighten Only, Anisotropic).
+    /// Applies Studio-comparable Diffuse filter (Normal, Darken Only, Lighten Only, Anisotropic).
     /// </summary>
     public static byte[] ApplyDiffuse(byte[] bgra, int width, int height, int mode, int radius = 3)
     {
@@ -2027,7 +2031,7 @@ public static partial class ImageAdjustmentEngine
     }
 
     /// <summary>
-    /// Applies Photoshop-comparable Extrude filter (3D Blocks / Pyramids).
+    /// Applies Studio-comparable Extrude filter (3D Blocks / Pyramids).
     /// </summary>
     public static byte[] ApplyExtrude(byte[] bgra, int width, int height, int type, int size = 16, int depth = 30)
     {
@@ -2105,7 +2109,7 @@ public static partial class ImageAdjustmentEngine
     }
 
     /// <summary>
-    /// Applies Photoshop-comparable Tiles filter (regular grid displacement).
+    /// Applies Studio-comparable Tiles filter (regular grid displacement).
     /// </summary>
     public static byte[] ApplyTiles(byte[] bgra, int width, int height, int numberOfTiles = 10, int maxOffset = 20, int fillMode = 0)
     {
@@ -2184,7 +2188,7 @@ public static partial class ImageAdjustmentEngine
     }
 
     /// <summary>
-    /// Applies Photoshop-comparable Fibers filter (procedural organic directional texture generator).
+    /// Applies Studio-comparable Fibers filter (procedural organic directional texture generator).
     /// </summary>
     public static byte[] ApplyFibers(int width, int height, int variance = 16, int strength = 4, uint seed = 12345)
     {
@@ -2213,7 +2217,7 @@ public static partial class ImageAdjustmentEngine
     }
 
     /// <summary>
-    /// Applies Photoshop-comparable ZigZag filter (concentric radial sine water ripples).
+    /// Applies Studio-comparable ZigZag filter (concentric radial sine water ripples).
     /// </summary>
     public static byte[] ApplyZigZag(byte[] bgra, int width, int height, int amount = 25, int ridges = 5, int style = 0)
     {
@@ -2272,7 +2276,7 @@ public static partial class ImageAdjustmentEngine
     }
 
     /// <summary>
-    /// Applies Photoshop-comparable Shear filter (curved horizontal coordinate warp).
+    /// Applies Studio-comparable Shear filter (curved horizontal coordinate warp).
     /// </summary>
     public static byte[] ApplyShear(byte[] bgra, int width, int height, double amplitude = 30.0)
     {
@@ -2302,7 +2306,7 @@ public static partial class ImageAdjustmentEngine
     }
 
     /// <summary>
-    /// Applies Photoshop-comparable Mezzotint filter (grain/dot engraving simulation).
+    /// Applies Studio-comparable Mezzotint filter (grain/dot engraving simulation).
     /// </summary>
     public static byte[] ApplyMezzotint(byte[] bgra, int width, int height, int type = 0)
     {
@@ -2345,7 +2349,7 @@ public static partial class ImageAdjustmentEngine
     }
 
     /// <summary>
-    /// Applies Photoshop-comparable Trace Contour filter (ISO threshold luminance isoline tracking).
+    /// Applies Studio-comparable Trace Contour filter (ISO threshold luminance isoline tracking).
     /// </summary>
     public static byte[] ApplyTraceContour(byte[] bgra, int width, int height, int level = 128, bool upperEdge = true)
     {
@@ -2382,7 +2386,7 @@ public static partial class ImageAdjustmentEngine
     }
 
     /// <summary>
-    /// Applies Photoshop-comparable Water Paper filter (watercolor bleeding along fibers).
+    /// Applies Studio-comparable Water Paper filter (watercolor bleeding along fibers).
     /// </summary>
     public static byte[] ApplyWaterPaper(byte[] bgra, int width, int height, int fiberLength = 15, int brightness = 50, int contrast = 50)
     {
@@ -2412,7 +2416,7 @@ public static partial class ImageAdjustmentEngine
     }
 
     /// <summary>
-    /// Applies Photoshop-compatible Displace filter (Distort › Displace).
+    /// Applies Industry-compatible Displace filter (Distort › Displace).
     /// Uses sub-pixel bilinear interpolation guided by horizontal and vertical displacement components.
     /// Supports Stretch to Fit vs Tile, Repeat Edge Pixels vs Wrap Around,
     /// and built-in procedural displacement maps (Ripple, Waves, Fabric Folds, Glass) or custom maps.
@@ -2453,7 +2457,7 @@ public static partial class ImageAdjustmentEngine
                     int my = isTile ? (((y % customMapHeight) + customMapHeight) % customMapHeight) : (int)Math.Clamp((double)y / height * customMapHeight, 0, customMapHeight - 1);
                     int mIdx = (my * customMapWidth + mx) * 4;
 
-                    // Photoshop displacement maps: Red = Horizontal shift, Green = Vertical shift (128 is neutral 0)
+                    // Studio displacement maps: Red = Horizontal shift, Green = Vertical shift (128 is neutral 0)
                     dh = (customMapBgra![mIdx + 2] - 128.0) / 128.0;
                     dv = (customMapBgra![mIdx + 1] - 128.0) / 128.0;
                 }

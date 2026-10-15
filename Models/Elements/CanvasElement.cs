@@ -89,20 +89,20 @@ public abstract class CanvasElement : INotifyPropertyChanged
     /// modifier is held during the drag. Defaults false for shapes; ImageElement defaults true.</summary>
     public bool AspectLocked { get; set; }
 
-    /// <summary>When true, this layer acts as a Photoshop clipping mask, clipped to the layer directly below it.</summary>
+    /// <summary>When true, this layer acts as a Studio clipping mask, clipped to the layer directly below it.</summary>
     public bool IsClippingMask { get; set; }
 
-    /// <summary>Photoshop layer label color tag (None, Red, Orange, Yellow, Green, Blue, Violet, Gray).</summary>
+    /// <summary>Studio layer label color tag (None, Red, Orange, Yellow, Green, Blue, Violet, Gray).</summary>
     public LayerLabelColor LabelColor { get; set; } = LayerLabelColor.None;
 
     /// <summary>Convenience brush for UI layer row binding.</summary>
     public IBrush LabelColorBrush => LabelColor.ToBrush();
 
-    /// <summary>Photoshop Blend If: This Layer luminance range (0..255).</summary>
+    /// <summary>Studio Blend If: This Layer luminance range (0..255).</summary>
     public byte BlendIfThisMin { get; set; } = 0;
     public byte BlendIfThisMax { get; set; } = 255;
 
-    /// <summary>Photoshop Blend If: Underlying Layer luminance range (0..255).</summary>
+    /// <summary>Studio Blend If: Underlying Layer luminance range (0..255).</summary>
     public byte BlendIfUnderMin { get; set; } = 0;
     public byte BlendIfUnderMax { get; set; } = 255;
 
@@ -121,8 +121,36 @@ public abstract class CanvasElement : INotifyPropertyChanged
     /// <summary>Whether the vector mask is enabled.</summary>
     public bool IsVectorMaskEnabled { get; set; } = true;
 
-    /// <summary>When true, transparency of this layer is locked against modification (Photoshop Lock Transparent Pixels, '/').</summary>
-    public bool IsTransparencyLocked { get; set; }
+    private bool _isTransparencyLocked;
+    /// <summary>When true, transparency of this layer is locked against modification (Studio Lock Transparent Pixels, '/').</summary>
+    public bool IsTransparencyLocked
+    {
+        get => _isTransparencyLocked;
+        set
+        {
+            _isTransparencyLocked = value;
+            if (value && _isPixelsLocked)
+            {
+                _isPixelsLocked = false;
+            }
+        }
+    }
+
+    private bool _isPixelsLocked;
+    /// <summary>When true, pixel content of this layer is locked against modification (Studio Lock Pixels). Locking pixels clears transparency lock (#4892).</summary>
+    public bool IsPixelsLocked
+    {
+        get => _isPixelsLocked;
+        set
+        {
+            _isPixelsLocked = value;
+            if (value)
+            {
+                // #4892: locking the pixels clears the transparency lock, as in Studio
+                _isTransparencyLocked = false;
+            }
+        }
+    }
 
     /// <summary>When true, spatial position and transforms of this layer are locked.</summary>
     public bool IsPositionLocked { get; set; }
@@ -187,7 +215,7 @@ public abstract class CanvasElement : INotifyPropertyChanged
     }
 
     private bool _isTextLayer;
-    /// <summary>Whether this element is a text layer (e.g. from Photoshop TySh block or text tool).</summary>
+    /// <summary>Whether this element is a text layer (e.g. from Studio TySh block or text tool).</summary>
     public virtual bool IsTextLayer
     {
         get => _isTextLayer || this is TextElement;
@@ -217,7 +245,7 @@ public abstract class CanvasElement : INotifyPropertyChanged
     public bool AreSmartFiltersExpanded { get; set; } = true;
 
     /// <summary>
-    /// Whether this layer has Photoshop Background traits: an unclipped layer at the bottom with
+    /// Whether this layer has Studio Background traits: an unclipped layer at the bottom with
     /// position and transparency locked, regardless of its localized name.
     /// </summary>
     public bool HasBackgroundTraits => IsBackground || (IsTransparencyLocked && IsPositionLocked && !IsClippingMask && this is ImageElement);
@@ -240,6 +268,7 @@ public abstract class CanvasElement : INotifyPropertyChanged
         target.IsVisible = IsVisible;
         target.IsLocked = IsLocked;
         target.IsTransparencyLocked = IsTransparencyLocked;
+        target.IsPixelsLocked = IsPixelsLocked;
         target.IsPositionLocked = IsPositionLocked;
         target.IsBackground = IsBackground;
         target.IsSmartObject = IsSmartObject;

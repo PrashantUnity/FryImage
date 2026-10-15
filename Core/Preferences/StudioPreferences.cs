@@ -5,7 +5,7 @@ using System.Text.Json;
 namespace PdfEditorApp.Plugins.ImageEditor.Core.Preferences;
 
 /// <summary>
-/// Persistent studio preferences across application restarts (Photoshop Parity #3762, #3870, #3863).
+/// Persistent studio preferences across application restarts (Studio Parity #3762, #3870, #3863).
 /// Remembers:
 /// - View › Extras, View › Show (Pixel Grid, Guides, Grid, Document Bounds)
 /// - View › Snap To (Guides, Grid, Layers, Bounds)
@@ -35,6 +35,7 @@ public sealed class StudioPreferences
     public bool MissingGlyphProtection { get; set; } = true;
     public int DefaultBitsPerChannel { get; set; } = 8; // 8, 16, or 32
     public string CurrentTheme { get; set; } = "ProDark";
+    public string SelectedTool { get; set; } = "select";
 
     private static StudioPreferences? _instance;
     public static StudioPreferences Instance => _instance ??= Load();

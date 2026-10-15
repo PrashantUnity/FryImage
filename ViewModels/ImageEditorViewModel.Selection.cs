@@ -258,7 +258,7 @@ public partial class ImageEditorViewModel
         }
     }
 
-    // ── Photoshop Select › Modify Operations ────────────────────────────────
+    // ── Studio Select › Modify Operations ────────────────────────────────
     [RelayCommand]
     public void ModifySelectionBorder(int radius = 4)
     {
@@ -364,10 +364,20 @@ public partial class ImageEditorViewModel
     [ObservableProperty] private string _colorRangeSelectMode = "Sampled Colors";
     [ObservableProperty] private double _colorRangeFuzziness = 40.0;
     [ObservableProperty] private bool _colorRangeInvert = false;
+    [ObservableProperty] private bool _colorRangeLocalized = false;
+    [ObservableProperty] private double _colorRangeRange = 100.0;
+
+    public bool IsColorRangeSampledMode => ColorRangeSelectMode == "Sampled Colors";
+
+    partial void OnColorRangeSelectModeChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsColorRangeSampledMode));
+    }
 
     public IReadOnlyList<string> AvailableColorRangeModes { get; } =
     [
         "Sampled Colors",
+        "Skin Tones",
         "Reds",
         "Yellows",
         "Greens",
@@ -462,6 +472,7 @@ public partial class ImageEditorViewModel
             using var bmp = SKBitmap.Decode(_colorRangeOriginalImageBytes);
             if (bmp == null) return;
 
+            var samplePoints = new (double X, double Y)[] { (bmp.Width / 2.0, bmp.Height / 2.0) };
             byte[] mask = ColorRangeEngine.ComputeMask(
                 bmp.Bytes,
                 bmp.Width,
@@ -469,7 +480,10 @@ public partial class ImageEditorViewModel
                 ColorRangeSelectMode,
                 ColorRangeFuzziness,
                 ColorRangeInvert,
-                PrimaryColor);
+                PrimaryColor,
+                ColorRangeLocalized,
+                ColorRangeRange,
+                samplePoints);
 
             if (CanvasControl != null)
             {
@@ -809,7 +823,7 @@ public partial class ImageEditorViewModel
         }
     }
 
-    // ── Photoshop Luminosity Selection & History Fill ───────────────────────
+    // ── Studio Luminosity Selection & History Fill ───────────────────────
     [RelayCommand]
     public void LoadLuminositySelection()
     {

@@ -9,8 +9,10 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using PdfEditorApp.Plugins.ImageEditor.Core.Paint;
+using PdfEditorApp.Plugins.ImageEditor.Core.Raster;
 using PdfEditorApp.Plugins.ImageEditor.Core.Vector;
 using PdfEditorApp.Plugins.ImageEditor.Models;
+using SkiaSharp;
 
 namespace PdfEditorApp.Plugins.ImageEditor.Controls;
 
@@ -72,7 +74,7 @@ public partial class EditorCanvasControl : Control
     public bool PulledStringMode { get; set; } = true;
     public bool CatchUpOnStrokeEnd { get; set; } = true;
 
-    // Real-time brush leash & pulled string dynamics (Photoshop 2026 Parity)
+    // Real-time brush leash & pulled string dynamics (Studio Parity)
     private Point _smoothedBrushPos;
     private Point? _currentPointerCanvasPos;
     private bool _hasSmoothingLeash;
@@ -109,6 +111,38 @@ public partial class EditorCanvasControl : Control
     private PathKnot? _selectedPathKnot;
     private bool _isPenOverFirstKnot;
 
+    // Layer Style on-canvas shadow dragging (#5701)
+    private bool _isDraggingLayerStyleShadow;
+    private Point _layerStyleShadowDragStart;
+
+    // Studio Zoom Ladder Levels (Studio / PhotoCraft parity #3695)
+    private static readonly double[] s_zoomLadder =
+    [
+        0.001, 0.002, 0.003, 0.004, 0.005, 0.007, 0.01, 0.015, 0.02, 0.03, 0.04, 0.05,
+        0.0625, 1.0 / 12.0, 0.125, 1.0 / 6.0, 0.25, 1.0 / 3.0, 0.5, 2.0 / 3.0, 1.0,
+        2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 12.0, 16.0, 32.0, 64.0, 128.0
+    ];
+
+    private static double StepZoomLadder(double currentZoom, double delta)
+    {
+        if (delta > 0)
+        {
+            foreach (var step in s_zoomLadder)
+            {
+                if (step > currentZoom + 1e-4) return step;
+            }
+            return s_zoomLadder[^1];
+        }
+        else
+        {
+            for (int i = s_zoomLadder.Length - 1; i >= 0; i--)
+            {
+                if (s_zoomLadder[i] < currentZoom - 1e-4) return s_zoomLadder[i];
+            }
+            return s_zoomLadder[0];
+        }
+    }
+
     // Bidirectional hover highlighting (#4718, #4719)
     public CanvasElement? HoveredElement { get; set; }
     public CanvasElement? CanvasHoveredElement { get; set; }
@@ -128,6 +162,7 @@ public partial class EditorCanvasControl : Control
     public event Action<double>? ViewportRotationAngleChanged;
     public event Action<Point, Point>? RulerMeasurementChanged;
     public event Action<Point, Point>? RulerMeasurementCompleted;
+    public event Action? EmptyWorkspaceDoubleClicked;
 
     private bool _isRotatingView;
     private Point _rotateViewStartPointer;
@@ -173,12 +208,6 @@ public partial class EditorCanvasControl : Control
     public void AddUserGuide(bool isVertical, double position, Color? color = null)
     {
         _userGuides.Add((isVertical, position, color));
-        InvalidateVisual();
-    }
-
-    public void ClearUserGuides()
-    {
-        _userGuides.Clear();
         InvalidateVisual();
     }
 
@@ -248,6 +277,7 @@ public partial class EditorCanvasControl : Control
     // Panning (screen-space)
     private bool _isPanning;
     private bool _spaceHeld;
+    private bool _shiftHeld;
     private Point _panLastScreenPos;
 
     static EditorCanvasControl()
@@ -459,6 +489,8 @@ public partial class EditorCanvasControl : Control
         InvalidateVisual();
     }
 
+    public bool IsCropContentAwareFillEnabled { get; set; } = false;
+
     public void ConfirmCrop()
     {
         if (_selection.Count != 1 || _selection[0] is not ImageElement img)
@@ -475,9 +507,76 @@ public partial class EditorCanvasControl : Control
         double localDx = _cropPreviewRect.X - img.X;
         double localDy = _cropPreviewRect.Y - img.Y;
 
-        img.SourceCropRect = new Rect(
+        var targetCropRect = new Rect(
             srcRect.X + localDx * scaleX, srcRect.Y + localDy * scaleY,
             _cropPreviewRect.Width * scaleX, _cropPreviewRect.Height * scaleY);
+
+        if (IsCropContentAwareFillEnabled && img.OriginalImageBytes != null && img.OriginalImageBytes.Length > 0)
+        {
+            try
+            {
+                using var srcBmp = SKBitmap.Decode(img.OriginalImageBytes);
+                if (srcBmp != null)
+                {
+                    int targetW = (int)Math.Max(1, Math.Round(targetCropRect.Width));
+                    int targetH = (int)Math.Max(1, Math.Round(targetCropRect.Height));
+                    int offsetX = (int)Math.Round(-targetCropRect.X);
+                    int offsetY = (int)Math.Round(-targetCropRect.Y);
+
+                    using var canvasBmp = new SKBitmap(targetW, targetH, SKColorType.Bgra8888, SKAlphaType.Premul);
+                    using (var canvas = new SKCanvas(canvasBmp))
+                    {
+                        canvas.Clear(SKColors.Transparent);
+                        canvas.DrawBitmap(srcBmp, offsetX, offsetY);
+                    }
+
+                    byte[] pixels = canvasBmp.Bytes;
+                    byte[] mask = new byte[targetW * targetH];
+                    bool hasUncovered = false;
+                    for (int i = 0; i < targetW * targetH; i++)
+                    {
+                        if (pixels[i * 4 + 3] == 0)
+                        {
+                            mask[i] = 255;
+                            hasUncovered = true;
+                        }
+                    }
+
+                    if (hasUncovered)
+                    {
+                        using var filled = ContentAwareFillEngine.ApplyContentAwareFill(canvasBmp, mask, colorAdaptation: true);
+                        if (filled != null)
+                        {
+                            using var ms = new MemoryStream();
+                            filled.Encode(ms, SKEncodedImageFormat.Png, 100);
+                            img.OriginalImageBytes = ms.ToArray();
+                            img.Source = new Bitmap(new MemoryStream(img.OriginalImageBytes));
+                            img.NaturalPixelWidth = targetW;
+                            img.NaturalPixelHeight = targetH;
+                            img.SourceCropRect = null;
+                            img.X = _cropPreviewRect.X;
+                            img.Y = _cropPreviewRect.Y;
+                            img.Width = _cropPreviewRect.Width;
+                            img.Height = _cropPreviewRect.Height;
+
+                            var afterFilled = new ImageCropState(img.SourceCropRect, img.X, img.Y, img.Width, img.Height);
+                            _isCropModeActive = false;
+                            _cropLockedAspectRatio = null;
+                            CanvasChanged?.Invoke();
+                            ElementCropped?.Invoke(img, before, afterFilled);
+                            InvalidateVisual();
+                            return;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // Fallback to standard non-content-aware crop
+            }
+        }
+
+        img.SourceCropRect = targetCropRect;
         img.X = _cropPreviewRect.X;
         img.Y = _cropPreviewRect.Y;
         img.Width = _cropPreviewRect.Width;
@@ -595,7 +694,7 @@ public partial class EditorCanvasControl : Control
 
     /// <summary>
     /// Fits the specified layer element bounds on screen with comfortable padding, centered in the viewport.
-    /// (Photoshop Alt-Click thumbnail / View › Fit Layer(s) on Screen).
+    /// (Studio Alt-Click thumbnail / View › Fit Layer(s) on Screen).
     /// </summary>
     public void FitElementToWindow(Rect elementBounds)
     {
@@ -639,7 +738,7 @@ public partial class EditorCanvasControl : Control
         return scaleAndTranslate;
     }
 
-    private Point ScreenToCanvas(Point screenPt)
+    public Point ScreenToCanvas(Point screenPt)
     {
         var m = GetViewportMatrix();
         return m.TryInvert(out var inv) ? screenPt.Transform(inv) : screenPt;
@@ -747,9 +846,14 @@ public partial class EditorCanvasControl : Control
                 }
             }
 
+            if (ShowsCornerRadiusWidgets)
+            {
+                DrawCornerRadiusWidgets(dc);
+            }
+
             if (_isMarqueeSelecting)
             {
-                DrawMarquee(dc, _marqueeStart, _marqueeEnd, _zoom);
+                DrawMarquee(dc, _marqueeStart, _marqueeEnd, _zoom, isSquare: _shiftHeld);
             }
 
             if (_isLassoActive || _lassoPoints.Count > 0 || _lassoKnots.Count > 0)
@@ -833,7 +937,7 @@ public partial class EditorCanvasControl : Control
                     }
                 }
 
-                // Draw live smoothing string (Photoshop pulled string leash mode, #3479 parity)
+                // Draw live smoothing string (Studio pulled string leash mode, #3479 parity)
                 if (BrushSmoothing > 0 && _hasSmoothingLeash && _currentPointerCanvasPos.HasValue)
                 {
                     var leashBrushPt = _smoothedBrushPos;
@@ -1490,10 +1594,37 @@ public partial class EditorCanvasControl : Control
         return result;
     }
 
-    private static void DrawMarquee(DrawingContext dc, Point start, Point end, double zoom)
+    /// <summary>
+    /// A constrained square Rect (from snapped bounds) with equal sides on whole pixels.
+    /// The shorter side grows to the longer one, away from the press point (start towards end),
+    /// so the square still covers every pixel the drag touched (#5472, #5506).
+    /// </summary>
+    public static Rect SquarePx(Rect r, Point start, Point end)
     {
-        var rect = new Rect(Math.Min(start.X, end.X), Math.Min(start.Y, end.Y),
-                             Math.Abs(end.X - start.X), Math.Abs(end.Y - start.Y));
+        double x0 = r.X, y0 = r.Y, x1 = r.Right, y1 = r.Bottom;
+        double w = x1 - x0, h = y1 - y0;
+        double n = Math.Max(w, h);
+        (double lo, double hi) Grow(double lo, double hi, double extent, double from, double to)
+        {
+            double d = Math.Max(0.0, n - extent);
+            return to < from ? (lo - d, hi) : (lo, hi + d);
+        }
+        var (nx0, nx1) = Grow(x0, x1, w, start.X, end.X);
+        var (ny0, ny1) = Grow(y0, y1, h, start.Y, end.Y);
+        return new Rect(new Point(nx0, ny0), new Point(nx1, ny1));
+    }
+
+    private static void DrawMarquee(DrawingContext dc, Point start, Point end, double zoom, bool isSquare = false)
+    {
+        double x0 = Math.Floor(Math.Min(start.X, end.X));
+        double y0 = Math.Floor(Math.Min(start.Y, end.Y));
+        double x1 = Math.Ceiling(Math.Max(start.X, end.X));
+        double y1 = Math.Ceiling(Math.Max(start.Y, end.Y));
+        var rect = new Rect(new Point(x0, y0), new Point(x1, y1));
+        if (isSquare)
+        {
+            rect = SquarePx(rect, start, end);
+        }
         if (rect.Width < 1 && rect.Height < 1) return;
 
         dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(30, 0, 120, 215)), null, rect);
@@ -1642,6 +1773,15 @@ public partial class EditorCanvasControl : Control
 
         var props = e.GetCurrentPoint(this).Properties;
 
+        // Right-click on user guide shows guide context menu (#3734)
+        if (props.IsRightButtonPressed && ShowGuideContextMenu(e.GetPosition(this)))
+        {
+            e.Handled = true;
+            return;
+        }
+
+        _shiftHeld = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
+
         // 1. Panning pre-empts every other interaction.
         if (props.IsMiddleButtonPressed || _spaceHeld || ActiveToolMode == "hand")
         {
@@ -1656,6 +1796,24 @@ public partial class EditorCanvasControl : Control
 
         var canvasPt = ScreenToCanvas(e.GetPosition(this));
         _dragStart = canvasPt;
+
+        // Layer Style modal live shadow drag (#5701)
+        if (DataContext is ImageEditorViewModel editorVm && editorVm.IsLayerStyleDialogOpen)
+        {
+            _isDraggingLayerStyleShadow = true;
+            _layerStyleShadowDragStart = canvasPt;
+            e.Pointer.Capture(this);
+            e.Handled = true;
+            return;
+        }
+
+        // Corner radius live widget drag (#4631, #4632)
+        if (TryStartCornerRadiusDrag(canvasPt, e.KeyModifiers.HasFlag(KeyModifiers.Alt)))
+        {
+            e.Pointer.Capture(this);
+            e.Handled = true;
+            return;
+        }
 
         // 2. Crop mode is modal.
         if (_isCropModeActive)
@@ -1820,7 +1978,7 @@ public partial class EditorCanvasControl : Control
                 InvalidateVisual();
                 return;
             }
-            if (ActiveToolMode == "pen")
+            if (ActiveToolMode is "pen" or "curvaturepen")
             {
                 ActiveDocumentPath ??= new VectorDocumentPath("Work Path");
                 if (ActiveDocumentPath.Subpaths.Count == 0 || ActiveDocumentPath.Subpaths[^1].IsClosed)
@@ -1831,9 +1989,53 @@ public partial class EditorCanvasControl : Control
                 var currentSub = ActiveDocumentPath.Subpaths[^1];
                 double closeHitRadius = 10.0 / _zoom;
 
-                if (currentSub.Knots.Count >= 2 && Point.Distance(canvasPt, currentSub.Knots[0].Anchor) <= closeHitRadius)
+                // Shift constrains segment to 45° ray from previous anchor (#3751)
+                Point knotPt = canvasPt;
+                if (e.KeyModifiers.HasFlag(KeyModifiers.Shift) && currentSub.Knots.Count > 0)
+                {
+                    knotPt = CurvaturePenEngine.SnapTo45Degrees(currentSub.Knots[^1].Anchor, canvasPt);
+                }
+
+                // Double click toggles smooth / sharp corner (#5197)
+                if (e.ClickCount == 2)
+                {
+                    foreach (var k in currentSub.Knots)
+                    {
+                        if (Point.Distance(canvasPt, k.Anchor) <= closeHitRadius)
+                        {
+                            CurvaturePenEngine.ToggleSmoothCorner(currentSub, k);
+                            e.Handled = true;
+                            InvalidateVisual();
+                            return;
+                        }
+                    }
+                }
+
+                // Ctrl/Cmd edits anchor in place without breaking draw workflow (#4022)
+                bool isCtrlOrCmd = e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta);
+                if (isCtrlOrCmd)
+                {
+                    foreach (var k in currentSub.Knots)
+                    {
+                        if (Point.Distance(canvasPt, k.Anchor) <= closeHitRadius)
+                        {
+                            _selectedPathKnot = k;
+                            _isDraggingPathKnot = true;
+                            e.Pointer.Capture(this);
+                            e.Handled = true;
+                            InvalidateVisual();
+                            return;
+                        }
+                    }
+                }
+
+                if (currentSub.Knots.Count >= 2 && Point.Distance(knotPt, currentSub.Knots[0].Anchor) <= closeHitRadius)
                 {
                     currentSub.IsClosed = true;
+                    if (ActiveToolMode == "curvaturepen")
+                    {
+                        CurvaturePenEngine.ReflowCurvatureHandles(currentSub);
+                    }
                     _isDraggingPenHandle = false;
                     _penActiveKnot = null;
                     _isPenOverFirstKnot = false;
@@ -1841,10 +2043,17 @@ public partial class EditorCanvasControl : Control
                 }
                 else
                 {
-                    var newKnot = new PathKnot(canvasPt);
+                    bool isCurvature = ActiveToolMode == "curvaturepen";
+                    var newKnot = new PathKnot(knotPt) { IsSmooth = isCurvature };
                     currentSub.Knots.Add(newKnot);
+
+                    if (isCurvature)
+                    {
+                        CurvaturePenEngine.ReflowCurvatureHandles(currentSub);
+                    }
+
                     _penActiveKnot = newKnot;
-                    _isDraggingPenHandle = true;
+                    _isDraggingPenHandle = !isCurvature;
                 }
 
                 e.Pointer.Capture(this);
@@ -2078,6 +2287,13 @@ public partial class EditorCanvasControl : Control
                 e.Handled = true;
                 return;
             }
+            else
+            {
+                // Double-click empty workspace (Studio / Photocraft parity #051959ea)
+                EmptyWorkspaceDoubleClicked?.Invoke();
+                e.Handled = true;
+                return;
+            }
         }
 
         // 8. Hit-test elements (top-most Z first), respecting AutoSelectLayers setting
@@ -2156,6 +2372,7 @@ public partial class EditorCanvasControl : Control
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);
+        _shiftHeld = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
 
         if (_isPanning)
         {
@@ -2177,6 +2394,26 @@ public partial class EditorCanvasControl : Control
         if (_isDraggingExistingGuide || _activeDragGuide.HasValue)
         {
             UpdateGuideDragPointer(e.GetPosition(this));
+            e.Handled = true;
+            return;
+        }
+
+        if (_isDraggingLayerStyleShadow)
+        {
+            double sDx = pos.X - _layerStyleShadowDragStart.X;
+            double sDy = pos.Y - _layerStyleShadowDragStart.Y;
+            _layerStyleShadowDragStart = pos;
+            if (DataContext is ImageEditorViewModel editorVm)
+            {
+                editorVm.UpdateLayerStyleShadowFromCanvasDrag(sDx, sDy);
+            }
+            e.Handled = true;
+            return;
+        }
+
+        if (_isDraggingCornerRadius)
+        {
+            HandleCornerRadiusPointerMoved(pos);
             e.Handled = true;
             return;
         }
@@ -2418,14 +2655,32 @@ public partial class EditorCanvasControl : Control
 
         if (_isPlacingShape)
         {
-            _shapeDragEnd = pos;
+            if (_spaceHeld)
+            {
+                var delta = pos - _shapeDragEnd;
+                _shapeDragStart += delta;
+                _shapeDragEnd = pos;
+            }
+            else
+            {
+                _shapeDragEnd = pos;
+            }
             InvalidateVisual();
             return;
         }
 
         if (_isMarqueeSelecting)
         {
-            _marqueeEnd = pos;
+            if (_spaceHeld)
+            {
+                var delta = pos - _marqueeEnd;
+                _marqueeStart += delta;
+                _marqueeEnd = pos;
+            }
+            else
+            {
+                _marqueeEnd = pos;
+            }
             InvalidateVisual();
             return;
         }
@@ -2626,6 +2881,22 @@ public partial class EditorCanvasControl : Control
             return;
         }
 
+        if (_isDraggingLayerStyleShadow)
+        {
+            _isDraggingLayerStyleShadow = false;
+            e.Pointer.Capture(null);
+            e.Handled = true;
+            return;
+        }
+
+        if (_isDraggingCornerRadius)
+        {
+            HandleCornerRadiusPointerReleased();
+            e.Pointer.Capture(null);
+            e.Handled = true;
+            return;
+        }
+
         if (_isCropDragging)
         {
             _isCropDragging = false;
@@ -2792,9 +3063,15 @@ public partial class EditorCanvasControl : Control
 
     private void FinishMarqueeSelection(bool shiftHeld)
     {
-        var marqueeRect = new Rect(
-            Math.Min(_marqueeStart.X, _marqueeEnd.X), Math.Min(_marqueeStart.Y, _marqueeEnd.Y),
-            Math.Abs(_marqueeEnd.X - _marqueeStart.X), Math.Abs(_marqueeEnd.Y - _marqueeStart.Y));
+        double x0 = Math.Floor(Math.Min(_marqueeStart.X, _marqueeEnd.X));
+        double y0 = Math.Floor(Math.Min(_marqueeStart.Y, _marqueeEnd.Y));
+        double x1 = Math.Ceiling(Math.Max(_marqueeStart.X, _marqueeEnd.X));
+        double y1 = Math.Ceiling(Math.Max(_marqueeStart.Y, _marqueeEnd.Y));
+        var marqueeRect = new Rect(new Point(x0, y0), new Point(x1, y1));
+        if (shiftHeld)
+        {
+            marqueeRect = SquarePx(marqueeRect, _marqueeStart, _marqueeEnd);
+        }
 
         var hits = _elements.Where(el => el.IsVisible && !el.IsLocked && marqueeRect.Intersects(el.GetRotatedBounds())).ToList();
 
@@ -2869,7 +3146,15 @@ public partial class EditorCanvasControl : Control
             var screenPos = e.GetPosition(this);
             var canvasPtBefore = ScreenToCanvas(screenPos);
 
-            _zoom = Math.Clamp(Math.Round(_zoom * (1.0 + e.Delta.Y * 0.08), 3), MinZoom, MaxZoom);
+            double effectiveDelta = e.Delta.Y != 0 ? e.Delta.Y : e.Delta.X;
+            if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+            {
+                _zoom = StepZoomLadder(_zoom, effectiveDelta);
+            }
+            else
+            {
+                _zoom = Math.Clamp(Math.Round(_zoom * (1.0 + effectiveDelta * 0.08), 3), MinZoom, MaxZoom);
+            }
             _isFitModeActive = false;
 
             double centerOffsetX = (Bounds.Width - _logicalWidth * _zoom) / 2;
@@ -2882,7 +3167,8 @@ public partial class EditorCanvasControl : Control
         }
         else if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
         {
-            _panOffset = new Point(_panOffset.X + e.Delta.Y * 40, _panOffset.Y);
+            double delta = e.Delta.Y != 0 ? e.Delta.Y : e.Delta.X;
+            _panOffset = new Point(_panOffset.X + delta * 40, _panOffset.Y);
             _isFitModeActive = false;
         }
         else
@@ -2922,6 +3208,12 @@ public partial class EditorCanvasControl : Control
     {
         base.OnKeyDown(e);
 
+        if (e.Key is Key.LeftShift or Key.RightShift)
+        {
+            _shiftHeld = true;
+            if (_isMarqueeSelecting) InvalidateVisual();
+        }
+
         if (e.Key == Key.Space && !_spaceHeld)
         {
             _spaceHeld = true;
@@ -2949,6 +3241,17 @@ public partial class EditorCanvasControl : Control
             if (_isPlacingShape) { _isPlacingShape = false; InvalidateVisual(); e.Handled = true; return; }
             if (ActiveToolMode == "rotateview" || _viewportRotationAngle != 0.0) { ViewportRotationAngle = 0.0; InvalidateVisual(); e.Handled = true; return; }
             if (ActiveToolMode == "ruler" && _isRulerMeasuring) { _isRulerMeasuring = false; _rulerStart = _rulerEnd = default; InvalidateVisual(); e.Handled = true; return; }
+        }
+
+        if (e.Key is Key.Delete or Key.Back && !e.KeyModifiers.HasFlag(KeyModifiers.Control) && !e.KeyModifiers.HasFlag(KeyModifiers.Meta) && !e.KeyModifiers.HasFlag(KeyModifiers.Alt))
+        {
+            if ((ActiveToolMode is "pen" or "pathselection") && ActiveDocumentPath != null)
+            {
+                ActiveDocumentPath = null;
+                InvalidateVisual();
+                e.Handled = true;
+                return;
+            }
         }
 
         if (e.Key is Key.OemOpenBrackets or Key.Oem4) // '['
@@ -3160,6 +3463,12 @@ public partial class EditorCanvasControl : Control
     protected override void OnKeyUp(KeyEventArgs e)
     {
         base.OnKeyUp(e);
+        if (e.Key is Key.LeftShift or Key.RightShift)
+        {
+            _shiftHeld = false;
+            if (_isMarqueeSelecting) InvalidateVisual();
+        }
+
         if (e.Key == Key.Space)
         {
             _spaceHeld = false;

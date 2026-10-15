@@ -53,6 +53,34 @@ public partial class ImageEditorView : UserControl
         CanvasControl.ZoomChanged += _ => SyncRulerOrigins();
         CanvasControl.SizeChanged += (_, _) => SyncRulerOrigins();
         CanvasControl.GuideStatusChanged += msg => vm.StatusMessage = msg;
+        CanvasControl.GuideDraggingChanged += (isVert, pos) =>
+        {
+            if (pos.HasValue)
+            {
+                if (isVert)
+                {
+                    vm.ActiveDraggingGuideX = pos.Value;
+                    vm.ActiveDraggingGuideY = null;
+                }
+                else
+                {
+                    vm.ActiveDraggingGuideX = null;
+                    vm.ActiveDraggingGuideY = pos.Value;
+                }
+            }
+            else
+            {
+                vm.ActiveDraggingGuideX = null;
+                vm.ActiveDraggingGuideY = null;
+            }
+        };
+        CanvasControl.EmptyWorkspaceDoubleClicked += () =>
+        {
+            if (vm.OpenPsdOrImageCommand.CanExecute(null))
+            {
+                vm.OpenPsdOrImageCommand.Execute(null);
+            }
+        };
         SyncRulerOrigins();
 
         // Keep the floating quick-actions cluster anchored to the selection whenever anything
@@ -96,7 +124,7 @@ public partial class ImageEditorView : UserControl
         // Crop confirm/reset reports before/after state so the ViewModel can push undo.
         CanvasControl.ElementCropped += (el, before, after) => vm.RecordElementCropped(el, before, after);
 
-        // Eyedropper samples color into primary color (sticky tool mode matching Photoshop).
+        // Eyedropper samples color into primary color (sticky tool mode matching Studio).
         CanvasControl.ColorSampled += color =>
         {
             vm.PrimaryColor = color;
@@ -329,7 +357,7 @@ public partial class ImageEditorView : UserControl
             return;
         }
 
-        // Photoshop Brush Keys: Left and Right arrow keys turn the brush tip by 1° (15° with Shift)
+        // Brush Keys: Left and Right arrow keys turn the brush tip by 1° (15° with Shift)
         if (!ctrl && !alt && (e.Key == Key.Left || e.Key == Key.Right))
         {
             if (vm.IsStandardBrushToolActive || vm.IsPencilToolActive || vm.IsEraserToolActive ||
@@ -382,6 +410,14 @@ public partial class ImageEditorView : UserControl
         if (e.Key == Key.Enter && vm.IsFreeTransformActive)
         {
             vm.CommitFreeTransformCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+
+        // New Blank Layer (Ctrl+Alt+Shift+N) (#05d361a3)
+        if (ctrl && shift && alt && e.Key == Key.N)
+        {
+            vm.AddNewBlankLayer(below: false);
             e.Handled = true;
             return;
         }
@@ -501,20 +537,41 @@ public partial class ImageEditorView : UserControl
             e.Handled = true;
             return;
         }
-        if (ctrl && !shift && e.Key == Key.G)
+        if (ctrl && !shift && !alt && e.Key == Key.G)
         {
             vm.GroupSelectionCommand.Execute(null);
             e.Handled = true;
             return;
         }
-        if (ctrl && shift && e.Key == Key.G)
+        if (ctrl && shift && !alt && e.Key == Key.G)
         {
             vm.UngroupSelectionCommand.Execute(null);
             e.Handled = true;
             return;
         }
+        // Create / Release Clipping Mask (Ctrl+Alt+G) (#026de5e2)
+        if (ctrl && alt && !shift && e.Key == Key.G)
+        {
+            vm.ToggleClippingMaskCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
 
-        // Photoshop Layer & Selection Parity Keys
+        // Darken / Lighten Interface (Ctrl/Cmd+Shift+F1 / F2) (#3709)
+        if (ctrl && shift && e.Key == Key.F1)
+        {
+            PdfEditorApp.Plugins.ImageEditor.Core.Preferences.StudioThemeManager.DarkenInterface(this);
+            e.Handled = true;
+            return;
+        }
+        if (ctrl && shift && e.Key == Key.F2)
+        {
+            PdfEditorApp.Plugins.ImageEditor.Core.Preferences.StudioThemeManager.LightenInterface(this);
+            e.Handled = true;
+            return;
+        }
+
+        // Layer & Selection Keys
         if (ctrl && !shift && !alt && (e.Key == Key.OemComma || e.Key == Key.Oem1))
         {
             vm.ToggleLayerVisibilityCommand.Execute(null);
@@ -613,8 +670,15 @@ public partial class ImageEditorView : UserControl
         }
 
         // Delete
-        if (e.Key is Key.Delete or Key.Back)
+        if (e.Key is Key.Delete or Key.Back && !ctrl && !alt && !shift)
         {
+            if ((vm.ActiveToolMode is "pen" or "pathselection") && CanvasControl.ActiveDocumentPath != null)
+            {
+                CanvasControl.ActiveDocumentPath = null;
+                CanvasControl.InvalidateVisual();
+                e.Handled = true;
+                return;
+            }
             vm.DeleteSelectedElementCommand.Execute(null);
             e.Handled = true;
             return;
@@ -636,7 +700,7 @@ public partial class ImageEditorView : UserControl
             return;
         }
 
-        // Sub-tool Cycling with Shift + Key (Photoshop Standard: Shift+W, Shift+M, Shift+L, Shift+B, etc.)
+        // Sub-tool Cycling with Shift + Key (Studio Standard: Shift+W, Shift+M, Shift+L, Shift+B, etc.)
         if (shift)
         {
             switch (e.Key)
@@ -771,6 +835,46 @@ public partial class ImageEditorView : UserControl
     private void InlineTextEditBox_LostFocus(object? sender, RoutedEventArgs e)
     {
         if (_editingTextElement != null) CommitInlineTextEdit(cancel: false);
+    }
+
+    // ── Ruler Corner Zero-Point Drag & Reset (#b41e34c2) ───────────────────
+    private bool _isDraggingRulerOrigin;
+
+    public void OnRulerCornerPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (DataContext is not ImageEditorViewModel vm) return;
+
+        if (e.ClickCount >= 2)
+        {
+            vm.ResetRulerOrigin();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            _isDraggingRulerOrigin = true;
+            e.Pointer.Capture(RulerCornerBorder);
+            e.Handled = true;
+        }
+    }
+
+    public void OnRulerCornerPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_isDraggingRulerOrigin) return;
+    }
+
+    public void OnRulerCornerPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!_isDraggingRulerOrigin) return;
+        _isDraggingRulerOrigin = false;
+        e.Pointer.Capture(null);
+
+        if (DataContext is not ImageEditorViewModel vm) return;
+
+        var canvasPt = CanvasControl.ScreenToCanvas(e.GetPosition(CanvasControl));
+        vm.SetRulerOrigin(canvasPt.X, canvasPt.Y);
+        e.Handled = true;
     }
 
     // ── Clean teardown ─────────────────────────────────────────────────────

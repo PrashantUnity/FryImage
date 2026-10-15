@@ -215,7 +215,7 @@ public partial class ImageEditorViewModel
         ActiveChannelMode = channelName;
         StatusMessage = $"Active Channel: {channelName}";
 
-        // Photoshop parity (#4538, adaebc08):
+        // Studio parity (#4538, adaebc08):
         // Clicking RGB / composite hides the alpha channel overlays and clears their visibility.
         if (channelName.Equals("RGB", StringComparison.OrdinalIgnoreCase))
         {

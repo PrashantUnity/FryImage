@@ -61,6 +61,7 @@ public class TextElement : CanvasElement
     }
 
     public Color ForegroundColor { get; set; } = Colors.Black;
+    public Color TextColor { get => ForegroundColor; set => ForegroundColor = value; }
 
     /// <summary>Optional filled rect drawn behind the glyphs (Canva-style text highlight). Null = none.</summary>
     public Color? BackgroundColor { get; set; }
@@ -88,7 +89,7 @@ public class TextElement : CanvasElement
     /// <summary>0 = natural line height.</summary>
     public double LineHeight { get; set; }
 
-    // OpenType feature flags (Photoshop TYPE-218-5)
+    // OpenType feature flags (Studio TYPE-218-5)
     public bool StandardLigatures { get; set; } = true;    // liga (fi)
     public bool ContextualAlternates { get; set; } = true; // calt (st)
     public bool DiscretionaryLigatures { get; set; }        // dlig (ct)

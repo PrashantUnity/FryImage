@@ -182,7 +182,12 @@ public partial class ImageEditorViewModel
         var temp = PrimaryColor;
         PrimaryColor = SecondaryColor;
         SecondaryColor = temp;
-        if (SelectedElement is IHasFill fillable)
+        if (SelectedElement is TextElement textEl)
+        {
+            textEl.TextColor = PrimaryColor;
+            CanvasControl?.InvalidateVisual();
+        }
+        else if (SelectedElement is IHasFill fillable)
         {
             FillColorField = PrimaryColor;
         }
@@ -201,6 +206,11 @@ public partial class ImageEditorViewModel
     {
         PrimaryColor = Colors.Black;
         SecondaryColor = Colors.White;
+        if (SelectedElement is TextElement textEl)
+        {
+            textEl.TextColor = PrimaryColor;
+            CanvasControl?.InvalidateVisual();
+        }
         OnPropertyChanged(nameof(PrimaryColorHex));
     }
 
@@ -214,7 +224,7 @@ public partial class ImageEditorViewModel
         }
     }
 
-    // ── Photoshop Studio Color Picker Dialog State ─────────────────────────
+    // ── Studio Studio Color Picker Dialog State ─────────────────────────
     [ObservableProperty]
     private bool _isColorPickerVisible;
 

@@ -10,7 +10,7 @@
     <Border BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="4,0,4,0">
         <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Bottom">
             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Bottom">
-                <!-- Active Document Tab (Photoshop Parity: ✕ Untitled-1 @ 102.4% (RGB/8)*) -->
+                <!-- Active Document Tab (Studio Parity: ✕ Untitled-1 @ 102.4% (RGB/8)*) -->
                 <Border Background="{DynamicResource PsOptionsBrush}"
                         BorderBrush="{DynamicResource PsBorderBrush}"
                         BorderThickness="1,1,1,0"

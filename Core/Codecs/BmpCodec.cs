@@ -8,7 +8,7 @@ namespace PdfEditorApp.Plugins.ImageEditor.Core.Codecs;
 
 /// <summary>
 /// High-fidelity BMP format codec with dedicated indexed palette table support (1-bit, 4-bit, 8-bit).
-/// Preserves embedded color tables to open palette BMPs in Indexed Color mode matching Photoshop 27.x (#3802, #3869).
+/// Preserves embedded color tables to open palette BMPs in Indexed Color mode matching Studio 27.x (#3802, #3869).
 /// </summary>
 public static class BmpCodec
 {

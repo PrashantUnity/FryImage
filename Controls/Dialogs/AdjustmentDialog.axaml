@@ -452,7 +452,7 @@
                             <CheckBox Content="Preserve Luminosity" IsChecked="{Binding AdjPhotoFilterPreserveLuminosity, Mode=TwoWay}" Margin="0,4,0,0" />
                         </StackPanel>
 
-                        <!-- 13. Shadows / Highlights View (Photoshop 25.4 Algorithmic Model) -->
+                        <!-- 13. Shadows / Highlights View (Standard Studio Algorithmic Model) -->
                         <StackPanel Spacing="14" IsVisible="{Binding ActiveAdjustmentMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='ShadowsHighlights'}">
                             <!-- Shadows Group -->
                             <StackPanel Spacing="8">
@@ -536,7 +536,7 @@
                             </StackPanel>
                         </StackPanel>
 
-                        <!-- 14. Black & White View (Photoshop 6-Range Decomposition & Tint) -->
+                        <!-- 14. Black & White View (Standard 6-Range Decomposition & Tint) -->
                         <StackPanel Spacing="10" IsVisible="{Binding ActiveAdjustmentMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='BlackAndWhite'}">
                             <!-- Reds -->
                             <StackPanel Spacing="3">

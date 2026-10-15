@@ -39,6 +39,13 @@
                                 Classes.active="{Binding ActiveLayersDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Actions'}" />
                     </StackPanel>
                     <Button Grid.Column="1" Classes="ps-opt-btn" Width="20" Height="20" ToolTip.Tip="Panel Options">
+                        <Button.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                <MenuItem Header="Clip Thumbnails to Layer Bounds"
+                                          ToggleType="CheckBox"
+                                          IsChecked="{Binding ClipThumbnailsToLayerBounds, Mode=TwoWay}" />
+                            </MenuFlyout>
+                        </Button.Flyout>
                         <materialIcons:MaterialIcon Kind="Menu" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
                     </Button>
                 </Grid>
@@ -47,28 +54,54 @@
             <!-- Mode A: Layers View (Default) -->
             <Grid Grid.Row="1" RowDefinitions="24,Auto,*,26"
                   IsVisible="{Binding ActiveLayersDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Layers'}">
-                <!-- Sub-Header Row 1: Kind Filter -->
-                <Border Grid.Row="0" Background="{DynamicResource PsPanelBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="6,3">
+                <!-- Sub-Header Row 1: Filter Bar (Studio parity #5048, #5268) -->
+                <Border Grid.Row="0" Background="{DynamicResource PsPanelBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="6,2">
                     <Grid ColumnDefinitions="Auto,*,Auto">
                         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                             <materialIcons:MaterialIcon Kind="Magnify" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
-                            <TextBlock Text="Kind" Classes="ps-label" />
-                            <materialIcons:MaterialIcon Kind="MenuDown" Width="10" Height="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                            <ComboBox Classes="ps-combo" Width="68" Height="20" Padding="4,1"
+                                      ItemsSource="{Binding AvailableLayerFilterBy}"
+                                      SelectedItem="{Binding LayerFilterBy, Mode=TwoWay}" />
                         </StackPanel>
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
-                            <Button Classes="ps-tool-btn" Width="20" Height="18" ToolTip.Tip="Filter for pixel layers">
+
+                        <!-- Kind Controls -->
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4"
+                                    IsVisible="{Binding LayerFilterBy, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Kind'}">
+                            <Button Classes="ps-tool-btn" Width="20" Height="18" ToolTip.Tip="Filter for pixel layers"
+                                    Classes.active="{Binding FilterKindPixel}"
+                                    Command="{Binding ToggleFilterKindCommand}" CommandParameter="pixel">
                                 <materialIcons:MaterialIcon Kind="ImageOutline" Width="11" Height="11" />
                             </Button>
-                            <Button Classes="ps-tool-btn" Width="20" Height="18" ToolTip.Tip="Filter for adjustment layers">
+                            <Button Classes="ps-tool-btn" Width="20" Height="18" ToolTip.Tip="Filter for adjustment layers"
+                                    Classes.active="{Binding FilterKindAdjustment}"
+                                    Command="{Binding ToggleFilterKindCommand}" CommandParameter="adjustment">
                                 <materialIcons:MaterialIcon Kind="CircleHalfFull" Width="11" Height="11" />
                             </Button>
-                            <Button Classes="ps-tool-btn" Width="20" Height="18" ToolTip.Tip="Filter for type layers">
+                            <Button Classes="ps-tool-btn" Width="20" Height="18" ToolTip.Tip="Filter for type layers"
+                                    Classes.active="{Binding FilterKindType}"
+                                    Command="{Binding ToggleFilterKindCommand}" CommandParameter="type">
                                 <materialIcons:MaterialIcon Kind="FormatText" Width="11" Height="11" />
                             </Button>
-                            <Button Classes="ps-tool-btn" Width="20" Height="18" ToolTip.Tip="Filter for shape layers">
+                            <Button Classes="ps-tool-btn" Width="20" Height="18" ToolTip.Tip="Filter for shape layers"
+                                    Classes.active="{Binding FilterKindShape}"
+                                    Command="{Binding ToggleFilterKindCommand}" CommandParameter="shape">
                                 <materialIcons:MaterialIcon Kind="ShapeOutline" Width="11" Height="11" />
                             </Button>
                         </StackPanel>
+
+                        <!-- Name Search Control -->
+                        <TextBox Grid.Column="1" Grid.ColumnSpan="2" Height="20" Padding="4,1" FontSize="11"
+                                 Classes="ps-input" Margin="6,0,0,0"
+                                 PlaceholderText="Search layers..."
+                                 Text="{Binding LayerFilterName, Mode=TwoWay}"
+                                 IsVisible="{Binding LayerFilterBy, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Name'}" />
+
+                        <!-- Mode Filter Control -->
+                        <ComboBox Grid.Column="1" Grid.ColumnSpan="2" Height="20" Padding="4,1" FontSize="11"
+                                  Classes="ps-combo" Margin="6,0,0,0"
+                                  ItemsSource="{Binding AvailableBlendModes}"
+                                  SelectedItem="{Binding LayerFilterMode, Mode=TwoWay}"
+                                  IsVisible="{Binding LayerFilterBy, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Mode'}" />
                     </Grid>
                 </Border>
 
@@ -100,10 +133,16 @@
                                         ToolTip.Tip="Lock transparent pixels (/)">
                                     <materialIcons:MaterialIcon Kind="Checkerboard" Width="11" Height="11" />
                                 </Button>
-                                <Button Classes="ps-tool-btn" Width="18" Height="18" ToolTip.Tip="Lock image pixels">
+                                <Button Classes="ps-tool-btn" Width="18" Height="18"
+                                        Classes.active="{Binding SelectedElement.IsPixelsLocked}"
+                                        Command="{Binding ToggleLockPixelsCommand}"
+                                        ToolTip.Tip="Lock image pixels">
                                     <materialIcons:MaterialIcon Kind="Brush" Width="11" Height="11" />
                                 </Button>
-                                <Button Classes="ps-tool-btn" Width="18" Height="18" ToolTip.Tip="Lock position">
+                                <Button Classes="ps-tool-btn" Width="18" Height="18"
+                                        Classes.active="{Binding SelectedElement.IsPositionLocked}"
+                                        Command="{Binding ToggleLockPositionCommand}"
+                                        ToolTip.Tip="Lock position">
                                     <materialIcons:MaterialIcon Kind="ArrowAll" Width="11" Height="11" />
                                 </Button>
                                 <Button Classes="ps-tool-btn" Width="18" Height="18"
@@ -291,7 +330,7 @@
                                             </Grid>
                                         </Button>
 
-                                        <!-- Layer Mask Thumbnail with Photoshop Mask Menu (#4575) -->
+                                        <!-- Layer Mask Thumbnail with Mask Menu (#4575) -->
                                         <Button Classes="ps-tool-btn" Width="24" Height="22" Padding="0" Margin="2,0,0,0"
                                                 IsVisible="{Binding HasMask}"
                                                 Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).TargetLayerMaskCommand}"
@@ -413,7 +452,9 @@
                             <materialIcons:MaterialIcon Kind="FolderOutline" Width="12" Height="12" />
                         </Button>
                         <!-- Create New Layer (+) -->
-                        <Button Classes="ps-footer-btn" Command="{Binding InsertRectangleCommand}" ToolTip.Tip="Create a new layer (right-click for New Layer dialog)">
+                        <Button Classes="ps-footer-btn"
+                                PointerPressed="OnNewLayerButtonPointerPressed"
+                                ToolTip.Tip="Create a new layer (Ctrl/Cmd-click to add below, right-click for dialog)">
                             <Button.ContextMenu>
                                 <ContextMenu>
                                     <MenuItem Header="New Layer..." InputGesture="Ctrl+Shift+N" Command="{Binding OpenNewLayerDialogCommand}" />
@@ -432,7 +473,7 @@
             <!-- Mode B: History View (Snapshots & Time Travel) -->
             <Grid Grid.Row="1" RowDefinitions="Auto,3,*,26"
                   IsVisible="{Binding ActiveLayersDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='History'}">
-                <!-- Section 1: Snapshots (Photoshop Parity Milestone States) -->
+                <!-- Section 1: Snapshots (Studio Parity Milestone States) -->
                 <Border Grid.Row="0" Background="{DynamicResource PsPanelBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="4,4">
                     <StackPanel Spacing="3">
                         <Grid ColumnDefinitions="Auto,*,Auto" Margin="4,2">
@@ -690,7 +731,7 @@
                 </Border>
             </Grid>
 
-            <!-- Mode E: Actions View (Photoshop .atn Parity) -->
+            <!-- Mode E: Actions View (Studio .atn Parity) -->
             <Grid Grid.Row="1" RowDefinitions="*,26"
                   IsVisible="{Binding ActiveLayersDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Actions'}">
                 <ScrollViewer Grid.Row="0">
@@ -764,10 +805,10 @@
                             <Button Classes="ps-footer-btn" Command="{Binding DeleteSelectedActionCommand}" ToolTip.Tip="Delete selected action">
                                 <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="12" Height="12" />
                             </Button>
-                            <Button Classes="ps-footer-btn" Command="{Binding LoadActionsFileCommand}" ToolTip.Tip="Load Photoshop Actions (.atn)">
+                            <Button Classes="ps-footer-btn" Command="{Binding LoadActionsFileCommand}" ToolTip.Tip="Load Actions (.atn)">
                                 <materialIcons:MaterialIcon Kind="FolderOpenOutline" Width="12" Height="12" />
                             </Button>
-                            <Button Classes="ps-footer-btn" Command="{Binding SaveActionsFileCommand}" ToolTip.Tip="Save Photoshop Actions (.atn)">
+                            <Button Classes="ps-footer-btn" Command="{Binding SaveActionsFileCommand}" ToolTip.Tip="Save Actions (.atn)">
                                 <materialIcons:MaterialIcon Kind="ContentSaveOutline" Width="12" Height="12" />
                             </Button>
                         </StackPanel>

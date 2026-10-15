@@ -65,7 +65,8 @@ public enum TipShapeKind
     Spatter,
     Sponge,
     Star,
-    Foliage
+    Foliage,
+    Sampled
 }
 
 /// <summary>
@@ -188,6 +189,9 @@ public readonly struct BrushDab
     public bool WetEdges { get; init; }
     public TipShapeKind TipShape { get; init; }
     public int Seed { get; init; }
+    public byte[]? SampledMask { get; init; }
+    public int SampledWidth { get; init; }
+    public int SampledHeight { get; init; }
 
     public BrushDab(
         Point center,
@@ -200,7 +204,10 @@ public readonly struct BrushDab
         bool aliased = false,
         bool wetEdges = false,
         TipShapeKind tipShape = TipShapeKind.Round,
-        int seed = 0)
+        int seed = 0,
+        byte[]? sampledMask = null,
+        int sampledWidth = 0,
+        int sampledHeight = 0)
     {
         Center = center;
         RadiusX = radiusX;
@@ -213,6 +220,9 @@ public readonly struct BrushDab
         WetEdges = wetEdges;
         TipShape = tipShape;
         Seed = seed;
+        SampledMask = sampledMask;
+        SampledWidth = sampledWidth;
+        SampledHeight = sampledHeight;
     }
 }
 
@@ -230,6 +240,9 @@ public class BrushSettings
     public int Smoothing { get; set; } = 15; // 0..100%
 
     public TipShapeKind TipShape { get; set; } = TipShapeKind.Round;
+    public byte[]? SampledMaskBytes { get; set; }
+    public int SampledWidth { get; set; }
+    public int SampledHeight { get; set; }
     public double Angle { get; set; } = 0.0;
     public double Roundness { get; set; } = 1.0; // 0.05..1.0
     public bool FlipX { get; set; }
@@ -264,6 +277,9 @@ public class BrushSettings
         Flow = Flow,
         Smoothing = Smoothing,
         TipShape = TipShape,
+        SampledMaskBytes = SampledMaskBytes != null ? (byte[])SampledMaskBytes.Clone() : null,
+        SampledWidth = SampledWidth,
+        SampledHeight = SampledHeight,
         Angle = Angle,
         Roundness = Roundness,
         FlipX = FlipX,
@@ -285,7 +301,7 @@ public class BrushSettings
 }
 
 /// <summary>
-/// Photoshop texture combination modes for Brush Settings › Texture.
+/// Studio texture combination modes for Brush Settings › Texture.
 /// </summary>
 public enum BrushTextureMode
 {
@@ -301,7 +317,7 @@ public enum BrushTextureMode
 }
 
 /// <summary>
-/// Brush Settings › Texture matching Photoshop 2026 specification.
+/// Brush Settings › Texture matching Studio 2026 specification.
 /// Supports Height, Linear Height, Subtract, Color Dodge/Burn, Brightness and Contrast levels.
 /// </summary>
 public class BrushTexture
@@ -405,7 +421,7 @@ public class BrushPreset
 }
 
 /// <summary>
-/// Helper for folder drag & drop in the Brushes panel matching Photoshop (#3851).
+/// Helper for folder drag & drop in the Brushes panel matching Studio (#3851).
 /// </summary>
 public static class FolderDropHelper
 {

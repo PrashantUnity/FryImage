@@ -4,12 +4,12 @@ using Avalonia.Input;
 namespace PdfEditorApp.Plugins.ImageEditor.Core.Paint;
 
 /// <summary>
-/// Spring-loaded tool shortcuts engine (Photoshop parity #2672).
+/// Spring-loaded tool shortcuts engine (Studio parity #2672).
 /// Holding down a tool shortcut letter (V, M, L, W, C, I, J, B, E, G, T, U, H, Z, etc.)
 /// temporarily switches to that tool. If the key is held for > 300ms or used on the canvas,
 /// releasing the key springs back to the previously active tool.
 /// A quick tap with no canvas usage remains a permanent switch.
-/// Clean-room implementation matching Photoshop spring-loaded tool keys specification.
+/// Clean-room implementation matching Studio spring-loaded tool keys specification.
 /// </summary>
 public sealed class SpringToolsEngine
 {

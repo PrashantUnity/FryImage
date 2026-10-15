@@ -8,9 +8,9 @@ using static PdfEditorApp.Plugins.ImageEditor.Core.Codecs.PsdCodec;
 namespace PdfEditorApp.Plugins.ImageEditor.Core.Codecs;
 
 /// <summary>
-/// Professional Adobe Photoshop Brush (.abr) decoder.
+/// Professional Studio Brush (.abr) decoder.
 /// Supports both legacy v1/v2 computed and sampled brushes, plus modern v6+ sampled tips.
-/// Translates Photoshop brushes into FryImage BrushPreset objects.
+/// Translates Studio brushes into FryImage BrushPreset objects.
 /// </summary>
 public static class AbrCodec
 {
@@ -28,7 +28,7 @@ public static class AbrCodec
     }
 
     /// <summary>
-    /// Decodes an Adobe Brush (.abr) stream into a list of parsed brushes.
+    /// Decodes a brush (.abr) stream into a list of parsed brushes.
     /// </summary>
     public static List<AbrBrush> Decode(Stream stream)
     {

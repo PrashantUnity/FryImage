@@ -58,7 +58,7 @@ public static class Program
         Console.WriteLine("\n[11/12] Running Oriented Transform & Handles Suite...");
         TransformSnapshotSuite.Run(ctx);
 
-        Console.WriteLine("\n[12/12] Running Photoshop Parity & Codecs Suite...");
+        Console.WriteLine("\n[12/12] Running Studio Parity & Codecs Suite...");
         ParityFeatureSnapshotSuite.Run(ctx);
 
         Console.WriteLine("\n==================================================");

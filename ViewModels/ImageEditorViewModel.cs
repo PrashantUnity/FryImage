@@ -31,6 +31,7 @@ using PdfEditorApp.Plugins.ImageEditor.Models.Stickers;
 using PdfEditorApp.Plugins.ImageEditor.Models.TextStyles;
 using PdfEditorApp.Plugins.ImageEditor.Models.Undo;
 using PdfEditorApp.Plugins.ImageEditor.Utils;
+using PdfEditorApp.Plugins.ImageEditor.Core.Codecs;
 using SkiaSharp;
 
 namespace PdfEditorApp.Plugins.ImageEditor;
@@ -57,7 +58,54 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private ObservableCollection<CanvasElement> _elements = [];
 
-    /// <summary>Layers list source, topmost element first (matches Photoshop and Photocraft
+    // ── Layers Panel Filter System (Studio Parity #5048, #5268) ───────────────
+    public static readonly string[] LayerFilterByOptions = ["Kind", "Name", "Mode"];
+    public string[] AvailableLayerFilterBy => LayerFilterByOptions;
+
+    [ObservableProperty]
+    private string _layerFilterBy = "Kind"; // "Kind", "Name", "Mode"
+    partial void OnLayerFilterByChanged(string value) => OnPropertyChanged(nameof(LayersDescendingZ));
+
+    [ObservableProperty]
+    private bool _filterKindPixel;
+    partial void OnFilterKindPixelChanged(bool value) => OnPropertyChanged(nameof(LayersDescendingZ));
+
+    [ObservableProperty]
+    private bool _filterKindAdjustment;
+    partial void OnFilterKindAdjustmentChanged(bool value) => OnPropertyChanged(nameof(LayersDescendingZ));
+
+    [ObservableProperty]
+    private bool _filterKindType;
+    partial void OnFilterKindTypeChanged(bool value) => OnPropertyChanged(nameof(LayersDescendingZ));
+
+    [ObservableProperty]
+    private bool _filterKindShape;
+    partial void OnFilterKindShapeChanged(bool value) => OnPropertyChanged(nameof(LayersDescendingZ));
+
+    [ObservableProperty]
+    private string _layerFilterName = string.Empty;
+    partial void OnLayerFilterNameChanged(string value) => OnPropertyChanged(nameof(LayersDescendingZ));
+
+    [ObservableProperty]
+    private string _layerFilterMode = "Normal";
+    partial void OnLayerFilterModeChanged(string value) => OnPropertyChanged(nameof(LayersDescendingZ));
+
+    [ObservableProperty]
+    private bool _clipThumbnailsToLayerBounds;
+
+    [RelayCommand]
+    private void ToggleFilterKind(string kind)
+    {
+        switch (kind.ToLowerInvariant())
+        {
+            case "pixel": FilterKindPixel = !FilterKindPixel; break;
+            case "adjustment": FilterKindAdjustment = !FilterKindAdjustment; break;
+            case "type": FilterKindType = !FilterKindType; break;
+            case "shape": FilterKindShape = !FilterKindShape; break;
+        }
+    }
+
+    /// <summary>Layers list source, topmost element first (matches Studio and Photocraft
     /// layer-list convention). When a group is collapsed, its children are hidden.</summary>
     public IEnumerable<CanvasElement> LayersDescendingZ
     {
@@ -68,14 +116,51 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
                 .Select(g => g.GroupId!.Value)
                 .ToHashSet();
 
+            IEnumerable<CanvasElement> baseList;
             if (collapsedGroupIds.Count == 0)
             {
-                return Elements.OrderByDescending(e => e.ZIndex);
+                baseList = Elements.OrderByDescending(e => e.ZIndex);
+            }
+            else
+            {
+                baseList = Elements
+                    .Where(e => e is GroupElement || !e.GroupId.HasValue || !collapsedGroupIds.Contains(e.GroupId.Value))
+                    .OrderByDescending(e => e.ZIndex);
             }
 
-            return Elements
-                .Where(e => e is GroupElement || !e.GroupId.HasValue || !collapsedGroupIds.Contains(e.GroupId.Value))
-                .OrderByDescending(e => e.ZIndex);
+            // Studio Layer Filtering (#5048, #5268)
+            if (LayerFilterBy == "Kind")
+            {
+                bool anyKindActive = FilterKindPixel || FilterKindAdjustment || FilterKindType || FilterKindShape;
+                if (anyKindActive)
+                {
+                    baseList = baseList.Where(el =>
+                    {
+                        if (el is GroupElement) return false;
+                        if (FilterKindPixel && (el is ImageElement || el is DoodleElement)) return true;
+                        if (FilterKindType && el is TextElement) return true;
+                        if (FilterKindShape && (el is RectangleElement || el is EllipseElement || el is ArrowElement || el is PolygonElement || el is StarElement || el is VectorShapeElement || (el is ImageElement img && img.IsVectorShape))) return true;
+                        return false;
+                    });
+                }
+            }
+            else if (LayerFilterBy == "Name")
+            {
+                if (!string.IsNullOrWhiteSpace(LayerFilterName))
+                {
+                    string search = LayerFilterName.Trim();
+                    baseList = baseList.Where(el => el.Name != null && el.Name.Contains(search, StringComparison.OrdinalIgnoreCase));
+                }
+            }
+            else if (LayerFilterBy == "Mode")
+            {
+                if (!string.IsNullOrEmpty(LayerFilterMode))
+                {
+                    baseList = baseList.Where(el => string.Equals(el.BlendMode.ToString(), LayerFilterMode, StringComparison.OrdinalIgnoreCase));
+                }
+            }
+
+            return baseList;
         }
     }
 
@@ -157,7 +242,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void ToggleInspector() => IsInspectorCollapsed = !IsInspectorCollapsed;
 
-    // ── Studio Theme Management (Photoshop Studio Parity) ───────────
+    // ── Studio Theme Management (Studio Studio Parity) ───────────
     [ObservableProperty]
     private string _currentThemeName = "ProDark";
 
@@ -202,12 +287,49 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     private double _cursorCanvasY = -1;
 
     [ObservableProperty]
+    private double _rulerOriginX = 0.0;
+
+    [ObservableProperty]
+    private double _rulerOriginY = 0.0;
+
+    [ObservableProperty]
+    private double? _activeDraggingGuideX;
+
+    [ObservableProperty]
+    private double? _activeDraggingGuideY;
+
+    public double CursorInfoX => ActiveDraggingGuideX ?? (CursorCanvasX >= 0 ? CursorCanvasX - RulerOriginX : -1);
+    public double CursorInfoY => ActiveDraggingGuideY ?? (CursorCanvasY >= 0 ? CursorCanvasY - RulerOriginY : -1);
+
+    partial void OnCursorCanvasXChanged(double value) => OnPropertyChanged(nameof(CursorInfoX));
+    partial void OnCursorCanvasYChanged(double value) => OnPropertyChanged(nameof(CursorInfoY));
+    partial void OnRulerOriginXChanged(double value) => OnPropertyChanged(nameof(CursorInfoX));
+    partial void OnRulerOriginYChanged(double value) => OnPropertyChanged(nameof(CursorInfoY));
+    partial void OnActiveDraggingGuideXChanged(double? value) => OnPropertyChanged(nameof(CursorInfoX));
+    partial void OnActiveDraggingGuideYChanged(double? value) => OnPropertyChanged(nameof(CursorInfoY));
+
+    [RelayCommand]
+    public void ResetRulerOrigin()
+    {
+        RulerOriginX = 0.0;
+        RulerOriginY = 0.0;
+        StatusMessage = "Ruler origin reset to (0, 0).";
+    }
+
+    public void SetRulerOrigin(double x, double y)
+    {
+        RulerOriginX = x;
+        RulerOriginY = y;
+        StatusMessage = $"Ruler origin set to ({x:0.#}, {y:0.#}).";
+    }
+
+    [ObservableProperty]
     private double _canvasOriginScreenX;
 
     [ObservableProperty]
     private double _canvasOriginScreenY;
 
-    // ── Studio View Extras & Preferences (Photoshop Parity) ───────────────
+    // ── Studio View Extras & Preferences (Studio Parity) ───────────────
     [ObservableProperty] private bool _viewExtras = true;
     [ObservableProperty] private bool _enableNarrowOptionsBar = false;
     public double OptionsBarHeight => EnableNarrowOptionsBar ? 28.0 : 34.0;
@@ -1727,7 +1849,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     [ObservableProperty] private Color _highlightColorField = Colors.Yellow;
     [ObservableProperty] private bool _isWrapEnabledField;
 
-    // OpenType feature properties (Photoshop standard)
+    // OpenType feature properties (Studio standard)
     [ObservableProperty] private bool _standardLigaturesField = true;
     [ObservableProperty] private bool _contextualAlternatesField = true;
     [ObservableProperty] private bool _discretionaryLigaturesField;
@@ -1970,18 +2092,30 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     partial void OnOpacityFieldChanged(double value)
     {
         if (_isSyncingStyleFields || SelectedElement is not { } target) return;
+        if (target.IsBackground && value < 100.0)
+        {
+            ConvertBackgroundToLayer(target);
+        }
         ApplyStyleField(target, target.Opacity, Math.Clamp(value, 0, 100) / 100.0, (t, v) => t.Opacity = v, "Change opacity");
     }
 
     partial void OnBlendModeFieldChanged(LayerBlendMode value)
     {
         if (_isSyncingStyleFields || SelectedElement is not { } target) return;
+        if (target.IsBackground && value != LayerBlendMode.Normal)
+        {
+            ConvertBackgroundToLayer(target);
+        }
         ApplyStyleField(target, target.BlendMode, value, (t, v) => t.BlendMode = v, "Change blend mode");
     }
 
     partial void OnFillOpacityFieldChanged(double value)
     {
         if (_isSyncingStyleFields || SelectedElement is not { } target) return;
+        if (target.IsBackground && value < 100.0)
+        {
+            ConvertBackgroundToLayer(target);
+        }
         ApplyStyleField(target, target.FillOpacity, Math.Clamp(value, 0, 100) / 100.0, (t, v) => t.FillOpacity = v, "Change fill opacity");
     }
 
@@ -2248,7 +2382,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
             return;
         }
 
-        // System clipboard image paste fallback (Photoshop & Photocraft #2546 / #4752)
+        // System clipboard image paste fallback (Studio & Photocraft #2546 / #4752)
         try
         {
             var topLevel = GetTopLevel();
@@ -2757,9 +2891,9 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
                 AllowMultiple = false,
                 FileTypeFilter =
                 [
-                    new FilePickerFileType("Images")
+                    new FilePickerFileType("All Supported Images")
                     {
-                        Patterns = ["*.png", "*.jpg", "*.jpeg", "*.bmp", "*.gif", "*.webp"],
+                        Patterns = ["*.png", "*.jpg", "*.jpeg", "*.bmp", "*.gif", "*.webp", "*.psd", "*.kra", "*.ora", "*.dpx", "*.dds", "*.xpm", "*.fits", "*.fit", "*.pcx", "*.cin", "*.tif", "*.tiff", "*.ico"],
                         MimeTypes = ["image/*"]
                     }
                 ]
@@ -2776,13 +2910,51 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
                 originalBytes = ms.ToArray();
             }
 
-            // Decode off the UI thread — a large imported photo's decode would otherwise
-            // freeze the whole editor for its duration.
             var (bitmap, naturalWidth, naturalHeight) = await Task.Run(() =>
             {
-                using var bitmapStream = new MemoryStream(originalBytes);
-                var bmp = new Bitmap(bitmapStream);
-                return (bmp, bmp.PixelSize.Width, bmp.PixelSize.Height);
+                if (CineonCodec.LooksLikeCineon(originalBytes))
+                {
+                    using var skBmp = CineonCodec.Decode(originalBytes);
+                    using var img = SKImage.FromBitmap(skBmp);
+                    using var data = img.Encode(SKEncodedImageFormat.Png, 100);
+                    using var bmpStream = new MemoryStream(data.ToArray());
+                    var bmp = new Bitmap(bmpStream);
+                    return (bmp, bmp.PixelSize.Width, bmp.PixelSize.Height);
+                }
+                if (DpxCodec.LooksLikeDpx(originalBytes))
+                {
+                    var dpx = DpxCodec.Decode(originalBytes);
+                    using var skBmp = dpx.ToSkBitmap();
+                    using var img = SKImage.FromBitmap(skBmp);
+                    using var data = img.Encode(SKEncodedImageFormat.Png, 100);
+                    using var bmpStream = new MemoryStream(data.ToArray());
+                    var bmp = new Bitmap(bmpStream);
+                    return (bmp, bmp.PixelSize.Width, bmp.PixelSize.Height);
+                }
+                if (DdsCodec.LooksLikeDds(originalBytes))
+                {
+                    var dds = DdsCodec.Decode(originalBytes);
+                    using var skBmp = dds.ToSkBitmap();
+                    using var img = SKImage.FromBitmap(skBmp);
+                    using var data = img.Encode(SKEncodedImageFormat.Png, 100);
+                    using var bmpStream = new MemoryStream(data.ToArray());
+                    var bmp = new Bitmap(bmpStream);
+                    return (bmp, bmp.PixelSize.Width, bmp.PixelSize.Height);
+                }
+                if (XpmCodec.LooksLikeXpm(originalBytes))
+                {
+                    var xpm = XpmCodec.Decode(originalBytes);
+                    using var skBmp = xpm.ToSkBitmap();
+                    using var img = SKImage.FromBitmap(skBmp);
+                    using var data = img.Encode(SKEncodedImageFormat.Png, 100);
+                    using var bmpStream = new MemoryStream(data.ToArray());
+                    var bmp = new Bitmap(bmpStream);
+                    return (bmp, bmp.PixelSize.Width, bmp.PixelSize.Height);
+                }
+
+                using var defaultStream = new MemoryStream(originalBytes);
+                var standardBmp = new Bitmap(defaultStream);
+                return (standardBmp, standardBmp.PixelSize.Width, standardBmp.PixelSize.Height);
             });
 
             // Scale down (never up) to fit a 300x225 box while preserving aspect ratio —
@@ -3322,7 +3494,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         var elements = dto.Elements.OrderBy(e => e.ZIndex).Select(CanvasElementMapper.FromDto).ToList();
         ApplyCanvasState(dto.CanvasWidth, dto.CanvasHeight, Color.Parse(dto.BackgroundColor), elements, $"Loaded {sourceName}.");
 
-        // Photoshop parity (#4559, 39f3660d): Check for missing fonts in type elements and warn on open
+        // Studio parity (#4559, 39f3660d): Check for missing fonts in type elements and warn on open
         CheckMissingFonts(elements);
 
         foreach (var img in Elements.OfType<ImageElement>().Where(HasNonDefaultAdjustments))
@@ -3331,7 +3503,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         }
     }
 
-    /// <summary>Warns when opened document uses fonts not installed on the system (Photoshop parity #4559).</summary>
+    /// <summary>Warns when opened document uses fonts not installed on the system (Studio parity #4559).</summary>
     public void CheckMissingFonts(IEnumerable<CanvasElement> elements)
     {
         try
@@ -3582,12 +3754,12 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         CanvasControl?.Refresh();
     }
 
-    // ── Canvas Pasteboard Color (Photoshop Parity #3725) ─────────────────────
+    // ── Canvas Pasteboard Color (Studio Parity #3725) ─────────────────────
     [ObservableProperty] private Color _canvasPasteboardColor = Color.FromRgb(0x28, 0x28, 0x28);
 
     /// <summary>
-    /// Steps through Photoshop pasteboard colors (Default, Black, Dark Gray, Medium Gray, Light Gray, Custom)
-    /// matching Photoshop Space+F / Shift+Space+F (#3725).
+    /// Steps through Studio pasteboard colors (Default, Black, Dark Gray, Medium Gray, Light Gray, Custom)
+    /// matching Studio Space+F / Shift+Space+F (#3725).
     /// </summary>
     [RelayCommand]
     public void CycleCanvasColor(bool reverse = false)

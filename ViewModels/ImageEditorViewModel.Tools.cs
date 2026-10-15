@@ -84,6 +84,15 @@ public partial class ImageEditorViewModel
     [ObservableProperty]
     private string _cropAspectRatio = "Free"; // Free, 1:1, 16:9, 4:3, Original
 
+    [ObservableProperty]
+    private bool _isCropContentAwareFillEnabled = false;
+
+    partial void OnIsCropContentAwareFillEnabledChanged(bool value)
+    {
+        if (CanvasControl != null)
+            CanvasControl.IsCropContentAwareFillEnabled = value;
+    }
+
     // ── Core Brush Engine State ─────────────────────────────────────────────
     [ObservableProperty]
     private BrushPreset? _selectedBrushPreset = BrushPresetLibrary.DefaultPreset;
@@ -400,7 +409,7 @@ public partial class ImageEditorViewModel
     public bool IsPenToolActive => ActiveToolMode is "pen" or "freepen";
     public bool IsPathSelectionToolActive => ActiveToolMode is "pathselection" or "directselection";
 
-    // Slot Active Predicates (Photoshop blue border highlight on active slot)
+    // Slot Active Predicates (Studio blue border highlight on active slot)
     public bool IsMoveSlotActive => ActiveToolMode is "select" or "move" or "artboard";
     public bool IsMarqueeSlotActive => ActiveToolMode is "marquee" or "rectmarquee" or "ellipsemarquee" or "rowmarquee" or "colmarquee";
     public bool IsLassoSlotActive => ActiveToolMode == "lasso";
@@ -928,7 +937,7 @@ public partial class ImageEditorViewModel
 
     public void AdjustBrushSize(double delta)
     {
-        BrushThickness = Math.Clamp(Math.Round(BrushThickness + delta), 1.0, 500.0);
+        BrushThickness = Math.Clamp(Math.Round(BrushThickness + delta), 1.0, 5000.0);
     }
 
     public void AdjustBrushHardness(double delta)
@@ -1267,7 +1276,7 @@ public partial class ImageEditorViewModel
 
     [RelayCommand] public void SetTransformAnchor(string anchor) => TransformAnchor = anchor;
 
-    // ── Modern Photoshop Contextual Task Bar State ──────────────────────────
+    // ── Modern Studio Contextual Task Bar State ──────────────────────────
     [ObservableProperty] private bool _isContextualTaskBarVisible = true;
 
     [RelayCommand]
@@ -1370,7 +1379,7 @@ public partial class ImageEditorViewModel
     }
 
     /// <summary>
-    /// Rotates the brush tip by the specified degrees (wrapped into -180..180), matching Photoshop Left/Right arrow keys.
+    /// Rotates the brush tip by the specified degrees (wrapped into -180..180), matching Studio Left/Right arrow keys.
     /// </summary>
     [RelayCommand]
     public void RotateBrush(double degrees)

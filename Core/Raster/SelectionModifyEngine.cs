@@ -4,8 +4,8 @@ using System.Threading.Tasks;
 namespace PdfEditorApp.Plugins.ImageEditor.Core.Raster;
 
 /// <summary>
-/// Professional Selection Modification Engine matching Photoshop's exact algorithms:
-/// - Select › Modify › Border: Photoshop's soft band, 2r wide, with falloff 1 - (D - 1) / r
+/// Professional Selection Modification Engine matching Studio's exact algorithms:
+/// - Select › Modify › Border: Studio's soft band, 2r wide, with falloff 1 - (D - 1) / r
 ///   using exact Euclidean distance transform (not a hard binary ring).
 /// - Select › Modify › Smooth: Sharp thresholding at 0.5 of box-average filter, producing
 ///   pure 0 and 255 masks without blurry edges.
@@ -15,7 +15,7 @@ namespace PdfEditorApp.Plugins.ImageEditor.Core.Raster;
 public static class SelectionModifyEngine
 {
     /// <summary>
-    /// Select › Modify › Border (Photoshop 27.11 parity):
+    /// Select › Modify › Border (Calibrated Studio parity):
     /// Produces a soft band of width 2r (r pixels outside, r pixels inside the boundary).
     /// A pixel at Euclidean distance D (center-to-center) from the opposite region is
     /// selected with coverage 1 - (D - 1) / r, clamped to [0..1].
@@ -46,7 +46,7 @@ public static class SelectionModifyEngine
 
                 if (d <= r)
                 {
-                    // Photoshop formula: 1.0 - (D - 1.0) / r
+                    // Studio formula: 1.0 - (D - 1.0) / r
                     // When D = 1 (directly adjacent across edge), coverage = 1.0 (255)
                     // When D = r, coverage = 1.0 / r
                     // When D > r, coverage = 0.0
@@ -64,7 +64,7 @@ public static class SelectionModifyEngine
     }
 
     /// <summary>
-    /// Select › Modify › Smooth (Photoshop 27.11 parity):
+    /// Select › Modify › Smooth (Calibrated Studio parity):
     /// Box-averages the selection with radius r, and thresholds strictly at 0.5 (128).
     /// Straight edges stay in place and corners round smoothly, yielding crisp 0 and 255 values.
     /// </summary>
@@ -85,7 +85,7 @@ public static class SelectionModifyEngine
         float[] averaged = BoxFilter2D(src, width, height, radius);
         byte[] result = new byte[n];
 
-        // Photoshop strict threshold at 0.5
+        // Studio strict threshold at 0.5
         for (int i = 0; i < n; i++)
         {
             result[i] = averaged[i] >= 0.5f ? (byte)255 : (byte)0;

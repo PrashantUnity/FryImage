@@ -170,11 +170,13 @@
                     <Button.Flyout>
                         <MenuFlyout Placement="BottomEdgeAlignedLeft">
                             <MenuItem Header="New Layer..." InputGesture="Ctrl+Shift+N" Command="{Binding OpenNewLayerDialogCommand}" />
+                            <MenuItem Header="New Blank Layer" InputGesture="Ctrl+Alt+Shift+N" Command="{Binding AddNewBlankLayerCommand}" />
                             <MenuItem Header="Duplicate Layer..." Command="{Binding OpenDuplicateLayerDialogCommand}" />
                             <MenuItem Header="Quick Duplicate Layer" InputGesture="Ctrl+J" Command="{Binding DuplicateCommand}" />
                             <MenuItem Header="Delete Layer" Command="{Binding DeleteSelectedElementCommand}" />
                             <MenuItem Header="Rename Layer..." Command="{Binding OpenRenameLayerDialogCommand}" />
                             <Separator />
+                            <MenuItem Header="Create / Release Clipping Mask" InputGesture="Ctrl+Alt+G" Command="{Binding ToggleClippingMaskCommand}" />
                             <MenuItem Header="Toggle Visibility" InputGesture="Ctrl+OemComma" Command="{Binding ToggleLayerVisibilityCommand}" />
                             <MenuItem Header="Lock Transparent Pixels" InputGesture="Divide" Command="{Binding ToggleLockTransparencyCommand}" />
                             <Separator />

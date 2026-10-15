@@ -8,7 +8,7 @@ using Avalonia.Media.Imaging;
 namespace PdfEditorApp.Plugins.ImageEditor.Controls;
 
 /// <summary>
-/// Photoshop standard in-dialog filter preview control.
+/// Studio standard in-dialog filter preview control.
 /// Features:
 /// - Real-time filtered preview rendering on checkerboard canvas
 /// - Press-and-hold to instantly compare with the unfiltered original image

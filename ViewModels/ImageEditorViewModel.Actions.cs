@@ -13,7 +13,7 @@ namespace PdfEditorApp.Plugins.ImageEditor;
 
 public partial class ImageEditorViewModel
 {
-    // ── Actions Panel State (Photoshop .atn Parity) ─────────────────────────
+    // ── Actions Panel State (Studio .atn Parity) ─────────────────────────
     [ObservableProperty]
     private ObservableCollection<AtnCodec.AtnFile> _actionSets = [];
 
@@ -91,11 +91,11 @@ public partial class ImageEditorViewModel
 
             var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                Title = "Load Photoshop Actions (.atn)",
+                Title = "Load Actions (.atn)",
                 AllowMultiple = false,
                 FileTypeFilter =
                 [
-                    new FilePickerFileType("Photoshop Actions (*.atn)") { Patterns = ["*.atn"] },
+                    new FilePickerFileType("Actions (*.atn)") { Patterns = ["*.atn"] },
                     new FilePickerFileType("All Files") { Patterns = ["*.*"] }
                 ]
             });
@@ -128,12 +128,12 @@ public partial class ImageEditorViewModel
 
             var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
             {
-                Title = "Save Photoshop Actions (.atn)",
+                Title = "Save Actions (.atn)",
                 DefaultExtension = "atn",
                 SuggestedFileName = $"{targetSet.Name}.atn",
                 FileTypeChoices =
                 [
-                    new FilePickerFileType("Photoshop Actions (*.atn)") { Patterns = ["*.atn"] }
+                    new FilePickerFileType("Actions (*.atn)") { Patterns = ["*.atn"] }
                 ]
             });
 

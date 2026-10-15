@@ -81,7 +81,7 @@ public sealed class LiquifyMesh
     }
 
     /// <summary>
-    /// Photoshop falloff curve: blends (1 - t^2)^3 at Density 0 towards (1 - t^4)^2 at Density 100.
+    /// Studio falloff curve: blends (1 - t^2)^3 at Density 0 towards (1 - t^4)^2 at Density 100.
     /// Fades strictly to 0 at the rim with 0 slope, preventing sawtooth edge tears (Commit 599aea00 parity).
     /// </summary>
     public static double Falloff(double t2, double density)

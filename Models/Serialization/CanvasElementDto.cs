@@ -35,6 +35,7 @@ public abstract class CanvasElementDto
     public bool IsVisible { get; set; } = true;
     public bool IsLocked { get; set; }
     public bool IsTransparencyLocked { get; set; }
+    public bool IsPixelsLocked { get; set; }
     public bool IsPositionLocked { get; set; }
     public bool IsBackground { get; set; }
     public string? Name { get; set; }
@@ -110,6 +111,7 @@ public sealed class BevelEmbossStyleDto
 {
     public bool IsEnabled { get; set; } = true;
     public string Style { get; set; } = "InnerBevel";
+    public string Technique { get; set; } = "Smooth";
     public double Depth { get; set; } = 100.0;
     public double Size { get; set; } = 5.0;
     public double Soften { get; set; }

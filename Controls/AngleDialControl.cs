@@ -7,7 +7,7 @@ using Avalonia.Media;
 namespace PdfEditorApp.Plugins.ImageEditor.Controls;
 
 /// <summary>
-/// Photoshop-compatible interactive circular Angle Dial control.
+/// Industry-compatible interactive circular Angle Dial control.
 /// Provides a sleek rotary needle dial for directional filters (Motion Blur, Emboss, Drop Shadow, etc.)
 /// where angle counts degrees counter-clockwise or clockwise from three o'clock.
 /// </summary>
@@ -95,7 +95,7 @@ public class AngleDialControl : Control
         dc.DrawEllipse(pivotBrush, null, new Point(cx, cy), 2.2, 2.2);
 
         // 4. Pointer Needle from center to (radius - 4)
-        // In Photoshop: Motion Blur / Drop Shadow angle has 0° at 3 o'clock,
+        // In Standard Studio: Motion Blur / Drop Shadow angle has 0° at 3 o'clock,
         // and positive angle goes counter-clockwise (or clockwise on screen Y depending on sign).
         // Standard Cartesian math: -Angle in radians matches standard UI coordinates (Y down).
         double angleRad = -Angle * (Math.PI / 180.0);

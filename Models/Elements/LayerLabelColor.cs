@@ -3,7 +3,7 @@ using Avalonia.Media;
 namespace PdfEditorApp.Plugins.ImageEditor.Models;
 
 /// <summary>
-/// Photoshop-compatible layer label colors.
+/// Industry-compatible layer label colors.
 /// </summary>
 public enum LayerLabelColor
 {

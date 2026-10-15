@@ -6,7 +6,7 @@ using PdfEditorApp.Plugins.ImageEditor.Models;
 namespace PdfEditorApp.Plugins.ImageEditor.Core.Blending;
 
 /// <summary>
-/// FryImage pixel-level layer blend engine implementing the complete set of 27 Adobe Photoshop
+/// FryImage pixel-level layer blend engine implementing the complete set of 27 standard Studio
 /// / ISO 32000-1 blend modes for professional compositing.
 /// Includes separable and non-separable (HSL, luminance comparator) blend equations.
 /// </summary>
@@ -267,7 +267,7 @@ public static class StudioBlendEngine
     /// <summary>
     /// Computes the Blend If visibility factor (0.0 .. 1.0) for a given pixel value against a range
     /// defined by [blackLow, blackHigh] (ramp up from black) and [whiteLow, whiteHigh] (ramp down into white).
-    /// Matches Adobe Photoshop ISO/IEC Blend If specifications (#4395).
+    /// Matches ISO/IEC Blend If specifications (#4395).
     /// </summary>
     public static float ComputeBlendRangeFactor(byte value, byte blackLow, byte blackHigh, byte whiteLow, byte whiteHigh)
     {

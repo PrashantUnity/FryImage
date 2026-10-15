@@ -90,9 +90,9 @@ public partial class ImageEditorViewModel
     [ObservableProperty] private double _fxInnerGlowSpread = 0.0;
     [ObservableProperty] private LayerBlendMode _fxInnerGlowBlendMode = LayerBlendMode.Screen;
 
-    // Bevel & Emboss
     [ObservableProperty] private bool _fxBevelEmbossEnabled;
     [ObservableProperty] private BevelEmbossType _fxBevelEmbossStyle = BevelEmbossType.InnerBevel;
+    [ObservableProperty] private BevelTechnique _fxBevelEmbossTechnique = BevelTechnique.Smooth;
     [ObservableProperty] private double _fxBevelEmbossDepth = 100.0;
     [ObservableProperty] private double _fxBevelEmbossSize = 5.0;
     [ObservableProperty] private double _fxBevelEmbossSoften = 0.0;
@@ -134,6 +134,7 @@ public partial class ImageEditorViewModel
 
     public IReadOnlyList<LayerStrokePosition> AvailableStrokePositions { get; } = Enum.GetValues<LayerStrokePosition>();
     public IReadOnlyList<BevelEmbossType> AvailableBevelTypes { get; } = Enum.GetValues<BevelEmbossType>();
+    public IReadOnlyList<BevelTechnique> AvailableBevelTechniques { get; } = Enum.GetValues<BevelTechnique>();
 
     [RelayCommand]
     private void SelectLayerStyleSection(string section) => ActiveLayerStyleSection = section;
@@ -188,6 +189,7 @@ public partial class ImageEditorViewModel
 
         FxBevelEmbossEnabled = fx.BevelEmboss.IsEnabled;
         FxBevelEmbossStyle = fx.BevelEmboss.Style;
+        FxBevelEmbossTechnique = fx.BevelEmboss.Technique;
         FxBevelEmbossDepth = fx.BevelEmboss.Depth;
         FxBevelEmbossSize = fx.BevelEmboss.Size;
         FxBevelEmbossSoften = fx.BevelEmboss.Soften;
@@ -297,6 +299,7 @@ public partial class ImageEditorViewModel
             {
                 IsEnabled = FxBevelEmbossEnabled,
                 Style = FxBevelEmbossStyle,
+                Technique = FxBevelEmbossTechnique,
                 Depth = FxBevelEmbossDepth,
                 Size = FxBevelEmbossSize,
                 Soften = FxBevelEmbossSoften,
@@ -371,6 +374,52 @@ public partial class ImageEditorViewModel
         IsLayerStyleDialogOpen = false;
         StatusMessage = "Layer styles applied.";
         _ = UpdateHistogramAsync();
+    }
+
+    /// <summary>
+    /// Updates Drop Shadow or Inner Shadow angle and distance live from an on-canvas mouse drag (Studio parity #5701).
+    /// </summary>
+    public void UpdateLayerStyleShadowFromCanvasDrag(double dx, double dy)
+    {
+        if (!IsLayerStyleDialogOpen) return;
+
+        double angle = FxDropShadowEnabled ? FxDropShadowAngle : FxInnerShadowAngle;
+        double dist = FxDropShadowEnabled ? FxDropShadowDistance : FxInnerShadowDistance;
+
+        double rad = angle * Math.PI / 180.0;
+        double ox = -Math.Cos(rad) * dist + dx;
+        double oy = Math.Sin(rad) * dist + dy;
+        double newDist = Math.Sqrt(ox * ox + oy * oy);
+        double newAngle = newDist >= 0.5 ? Math.Round(Math.Atan2(oy, -ox) * 180.0 / Math.PI) : angle;
+        if (newAngle < 0) newAngle += 360.0;
+
+        if (FxDropShadowEnabled)
+        {
+            FxDropShadowAngle = newAngle;
+            FxDropShadowDistance = Math.Clamp(Math.Round(newDist), 0, 30000);
+        }
+        else if (FxInnerShadowEnabled)
+        {
+            FxInnerShadowAngle = newAngle;
+            FxInnerShadowDistance = Math.Clamp(Math.Round(newDist), 0, 30000);
+        }
+
+        if (SelectedElement != null)
+        {
+            if (FxDropShadowEnabled)
+            {
+                SelectedElement.Effects.DropShadow.IsEnabled = true;
+                SelectedElement.Effects.DropShadow.Angle = FxDropShadowAngle;
+                SelectedElement.Effects.DropShadow.Distance = FxDropShadowDistance;
+            }
+            else if (FxInnerShadowEnabled)
+            {
+                SelectedElement.Effects.InnerShadow.IsEnabled = true;
+                SelectedElement.Effects.InnerShadow.Angle = FxInnerShadowAngle;
+                SelectedElement.Effects.InnerShadow.Distance = FxInnerShadowDistance;
+            }
+            CanvasControl?.InvalidateVisual();
+        }
     }
 
     // ── 2. New Document Modal Dialog (File › New...) ────────────────────────
@@ -458,7 +507,7 @@ public partial class ImageEditorViewModel
         ScheduleHistogramUpdate();
     }
 
-    // ── 2B. New Brush Preset Modal Dialog (Photoshop Parity #4490) ───────────
+    // ── 2B. New Brush Preset Modal Dialog (Studio Parity #4490) ───────────
     [ObservableProperty] private bool _isNewBrushPresetDialogOpen;
     [ObservableProperty] private string _newBrushPresetName = "Brush 1";
     [ObservableProperty] private bool _newBrushPresetCaptureSize = true;
@@ -674,7 +723,7 @@ public partial class ImageEditorViewModel
     [ObservableProperty] private int _adjPhotoFilterDensity = 25;
     [ObservableProperty] private bool _adjPhotoFilterPreserveLuminosity = true;
 
-    // Shadows / Highlights parameters (Photoshop 25.4 measured)
+    // Shadows / Highlights parameters (Studio calibrated)
     [ObservableProperty] private double _adjShadowAmount = 35.0;
     [ObservableProperty] private double _adjShadowTone = 50.0;
     [ObservableProperty] private double _adjShadowRadius = 30.0;
@@ -1016,7 +1065,7 @@ public partial class ImageEditorViewModel
             "Curves" => ExecuteCurvesAdjustment(bgra),
             "HueSaturation" => ImageAdjustmentEngine.ApplyHueSaturation(bgra, AdjHue, AdjSaturation, AdjLightness, AdjColorize),
             "Vibrance" => ImageAdjustmentEngine.ApplyVibrance(bgra, AdjVibrance, AdjSaturation),
-            "ColorBalance" => ImageAdjustmentEngine.ApplyColorBalancePhotoshop(bgra, _adjColorBalanceTones, AdjColorBalancePreserveLuminosity),
+            "ColorBalance" => ImageAdjustmentEngine.ApplyColorBalanceStandard(bgra, _adjColorBalanceTones, AdjColorBalancePreserveLuminosity),
             "Threshold" => ImageAdjustmentEngine.ApplyThreshold(bgra, AdjThreshold),
             "Posterize" => ImageAdjustmentEngine.ApplyPosterize(bgra, AdjPosterizeLevels),
             "Exposure" => ImageAdjustmentEngine.ApplyExposure(bgra, AdjExposure, AdjExposureOffset, AdjExposureGamma),
@@ -1550,8 +1599,16 @@ public partial class ImageEditorViewModel
     [ObservableProperty] private double _filterLensBrightness = 100.0;
     [ObservableProperty] private int _filterLensType = 0;
     [ObservableProperty] private int _filterSolarizeThreshold = 128;
+    [ObservableProperty] private uint _filterRandomSeed = 12345u;
 
-    // 10 Photoshop Creative & Optical Filters Properties
+    [RelayCommand]
+    public void RandomizeFilterSeed()
+    {
+        FilterRandomSeed = (uint)Random.Shared.Next(1, int.MaxValue);
+        ApplyFilterPreview();
+    }
+
+    // 10 Studio Creative & Optical Filters Properties
     [ObservableProperty] private int _filterWindStrength = 15;
     [ObservableProperty] private int _filterWindDirection = 0; // 0=FromLeft, 1=FromRight
     [ObservableProperty] private int _filterDiffuseMode = 0; // 0=Normal, 1=DarkenOnly, 2=LightenOnly
@@ -1596,7 +1653,7 @@ public partial class ImageEditorViewModel
     // In-Dialog Settings Undo/Redo History (#4697, #4715)
     private DialogEditHistory<string>? _activeDialogEditHistory;
 
-    // In-Dialog Filter Preview (Photoshop standard)
+    // In-Dialog Filter Preview (Studio standard)
     [ObservableProperty] private Bitmap? _filterDialogPreviewBitmap;
     [ObservableProperty] private Bitmap? _filterDialogOriginalBitmap;
     [ObservableProperty] private double _filterDialogPreviewZoom = 1.0;
@@ -1991,6 +2048,7 @@ public partial class ImageEditorViewModel
     partial void OnFilterOffsetHorizontalChanged(double value) => ApplyFilterPreview();
     partial void OnFilterOffsetVerticalChanged(double value) => ApplyFilterPreview();
     partial void OnFilterOffsetUndefinedModeChanged(string value) => ApplyFilterPreview();
+    partial void OnFilterRandomSeedChanged(uint value) => ApplyFilterPreview();
 
     public void InitDialogHistory(string initialSettings)
     {
@@ -2065,14 +2123,14 @@ public partial class ImageEditorViewModel
             "Wave" => ImageAdjustmentEngine.ApplyWave(bgra, width, height, FilterWaveGenerators, FilterWaveMinWavelength, FilterWaveMaxWavelength, FilterWaveMinAmplitude, FilterWaveMaxAmplitude, FilterWaveType),
             "PolarCoordinates" => ImageAdjustmentEngine.ApplyPolarCoordinates(bgra, width, height, FilterPolarRectangularToPolar),
             "ColorHalftone" => ImageAdjustmentEngine.ApplyColorHalftone(bgra, width, height, FilterHalftoneMaxRadius, FilterHalftoneAngle1, FilterHalftoneAngle2, FilterHalftoneAngle3, FilterHalftoneAngle4),
-            "Crystallize" => ImageAdjustmentEngine.ApplyCrystallize(bgra, width, height, FilterCrystallizeCellSize),
-            "Pointillize" => ImageAdjustmentEngine.ApplyPointillize(bgra, width, height, FilterPointillizeCellSize),
+            "Crystallize" => ImageAdjustmentEngine.ApplyCrystallize(bgra, width, height, FilterCrystallizeCellSize, FilterRandomSeed),
+            "Pointillize" => ImageAdjustmentEngine.ApplyPointillize(bgra, width, height, FilterPointillizeCellSize, FilterRandomSeed),
             "Facet" => ImageAdjustmentEngine.ApplyFacet(bgra, width, height, FilterFacetRadius),
             "OilPaint" => ImageAdjustmentEngine.ApplyOilPaint(bgra, width, height, FilterOilStylization, FilterOilCleanliness, FilterOilScale, FilterOilBristleDetail, FilterOilLighting, FilterOilAngle, FilterOilShine),
             "CameraRaw" => ImageAdjustmentEngine.ApplyCameraRaw(bgra, width, height, FilterRawExposure, FilterRawTemperature, FilterRawTint, FilterRawContrast, FilterRawHighlights, FilterRawShadows, FilterRawWhites, FilterRawBlacks, FilterRawTexture, FilterRawClarity, FilterRawDehaze, FilterRawVibrance, FilterRawSaturation),
             "LensFlare" => ImageAdjustmentEngine.ApplyLensFlare(bgra, width, height, FilterLensBrightness, lensType: FilterLensType),
-            "Clouds" => ImageAdjustmentEngine.ApplyClouds(bgra, width, height, PrimaryColor, SecondaryColor, false),
-            "DifferenceClouds" => ImageAdjustmentEngine.ApplyClouds(bgra, width, height, PrimaryColor, SecondaryColor, true),
+            "Clouds" => ImageAdjustmentEngine.ApplyClouds(bgra, width, height, PrimaryColor, SecondaryColor, false, FilterRandomSeed),
+            "DifferenceClouds" => ImageAdjustmentEngine.ApplyClouds(bgra, width, height, PrimaryColor, SecondaryColor, true, FilterRandomSeed),
             "FindEdges" => ImageAdjustmentEngine.ApplyFindEdges(bgra, width, height),
             "Solarize" => ImageAdjustmentEngine.ApplySolarize(bgra, FilterSolarizeThreshold),
             "Emboss" => ImageAdjustmentEngine.ApplyEmboss(bgra, width, height, FilterEmbossAngle, FilterEmbossDepth),
@@ -2080,7 +2138,7 @@ public partial class ImageEditorViewModel
             "Diffuse" => ImageAdjustmentEngine.ApplyDiffuse(bgra, width, height, FilterDiffuseMode, FilterDiffuseRadius),
             "Extrude" => ImageAdjustmentEngine.ApplyExtrude(bgra, width, height, FilterExtrudeRandom ? 1 : 0, FilterExtrudeBlockSize, FilterExtrudeDepth),
             "Tiles" => ImageAdjustmentEngine.ApplyTiles(bgra, width, height, FilterTilesNumTiles, FilterTilesMaximumOffset, 0),
-            "Fibers" => ImageAdjustmentEngine.ApplyFibers(width, height, FilterFibersVariance, FilterFibersStrength, 12345u),
+            "Fibers" => ImageAdjustmentEngine.ApplyFibers(width, height, FilterFibersVariance, FilterFibersStrength, FilterRandomSeed),
             "ZigZag" => ImageAdjustmentEngine.ApplyZigZag(bgra, width, height, (int)FilterZigZagAmount, FilterZigZagRidges, FilterZigZagStyle),
             "Shear" => ImageAdjustmentEngine.ApplyShear(bgra, width, height, FilterShearOffset),
             "Mezzotint" => ImageAdjustmentEngine.ApplyMezzotint(bgra, width, height, FilterMezzotintType),
@@ -2390,13 +2448,13 @@ public partial class ImageEditorViewModel
                     new FilePickerFileType("DirectDraw Surface (*.dds)") { Patterns = ["*.dds"] },
                     new FilePickerFileType("SMPTE DPX Film/VFX (*.dpx)") { Patterns = ["*.dpx"] },
                     new FilePickerFileType("X PixMap (*.xpm)") { Patterns = ["*.xpm"] },
-                    new FilePickerFileType("Photoshop Actions (*.atn)") { Patterns = ["*.atn"] },
+                    new FilePickerFileType("Actions (*.atn)") { Patterns = ["*.atn"] },
                     new FilePickerFileType("Krita Document (*.kra)") { Patterns = ["*.kra"] },
                     new FilePickerFileType("ZSoft PCX Image (*.pcx)") { Patterns = ["*.pcx"] },
-                    new FilePickerFileType("Adobe Photoshop Brushes (*.abr)") { Patterns = ["*.abr"] },
-                    new FilePickerFileType("Adobe Swatches (*.aco, *.ase)") { Patterns = ["*.aco", "*.ase"] },
-                    new FilePickerFileType("Adobe Gradients (*.grd)") { Patterns = ["*.grd"] },
-                    new FilePickerFileType("Adobe Patterns (*.pat)") { Patterns = ["*.pat"] },
+                    new FilePickerFileType("Brushes (*.abr)") { Patterns = ["*.abr"] },
+                    new FilePickerFileType("Color Swatches (*.aco, *.ase)") { Patterns = ["*.aco", "*.ase"] },
+                    new FilePickerFileType("Gradients (*.grd)") { Patterns = ["*.grd"] },
+                    new FilePickerFileType("Patterns (*.pat)") { Patterns = ["*.pat"] },
                     new FilePickerFileType("Astronomical Image (*.fits, *.fit, *.fts)") { Patterns = ["*.fits", "*.fit", "*.fts"] },
                     new FilePickerFileType("All Files") { Patterns = ["*.*"] }
                 ]
@@ -2747,7 +2805,7 @@ public partial class ImageEditorViewModel
                     SelectedActionSet = atnFile;
                     SelectedAction = atnFile.Actions.FirstOrDefault();
                     ActiveLayersDockTab = "Actions";
-                    StatusMessage = $"Loaded Photoshop Actions '{atnFile.Name}' ({atnFile.Actions.Count} actions).";
+                    StatusMessage = $"Loaded Actions '{atnFile.Name}' ({atnFile.Actions.Count} actions).";
                     openedCount++;
                 }
                 else if (ext == ".dds")

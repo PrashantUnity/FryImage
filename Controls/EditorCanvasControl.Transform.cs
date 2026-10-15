@@ -200,7 +200,7 @@ public partial class EditorCanvasControl
     }
 
     /// <summary>
-    /// Resamples an ImageElement raster with Photoshop's Keys Bicubic and reduction prefiltering (Commit 9c3f9664 parity).
+    /// Resamples an ImageElement raster with Studio's Keys Bicubic and reduction prefiltering (Commit 9c3f9664 parity).
     /// Prevents moiré and aliasing during transforms and scales.
     /// </summary>
     public static void ResampleImageElementBicubic(ImageElement image, int newWidth, int newHeight)

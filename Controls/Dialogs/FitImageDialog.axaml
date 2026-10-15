@@ -9,7 +9,7 @@
     <Border Background="#99000000"
             IsVisible="{Binding IsFitImageDialogOpen}"
             ZIndex="500">
-        <!-- Narrow compact window matching Photoshop and upstream parity -->
+        <!-- Narrow compact window matching Studio and upstream parity -->
         <Border Background="{DynamicResource PsPanelBrush}"
                 BorderBrush="{DynamicResource PsBorderLightBrush}"
                 BorderThickness="1"

@@ -4,7 +4,7 @@ using Avalonia;
 namespace PdfEditorApp.Plugins.ImageEditor.Core.Canvas;
 
 /// <summary>
-/// Canvas autoscroll physics engine (Photoshop viewport edge autoscroll specification).
+/// Canvas autoscroll physics engine (Studio viewport edge autoscroll specification).
 /// Automatically scrolls the viewport when dragging a marquee, lasso, transform handle, or brush
 /// beyond the visible viewport edges.
 /// </summary>

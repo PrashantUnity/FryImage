@@ -15,7 +15,7 @@ namespace PdfEditorApp.Plugins.ImageEditor;
 
 public partial class ImageEditorViewModel
 {
-    // ── Duplicate Layer Modal (Photoshop Parity #3348 / #3440) ───────────────
+    // ── Duplicate Layer Modal (Studio Parity #3348 / #3440) ───────────────
     [ObservableProperty] private bool _isDuplicateLayerDialogOpen;
     [ObservableProperty] private string _duplicateLayerPrompt = "Duplicate Layer";
     [ObservableProperty] private string _duplicateLayerAsName = "";
@@ -107,7 +107,7 @@ public partial class ImageEditorViewModel
         }
     }
 
-    // ── New Layer Modal (Photoshop Parity) ─────────────────
+    // ── New Layer Modal (Studio Parity) ─────────────────
     [ObservableProperty] private bool _isNewLayerDialogOpen;
     [ObservableProperty] private string _newLayerName = "Layer 1";
     [ObservableProperty] private bool _newLayerIsClippingMask;
@@ -278,6 +278,100 @@ public partial class ImageEditorViewModel
         OnPropertyChanged(nameof(LayersDescendingZ));
         OnPropertyChanged(nameof(SelectedElement));
         StatusMessage = newLock ? "Locked transparent pixels." : "Unlocked transparent pixels.";
+    }
+
+    [RelayCommand]
+    public void ToggleLockPixels(CanvasElement? element = null)
+    {
+        var targets = element != null
+            ? [element]
+            : (SelectedElements.Count > 0
+                ? SelectedElements.ToList()
+                : (SelectedElement != null ? [SelectedElement] : (Elements.Count > 0 ? [Elements[^1]] : [])));
+
+        targets.RemoveAll(t => t.IsBackground || (Elements.Count > 0 && t == Elements[0] && t.HasBackgroundTraits));
+        if (targets.Count == 0) return;
+
+        bool allLocked = targets.All(t => t.IsPixelsLocked);
+        bool newLock = !allLocked;
+
+        foreach (var t in targets)
+        {
+            t.IsPixelsLocked = newLock;
+        }
+
+        RefreshCanvas();
+        OnPropertyChanged(nameof(LayersDescendingZ));
+        OnPropertyChanged(nameof(SelectedElement));
+        StatusMessage = newLock ? "Locked image pixels." : "Unlocked image pixels.";
+    }
+
+    [RelayCommand]
+    public void ToggleLockPosition(CanvasElement? element = null)
+    {
+        var targets = element != null
+            ? [element]
+            : (SelectedElements.Count > 0
+                ? SelectedElements.ToList()
+                : (SelectedElement != null ? [SelectedElement] : (Elements.Count > 0 ? [Elements[^1]] : [])));
+
+        targets.RemoveAll(t => t.IsBackground || (Elements.Count > 0 && t == Elements[0] && t.HasBackgroundTraits));
+        if (targets.Count == 0) return;
+
+        bool allLocked = targets.All(t => t.IsPositionLocked);
+        bool newLock = !allLocked;
+
+        foreach (var t in targets)
+        {
+            t.IsPositionLocked = newLock;
+        }
+
+        RefreshCanvas();
+        OnPropertyChanged(nameof(LayersDescendingZ));
+        OnPropertyChanged(nameof(SelectedElement));
+        StatusMessage = newLock ? "Locked layer position." : "Unlocked layer position.";
+    }
+
+    [RelayCommand]
+    public void AddNewBlankLayer(bool below = false)
+    {
+        int nextNum = Elements.Count + 1;
+        var el = new RectangleElement
+        {
+            Name = $"Layer {nextNum}",
+            X = 0,
+            Y = 0,
+            Width = CanvasWidth,
+            Height = CanvasHeight,
+            ZIndex = Elements.Count + 1,
+            Opacity = 1.0,
+            BlendMode = LayerBlendMode.Normal,
+            FillColor = Color.FromArgb(0, 0, 0, 0),
+            StrokeThickness = 0
+        };
+
+        if (below && SelectedElement != null)
+        {
+            int selIdx = Elements.IndexOf(SelectedElement);
+            int targetIdx = Math.Max(0, selIdx);
+            if (targetIdx == 0 && Elements.Count > 0 && Elements[0].DisplayName.Equals("Background", StringComparison.OrdinalIgnoreCase))
+            {
+                targetIdx = 1;
+            }
+            Elements.Insert(targetIdx, el);
+            for (int i = 0; i < Elements.Count; i++)
+            {
+                Elements[i].ZIndex = i + 1;
+            }
+            SelectedElement = el;
+            RefreshCanvas();
+            if (!_isApplyingHistory) History.Push(new AddElementCommand(Elements, el));
+        }
+        else
+        {
+            CommitNewElement(el);
+        }
+        StatusMessage = $"Created layer '{el.DisplayName}'.";
     }
 
     [ObservableProperty] private bool _isVectorMaskTargeted;
@@ -472,6 +566,10 @@ public partial class ImageEditorViewModel
             if (el != target && el.IsBackground) el.IsBackground = false;
         }
 
+        target.Name = "Background";
+        target.BlendMode = LayerBlendMode.Normal;
+        target.Opacity = 1.0;
+        target.FillOpacity = 1.0;
         target.IsBackground = true;
         target.IsPositionLocked = true;
         target.IsTransparencyLocked = true;
@@ -483,6 +581,9 @@ public partial class ImageEditorViewModel
         {
             Elements[i].ZIndex = i;
         }
+
+        SelectedElement = target;
+        SyncStyleFieldsToSelection();
 
         RefreshCanvas();
         OnPropertyChanged(nameof(LayersDescendingZ));
@@ -514,7 +615,7 @@ public partial class ImageEditorViewModel
         return next;
     }
 
-    // ── Rename Layer Dialog (Photoshop Parity) ──────────────────────────────
+    // ── Rename Layer Dialog (Studio Parity) ──────────────────────────────
     [ObservableProperty] private bool _isRenameLayerDialogOpen;
     [ObservableProperty] private string _renameLayerName = "";
     [ObservableProperty] private int _renameLayerColorIndex = 0;
@@ -624,7 +725,7 @@ public partial class ImageEditorViewModel
         StatusMessage = $"Blend Mode: {BlendModeField}";
     }
 
-    // ── Layer Merging & Flattening (Photoshop Parity #3855) ─────────────────────
+    // ── Layer Merging & Flattening (Studio Parity #3855) ─────────────────────
 
     [RelayCommand]
     public void FlattenImage()
@@ -811,7 +912,7 @@ public partial class ImageEditorViewModel
         StatusMessage = $"Merged {visible.Count} visible layers.";
     }
 
-    // ── Flatten All Layer Effects (Photoshop Parity #3804 / #3835) ─────────────
+    // ── Flatten All Layer Effects (Studio Parity #3804 / #3835) ─────────────
     [RelayCommand]
     public void FlattenAllLayerEffects()
     {

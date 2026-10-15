@@ -5,12 +5,12 @@ using System.Linq;
 namespace PdfEditorApp.Plugins.ImageEditor.Core.Styling;
 
 /// <summary>
-/// Built-in contour presets, in the order of Photoshop's default contour picker.
-/// Each is Photoshop's own curve as measured in Photoshop 27.11 (a Satin of each preset against
+/// Built-in contour presets, in the order of Studio's default contour picker.
+/// Each is Studio's own curve as measured in Calibrated Studio (a Satin of each preset against
 /// a Linear one, 38 levels per curve, read back through Satin's mirrored lookup
 /// |c(1 - v) - c(1)| and thinned to within 1%), joined by straight segments (every inner point a corner).
 /// </summary>
-public static class PhotoshopContourLibrary
+public static class StudioContourLibrary
 {
     public readonly record struct ContourPoint(float X, float Y, bool IsCorner);
 
@@ -263,7 +263,7 @@ public static class PhotoshopContourLibrary
 
     /// <summary>
     /// Satin's coverage transfer: the contour read from its far end, `|c(1 - v) - c(1)|`.
-    /// Measured in Photoshop 27.11: Cone and Cone - Inverted Satins are identical, and
+    /// Measured in Calibrated Studio: Cone and Cone - Inverted Satins are identical, and
     /// a Gaussian Satin runs under the diagonal (0.36 at 0.5) while the same Gaussian
     /// on a glow or gloss runs over it (0.64).
     /// </summary>

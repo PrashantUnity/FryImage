@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 namespace PdfEditorApp.Plugins.ImageEditor.Core.Raster;
 
 /// <summary>
-/// Image › Adjustments › Shadows/Highlights engine matching Photoshop 25.4 measured behavior.
+/// Image › Adjustments › Shadows/Highlights engine matching Studio calibrated behavior.
 ///
 /// Features:
 /// - Bilateral edge-aware guided neighbourhood brightness (Durand &amp; Dorsey fast bilateral filter).
@@ -359,7 +359,7 @@ public static class ShadowsHighlightsEngine
     }
 
     /// <summary>
-    /// Applies Photoshop 25.4 measured Shadows/Highlights adjustment to straight BGRA pixel buffer.
+    /// Applies Studio calibrated Shadows/Highlights adjustment to straight BGRA pixel buffer.
     /// </summary>
     public static byte[] ApplyShadowsHighlights(
         byte[] bgraPixels,

@@ -5,11 +5,11 @@ using SkiaSharp;
 namespace PdfEditorApp.Plugins.ImageEditor.Core.Raster;
 
 /// <summary>
-/// Professional Bicubic Resampler matching Photoshop 27.11's Free Transform & Warp engine.
+/// Professional Bicubic Resampler matching Calibrated Studio's Free Transform & Warp engine.
 ///
 /// Implements:
-/// - Photoshop Keys cubic kernel at a = -0.75 (Catmull-Rom is a = -0.5):
-///   A 200% step edge matches Photoshop within 0.5 levels.
+/// - Studio Keys cubic kernel at a = -0.75 (Catmull-Rom is a = -0.5):
+///   A 200% step edge matches Studio within 0.5 levels.
 /// - Reduction prefilter:
 ///   When reducing (scale &lt; 0.999), the source is resized first by the local scale factor
 ///   with widened bicubic filtering, so that the transform warp samples it at approximately 1:1.
@@ -38,7 +38,7 @@ public static class BicubicResampler
     }
 
     /// <summary>
-    /// Resamples a 2D BGRA pixel buffer using Photoshop's Bicubic filter at coordinate (u, v).
+    /// Resamples a 2D BGRA pixel buffer using Studio's Bicubic filter at coordinate (u, v).
     /// Supports premultiplied alpha to prevent dark fringing along transparent borders.
     /// </summary>
     public static (byte B, byte G, byte R, byte A) SampleBicubicPremul(
@@ -106,7 +106,7 @@ public static class BicubicResampler
     }
 
     /// <summary>
-    /// Resizes an SKBitmap with Photoshop Bicubic and reduction prefiltering.
+    /// Resizes an SKBitmap with Studio Bicubic and reduction prefiltering.
     /// When target scale &lt; 0.999, reduction prefilter avoids aliasing.
     /// </summary>
     public static SKBitmap ResizeWithPrefilter(SKBitmap source, int targetWidth, int targetHeight)
@@ -123,7 +123,7 @@ public static class BicubicResampler
 
         try
         {
-            // Photoshop reduction prefiltering: downscale by whole powers/ratios
+            // Studio reduction prefiltering: downscale by whole powers/ratios
             if (minScale < 0.999 && minScale > 0.0)
             {
                 // Pre-reduce to avoid aliasing

@@ -20,6 +20,7 @@ public partial class EditorCanvasControl
     private bool _isAltDuplicatingGuide;
 
     public event Action<string>? GuideStatusChanged;
+    public event Action<bool, double?>? GuideDraggingChanged;
 
     /// <summary>
     /// Checks if a screen-space coordinate falls within the logical canvas viewport bounds.
@@ -138,6 +139,7 @@ public partial class EditorCanvasControl
 
         _activeDragGuide = (isVertical, snappedPos, isInside);
         _activeDragGuideScreenPos = canvasScreenPt;
+        GuideDraggingChanged?.Invoke(isVertical, snappedPos);
         InvalidateVisual();
     }
 
@@ -170,6 +172,7 @@ public partial class EditorCanvasControl
             }
 
             _activeDragGuide = null;
+            GuideDraggingChanged?.Invoke(false, null);
             InvalidateVisual();
         }
     }
@@ -197,6 +200,7 @@ public partial class EditorCanvasControl
             _isDraggingExistingGuide = false;
             _draggingGuideIndex = -1;
             _activeDragGuide = null;
+            GuideDraggingChanged?.Invoke(false, null);
             Cursor = Cursor.Default;
             InvalidateVisual();
         }
@@ -215,8 +219,57 @@ public partial class EditorCanvasControl
         _isDraggingExistingGuide = false;
         _draggingGuideIndex = -1;
         _activeDragGuide = null;
+        GuideDraggingChanged?.Invoke(false, null);
         Cursor = Cursor.Default;
         InvalidateVisual();
+    }
+
+    /// <summary>
+    /// Deletes a user guide by index.
+    /// </summary>
+    public void DeleteUserGuide(int index)
+    {
+        if (index >= 0 && index < _userGuides.Count)
+        {
+            _userGuides.RemoveAt(index);
+            GuideStatusChanged?.Invoke("Guide removed.");
+            InvalidateVisual();
+        }
+    }
+
+    /// <summary>
+    /// Clears all user guides on the canvas.
+    /// </summary>
+    public void ClearUserGuides()
+    {
+        _userGuides.Clear();
+        GuideStatusChanged?.Invoke("Canvas guides cleared.");
+        InvalidateVisual();
+    }
+
+    /// <summary>
+    /// Shows the Guide context menu (Delete Guide, Lock/Unlock Guides, Clear Canvas Guides) (#3734).
+    /// </summary>
+    public bool ShowGuideContextMenu(Point screenPt)
+    {
+        int hit = HitTestUserGuide(screenPt);
+        if (hit < 0) return false;
+
+        var menu = new Avalonia.Controls.ContextMenu();
+        var deleteItem = new Avalonia.Controls.MenuItem { Header = "Delete Guide" };
+        deleteItem.Click += (_, _) => DeleteUserGuide(hit);
+        menu.Items.Add(deleteItem);
+
+        var lockItem = new Avalonia.Controls.MenuItem { Header = LockUserGuides ? "Unlock Guides" : "Lock Guides" };
+        lockItem.Click += (_, _) => { LockUserGuides = !LockUserGuides; InvalidateVisual(); };
+        menu.Items.Add(lockItem);
+
+        var clearItem = new Avalonia.Controls.MenuItem { Header = "Clear Canvas Guides" };
+        clearItem.Click += (_, _) => ClearUserGuides();
+        menu.Items.Add(clearItem);
+
+        menu.Open(this);
+        return true;
     }
 
     /// <summary>

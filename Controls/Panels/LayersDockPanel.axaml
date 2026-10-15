@@ -19,7 +19,9 @@
     <Border BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,0">
         <Grid RowDefinitions="26,*">
             <!-- Tab Strip -->
-            <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" Padding="4,0">
+            <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" Padding="4,0"
+                    PointerPressed="OnPanelHeaderPointerPressed"
+                    PointerMoved="OnPanelHeaderPointerMoved">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="0">
                         <Button Classes="ps-panel-tab" Content="Layers"
@@ -38,7 +40,57 @@
                                 Command="{Binding SelectRightDockTabCommand}" CommandParameter="Actions"
                                 Classes.active="{Binding ActiveLayersDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Actions'}" />
                     </StackPanel>
-                    <Button Grid.Column="1" Classes="ps-opt-btn" Width="20" Height="20" ToolTip.Tip="Panel Options">
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
+                        <!-- Dock Placement Menu (Unity Studio Style) -->
+                        <Button Classes="ps-opt-btn" Width="20" Height="20" ToolTip.Tip="Dock Zone Placement">
+                            <Button.Flyout>
+                                <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                    <MenuItem Header="Dock to Left Sidebar"
+                                              Command="{Binding SetPanelPlacementParamCommand}"
+                                              CommandParameter="Layers:Left">
+                                        <MenuItem.Icon>
+                                            <materialIcons:MaterialIcon Kind="DockLeft" Width="12" Height="12" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Dock to Right Sidebar"
+                                              Command="{Binding SetPanelPlacementParamCommand}"
+                                              CommandParameter="Layers:Right">
+                                        <MenuItem.Icon>
+                                            <materialIcons:MaterialIcon Kind="DockRight" Width="12" Height="12" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Dock to Bottom Shelf"
+                                              Command="{Binding SetPanelPlacementParamCommand}"
+                                              CommandParameter="Layers:Bottom">
+                                        <MenuItem.Icon>
+                                            <materialIcons:MaterialIcon Kind="DockBottom" Width="12" Height="12" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <Separator />
+                                    <MenuItem Header="Float in Window"
+                                              Command="{Binding SetPanelPlacementParamCommand}"
+                                              CommandParameter="Layers:Floating">
+                                        <MenuItem.Icon>
+                                            <materialIcons:MaterialIcon Kind="OpenInNew" Width="12" Height="12" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Hide Panel"
+                                              Command="{Binding SetPanelPlacementParamCommand}"
+                                              CommandParameter="Layers:Hidden">
+                                        <MenuItem.Icon>
+                                            <materialIcons:MaterialIcon Kind="Close" Width="12" Height="12" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                </MenuFlyout>
+                            </Button.Flyout>
+                            <materialIcons:MaterialIcon Kind="DockWindow" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
+                        </Button>
+                        <Button Classes="ps-opt-btn" Width="20" Height="20"
+                                Command="{Binding TearOffPanelCommand}" CommandParameter="Layers"
+                                ToolTip.Tip="Tear Off into Floating Palette">
+                            <materialIcons:MaterialIcon Kind="OpenInNew" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
+                        </Button>
+                        <Button Classes="ps-opt-btn" Width="20" Height="20" ToolTip.Tip="Panel Options">
                         <Button.Flyout>
                             <MenuFlyout Placement="BottomEdgeAlignedRight">
                                 <MenuItem Header="Clip Thumbnails to Layer Bounds"
@@ -48,6 +100,7 @@
                         </Button.Flyout>
                         <materialIcons:MaterialIcon Kind="Menu" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
                     </Button>
+                    </StackPanel>
                 </Grid>
             </Border>
 
@@ -399,21 +452,40 @@
                                 <ItemsControl ItemsSource="{Binding SmartFilters}" Margin="42,2,4,4">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="models:SmartFilter">
-                                            <Grid ColumnDefinitions="Auto,*,Auto" Height="18">
-                                                <Button Grid.Column="0" Classes="ps-tool-btn" Width="16" Height="16"
-                                                        Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleSmartFilterVisibilityCommand}"
-                                                        CommandParameter="{Binding}"
-                                                        ToolTip.Tip="Toggle Smart Filter Visibility">
-                                                    <materialIcons:MaterialIcon Kind="{Binding IsVisible, Converter={StaticResource IsVisibleToIconConverter}}" Width="10" Height="10" Foreground="{DynamicResource PsTextDimBrush}" />
-                                                </Button>
-                                                <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="4,0" />
-                                                <Button Grid.Column="2" Classes="ps-tool-btn" Width="16" Height="16"
-                                                        Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).DeleteSmartFilterCommand}"
-                                                        CommandParameter="{Binding}"
-                                                        ToolTip.Tip="Delete Smart Filter">
-                                                    <materialIcons:MaterialIcon Kind="Close" Width="9" Height="9" Foreground="{DynamicResource PsTextFaintBrush}" />
-                                                </Button>
-                                            </Grid>
+                                            <Border Background="{DynamicResource PsPanelHeaderBrush}" CornerRadius="2" Margin="0,1" Padding="2,1">
+                                                <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" Height="18">
+                                                    <Button Grid.Column="0" Classes="ps-tool-btn" Width="16" Height="16"
+                                                            Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleSmartFilterVisibilityCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            ToolTip.Tip="Toggle Smart Filter Visibility">
+                                                        <materialIcons:MaterialIcon Kind="{Binding IsVisible, Converter={StaticResource IsVisibleToIconConverter}}" Width="10" Height="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                                                    </Button>
+                                                    <Button Grid.Column="1" Classes="ps-opt-btn" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                                            Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).OpenSmartFilterEditorCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            ToolTip.Tip="Click or double-click to edit Smart Filter parameters">
+                                                        <TextBlock Text="{Binding Name}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="4,0" />
+                                                    </Button>
+                                                    <Button Grid.Column="2" Classes="ps-tool-btn" Width="14" Height="16"
+                                                            Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).MoveSmartFilterUpCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            ToolTip.Tip="Move Smart Filter Up">
+                                                        <materialIcons:MaterialIcon Kind="ChevronUp" Width="10" Height="10" Foreground="{DynamicResource PsTextFaintBrush}" />
+                                                    </Button>
+                                                    <Button Grid.Column="3" Classes="ps-tool-btn" Width="14" Height="16"
+                                                            Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).MoveSmartFilterDownCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            ToolTip.Tip="Move Smart Filter Down">
+                                                        <materialIcons:MaterialIcon Kind="ChevronDown" Width="10" Height="10" Foreground="{DynamicResource PsTextFaintBrush}" />
+                                                    </Button>
+                                                    <Button Grid.Column="4" Classes="ps-tool-btn" Width="16" Height="16"
+                                                            Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).DeleteSmartFilterCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            ToolTip.Tip="Delete Smart Filter">
+                                                        <materialIcons:MaterialIcon Kind="Close" Width="9" Height="9" Foreground="{DynamicResource PsTextFaintBrush}" />
+                                                    </Button>
+                                                </Grid>
+                                            </Border>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>

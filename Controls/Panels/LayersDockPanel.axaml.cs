@@ -1,3 +1,5 @@
+using System;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 
@@ -74,6 +76,30 @@ public partial class LayersDockPanel : UserControl
                 vm.AddNewBlankLayer(below: isCtrlOrCmd);
                 e.Handled = true;
             }
+        }
+    }
+
+    private Point _headerDragStart;
+    private bool _isPotentialHeaderDrag;
+
+    public void OnPanelHeaderPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            _isPotentialHeaderDrag = true;
+            _headerDragStart = e.GetPosition(this);
+        }
+    }
+
+    public void OnPanelHeaderPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_isPotentialHeaderDrag || DataContext is not ImageEditorViewModel vm) return;
+        var curPos = e.GetPosition(this);
+        var diff = curPos - _headerDragStart;
+        if (Math.Abs(diff.X) > 6 || Math.Abs(diff.Y) > 6)
+        {
+            _isPotentialHeaderDrag = false;
+            vm.StartPanelDrag("Layers", curPos.X, curPos.Y);
         }
     }
 }

@@ -1,0 +1,62 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+        xmlns:panels="using:PdfEditorApp.Plugins.ImageEditor.Controls.Panels"
+        xmlns:controls="using:PdfEditorApp.Plugins.ImageEditor.Controls"
+        xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+        x:Class="PdfEditorApp.Plugins.ImageEditor.Views.FloatingPaletteWindow"
+        x:DataType="local:ImageEditorViewModel"
+        Title="Studio Palette"
+        Width="320" Height="480"
+        MinWidth="200" MinHeight="200"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource PsPanelBrush}">
+
+    <Grid RowDefinitions="28,*">
+        <!-- Floating Palette Title Bar -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource PsPanelHeaderBrush}"
+                BorderBrush="{DynamicResource PsBorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="8,0">
+            <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <materialIcons:MaterialIcon Kind="DragVertical" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
+                    <TextBlock x:Name="TitleTextBlock"
+                               Text="Studio Palette"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource PsTextBrush}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <!-- Dock to Left -->
+                    <Button Classes="ps-opt-btn"
+                            Width="20" Height="20" Padding="0"
+                            Click="OnDockLeftClicked"
+                            ToolTip.Tip="Dock to Left Sidebar">
+                        <materialIcons:MaterialIcon Kind="DockLeft" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
+                    </Button>
+                    <!-- Dock to Bottom -->
+                    <Button Classes="ps-opt-btn"
+                            Width="20" Height="20" Padding="0"
+                            Click="OnDockBottomClicked"
+                            ToolTip.Tip="Dock to Bottom Shelf">
+                        <materialIcons:MaterialIcon Kind="DockBottom" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
+                    </Button>
+                    <!-- Dock to Right (Default) -->
+                    <Button Classes="ps-opt-btn"
+                            Width="20" Height="20" Padding="0"
+                            Click="OnDockRightClicked"
+                            ToolTip.Tip="Dock to Right Sidebar">
+                        <materialIcons:MaterialIcon Kind="DockRight" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Palette Content Host -->
+        <ContentControl x:Name="PanelContentHost" Grid.Row="1" />
+    </Grid>
+</Window>

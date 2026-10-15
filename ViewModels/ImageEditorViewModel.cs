@@ -1066,7 +1066,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     // ── Undo / Redo ────────────────────────────────────────────────────────
     // One instance per overlay — every mutation (shapes, crop, rotate, adjustments)
     // pushes into this same history, never a separately-constructed one.
-    public IEditHistory History { get; } = new EditHistory();
+    public IEditHistory History { get; set; } = new EditHistory();
     private bool _isApplyingHistory;
 
     private bool CanUndo() => History.CanUndo;
@@ -2561,6 +2561,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         _currentThemeName = studioPrefs.CurrentTheme ?? "ProDark";
         LoadSettings();
         AddSampleElements();
+        InitializeDocumentSession();
         CreateNewSnapshot("Initial State");
         BuildFontGroups();
         BuildTextStyleGroups();

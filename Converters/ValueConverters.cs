@@ -141,3 +141,14 @@ public class ColorToBrushConverter : IValueConverter
     public object? ConvertBack(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
         => (value as ISolidColorBrush)?.Color ?? Colors.Transparent;
 }
+
+public class DirtyToAsteriskConverter : IValueConverter
+{
+    public static readonly DirtyToAsteriskConverter Instance = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
+        => value is true ? "*" : string.Empty;
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
+        => throw new NotImplementedException();
+}

@@ -1,0 +1,64 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+        xmlns:controls="using:PdfEditorApp.Plugins.ImageEditor.Controls"
+        xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+        x:Class="PdfEditorApp.Plugins.ImageEditor.Views.FloatingDocumentWindow"
+        x:DataType="local:ImageEditorViewModel"
+        Title="Floating Document - FryImage"
+        Width="900" Height="650"
+        MinWidth="400" MinHeight="300"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource PsCanvasBrush}">
+
+    <Grid RowDefinitions="32,*">
+        <!-- Top Title / Docking Header Bar -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource PsChromeBrush}"
+                BorderBrush="{DynamicResource PsBorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="8,0">
+            <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+                <!-- Document Info Readout -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <materialIcons:MaterialIcon Kind="FileImage" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" />
+                    <TextBlock x:Name="TitleTextBlock"
+                               Text="{Binding DocumentTitle}"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource PsTextBrush}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Center Spacing -->
+                <TextBlock Grid.Column="1"
+                           Text="Floating Studio Document"
+                           FontSize="10"
+                           Foreground="{DynamicResource PsTextDimBrush}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center" />
+
+                <!-- Action Buttons: Dock Back to Tabs -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Button Classes="ps-opt-btn"
+                            Padding="6,3"
+                            Click="OnDockBackClicked"
+                            ToolTip.Tip="Dock Back to Main Tab Strip">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <materialIcons:MaterialIcon Kind="DockWindow" Width="12" Height="12" Foreground="{DynamicResource PsAccentBrush}" />
+                            <TextBlock Text="Dock to Tabs" FontSize="11" Foreground="{DynamicResource PsTextBrush}" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Canvas Work Area -->
+        <Grid Grid.Row="1" Background="{DynamicResource PsCanvasBrush}" ClipToBounds="True">
+            <controls:EditorCanvasControl x:Name="CanvasControl"
+                                          HorizontalAlignment="Stretch"
+                                          VerticalAlignment="Stretch"
+                                          Focusable="True" />
+        </Grid>
+    </Grid>
+</Window>

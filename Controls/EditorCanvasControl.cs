@@ -109,6 +109,7 @@ public partial class EditorCanvasControl : Control
     private PathKnot? _penActiveKnot;
     private bool _isDraggingPathKnot;
     private PathKnot? _selectedPathKnot;
+    private Point _pathKnotDragStartAnchor;
     private bool _isPenOverFirstKnot;
 
     // Layer Style on-canvas shadow dragging (#5701)
@@ -1797,6 +1798,22 @@ public partial class EditorCanvasControl : Control
         var canvasPt = ScreenToCanvas(e.GetPosition(this));
         _dragStart = canvasPt;
 
+        // Double-clicking the empty workspace shows File > Open (#051959ea, #5367)
+        if (e.ClickCount == 2 && props.IsLeftButtonPressed)
+        {
+            bool isOutsideCanvas = canvasPt.X < 0 || canvasPt.X > _logicalWidth || canvasPt.Y < 0 || canvasPt.Y > _logicalHeight;
+            bool isEmptyWorkspace = DataContext is ImageEditorViewModel vm && (vm.Elements.Count == 0 || vm.ActiveDocument == null);
+            if (isOutsideCanvas || isEmptyWorkspace)
+            {
+                if (DataContext is ImageEditorViewModel editor)
+                {
+                    editor.OpenPsdOrImageCommand.Execute(null);
+                    e.Handled = true;
+                    return;
+                }
+            }
+        }
+
         // Layer Style modal live shadow drag (#5701)
         if (DataContext is ImageEditorViewModel editorVm && editorVm.IsLayerStyleDialogOpen)
         {
@@ -2020,6 +2037,7 @@ public partial class EditorCanvasControl : Control
                         if (Point.Distance(canvasPt, k.Anchor) <= closeHitRadius)
                         {
                             _selectedPathKnot = k;
+                            _pathKnotDragStartAnchor = k.Anchor;
                             _isDraggingPathKnot = true;
                             e.Pointer.Capture(this);
                             e.Handled = true;
@@ -2074,6 +2092,7 @@ public partial class EditorCanvasControl : Control
                             if (Point.Distance(canvasPt, knot.Anchor) <= hitRadius)
                             {
                                 _selectedPathKnot = knot;
+                                _pathKnotDragStartAnchor = knot.Anchor;
                                 _isDraggingPathKnot = true;
                                 break;
                             }
@@ -2633,8 +2652,14 @@ public partial class EditorCanvasControl : Control
 
         if (_isDraggingPathKnot && _selectedPathKnot != null)
         {
-            Point delta = pos - _dragStart;
-            _selectedPathKnot.Anchor = pos;
+            Point target = pos;
+            if (_shiftHeld || e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+            {
+                // Shift locks Direct Selection anchor drag to 45° (#7efebfa0, #5475, #5498)
+                target = CurvaturePenEngine.SnapTo45Degrees(_pathKnotDragStartAnchor, pos);
+            }
+            Point delta = target - _selectedPathKnot.Anchor;
+            _selectedPathKnot.Anchor = target;
             _selectedPathKnot.HandleIn = _selectedPathKnot.HandleIn + delta;
             _selectedPathKnot.HandleOut = _selectedPathKnot.HandleOut + delta;
             _dragStart = pos;
@@ -2658,8 +2683,26 @@ public partial class EditorCanvasControl : Control
             if (_spaceHeld)
             {
                 var delta = pos - _shapeDragEnd;
+                if (SnapEnabled)
+                {
+                    // Snapping: snap drawn shape by its edges while Space repositions it (#0c7308ad, #5748)
+                    double minX = Math.Min(_shapeDragStart.X + delta.X, _shapeDragEnd.X + delta.X);
+                    double maxX = Math.Max(_shapeDragStart.X + delta.X, _shapeDragEnd.X + delta.X);
+                    double minY = Math.Min(_shapeDragStart.Y + delta.Y, _shapeDragEnd.Y + delta.Y);
+                    double maxY = Math.Max(_shapeDragStart.Y + delta.Y, _shapeDragEnd.Y + delta.Y);
+
+                    double snapMinX = SnapGuidePosition(true, minX);
+                    double snapMaxX = SnapGuidePosition(true, maxX);
+                    if (Math.Abs(snapMinX - minX) > 0.001) delta = new Point(delta.X + (snapMinX - minX), delta.Y);
+                    else if (Math.Abs(snapMaxX - maxX) > 0.001) delta = new Point(delta.X + (snapMaxX - maxX), delta.Y);
+
+                    double snapMinY = SnapGuidePosition(false, minY);
+                    double snapMaxY = SnapGuidePosition(false, maxY);
+                    if (Math.Abs(snapMinY - minY) > 0.001) delta = new Point(delta.X, delta.Y + (snapMinY - minY));
+                    else if (Math.Abs(snapMaxY - maxY) > 0.001) delta = new Point(delta.X, delta.Y + (snapMaxY - maxY));
+                }
                 _shapeDragStart += delta;
-                _shapeDragEnd = pos;
+                _shapeDragEnd += delta;
             }
             else
             {
@@ -2674,8 +2717,26 @@ public partial class EditorCanvasControl : Control
             if (_spaceHeld)
             {
                 var delta = pos - _marqueeEnd;
+                if (SnapEnabled)
+                {
+                    // Snapping: snap drawn marquee by its edges while Space repositions it (#0c7308ad, #5748)
+                    double minX = Math.Min(_marqueeStart.X + delta.X, _marqueeEnd.X + delta.X);
+                    double maxX = Math.Max(_marqueeStart.X + delta.X, _marqueeEnd.X + delta.X);
+                    double minY = Math.Min(_marqueeStart.Y + delta.Y, _marqueeEnd.Y + delta.Y);
+                    double maxY = Math.Max(_marqueeStart.Y + delta.Y, _marqueeEnd.Y + delta.Y);
+
+                    double snapMinX = SnapGuidePosition(true, minX);
+                    double snapMaxX = SnapGuidePosition(true, maxX);
+                    if (Math.Abs(snapMinX - minX) > 0.001) delta = new Point(delta.X + (snapMinX - minX), delta.Y);
+                    else if (Math.Abs(snapMaxX - maxX) > 0.001) delta = new Point(delta.X + (snapMaxX - maxX), delta.Y);
+
+                    double snapMinY = SnapGuidePosition(false, minY);
+                    double snapMaxY = SnapGuidePosition(false, maxY);
+                    if (Math.Abs(snapMinY - minY) > 0.001) delta = new Point(delta.X, delta.Y + (snapMinY - minY));
+                    else if (Math.Abs(snapMaxY - maxY) > 0.001) delta = new Point(delta.X, delta.Y + (snapMaxY - maxY));
+                }
                 _marqueeStart += delta;
-                _marqueeEnd = pos;
+                _marqueeEnd += delta;
             }
             else
             {

@@ -1,6 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:controls="using:PdfEditorApp.Plugins.ImageEditor.Controls"
+             xmlns:session="using:PdfEditorApp.Plugins.ImageEditor.Models.Session"
              xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.DocumentTabStrip"
              x:DataType="local:ImageEditorViewModel"
@@ -8,45 +10,100 @@
              Background="{DynamicResource PsChromeBrush}">
 
     <Border BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="4,0,4,0">
-        <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Bottom">
-            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Bottom">
-                <!-- Active Document Tab (Studio Parity: ✕ Untitled-1 @ 102.4% (RGB/8)*) -->
-                <Border Background="{DynamicResource PsOptionsBrush}"
-                        BorderBrush="{DynamicResource PsBorderBrush}"
-                        BorderThickness="1,1,1,0"
-                        CornerRadius="3,3,0,0"
-                        Padding="8,4"
-                        Margin="0,0,2,0">
-                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                        <!-- Tab Close ✕ Button on the LEFT -->
-                        <Button Classes="ps-opt-btn" Width="14" Height="14" Padding="0"
-                                Command="{Binding CloseOverlayCommand}" ToolTip.Tip="Close Document (Ctrl+W)">
-                            <materialIcons:MaterialIcon Kind="Close" Width="10" Height="10" Foreground="{DynamicResource PsTextDimBrush}" />
-                        </Button>
+        <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Bottom">
+            <!-- Scrollable / Horizontal Tab List -->
+            <ScrollViewer Grid.Column="0"
+                          HorizontalScrollBarVisibility="Hidden"
+                          VerticalScrollBarVisibility="Disabled"
+                          HorizontalAlignment="Left"
+                          VerticalAlignment="Bottom">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom">
+                    <ItemsControl x:Name="TabsItemsControl"
+                                  ItemsSource="{Binding Documents}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="session:StudioDocument">
+                                <Border x:Name="TabBorder"
+                                        Background="{DynamicResource PsOptionsBrush}"
+                                        BorderBrush="{DynamicResource PsBorderBrush}"
+                                        BorderThickness="1,1,1,0"
+                                        CornerRadius="3,3,0,0"
+                                        Padding="8,4"
+                                        Margin="0,0,2,0"
+                                        Cursor="Hand"
+                                        PointerPressed="OnTabPointerPressed"
+                                        PointerMoved="OnTabPointerMoved"
+                                        PointerReleased="OnTabPointerReleased">
+                                    <Border.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="Close" InputGesture="Ctrl+W"
+                                                      Command="{Binding $parent[controls:DocumentTabStrip].((local:ImageEditorViewModel)DataContext).CloseDocumentCommand}"
+                                                      CommandParameter="{Binding}" />
+                                            <MenuItem Header="Float in Window"
+                                                      Command="{Binding $parent[controls:DocumentTabStrip].((local:ImageEditorViewModel)DataContext).FloatInWindowCommand}"
+                                                      CommandParameter="{Binding}" />
+                                            <Separator />
+                                            <MenuItem Header="Duplicate Tab"
+                                                      Command="{Binding $parent[controls:DocumentTabStrip].((local:ImageEditorViewModel)DataContext).CreateNewDocumentTabCommand}" />
+                                        </ContextMenu>
+                                    </Border.ContextMenu>
 
-                        <!-- Document Title Readout -->
-                        <TextBlock FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center">
-                            <TextBlock.Text>
-                                <MultiBinding StringFormat="{}{0} @ {1:0.#}% ({2}/{3})*">
-                                    <Binding Path="DocumentTitle" />
-                                    <Binding Path="ZoomPercent" />
-                                    <Binding Path="DocumentColorMode" />
-                                    <Binding Path="DocumentBitsPerChannel" />
-                                </MultiBinding>
-                            </TextBlock.Text>
-                        </TextBlock>
-                    </StackPanel>
-                </Border>
+                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <!-- Tab Close ✕ Button on the LEFT -->
+                                        <Button Classes="ps-opt-btn" Width="14" Height="14" Padding="0"
+                                                Command="{Binding $parent[controls:DocumentTabStrip].((local:ImageEditorViewModel)DataContext).CloseDocumentCommand}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip.Tip="Close Document (Ctrl+W)">
+                                            <materialIcons:MaterialIcon Kind="Close" Width="10" Height="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                                        </Button>
 
-                <!-- New Document Tab Button (+) -->
-                <Button Classes="ps-opt-btn" Width="18" Height="18" Padding="0" Margin="2,0,0,3"
-                        Command="{Binding OpenNewDocumentDialogCommand}" ToolTip.Tip="New Document (Ctrl+N)">
-                    <materialIcons:MaterialIcon Kind="Plus" Width="11" Height="11" Foreground="{DynamicResource PsTextDimBrush}" />
+                                        <!-- Document Title Readout -->
+                                        <TextBlock FontSize="11"
+                                                   Foreground="{DynamicResource PsTextBrush}"
+                                                   VerticalAlignment="Center">
+                                            <TextBlock.Text>
+                                                <MultiBinding StringFormat="{}{0} @ {1:0.#}% ({2}/{3}){4}">
+                                                    <Binding Path="Title" />
+                                                    <Binding Path="ZoomLevel" Converter="{x:Static local:ZoomLevelToPercentConverter.Instance}" />
+                                                    <Binding Path="ColorMode" />
+                                                    <Binding Path="BitsPerChannel" />
+                                                    <Binding Path="IsDirty" Converter="{x:Static local:DirtyToAsteriskConverter.Instance}" />
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- New Document Tab Button (+) -->
+                    <Button Classes="ps-opt-btn" Width="18" Height="18" Padding="0" Margin="2,0,0,3"
+                            Command="{Binding CreateNewDocumentTabCommand}" ToolTip.Tip="New Document (Ctrl+N)">
+                        <materialIcons:MaterialIcon Kind="Plus" Width="11" Height="11" Foreground="{DynamicResource PsTextDimBrush}" />
+                    </Button>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Right Spacer / Search Action & Window Layout Presets -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <!-- Quick 2-Up Split Button -->
+                <Button Classes="ps-opt-btn" Width="18" Height="18" Padding="0"
+                        Command="{Binding TwoUpVerticalCommand}" ToolTip.Tip="Split 2-Up Vertical">
+                    <materialIcons:MaterialIcon Kind="ViewSplitVertical" Width="11" Height="11" Foreground="{DynamicResource PsTextDimBrush}" />
                 </Button>
-            </StackPanel>
 
-            <!-- Right Spacer / Search Action -->
-            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <!-- Consolidate to Tabs Button -->
+                <Button Classes="ps-opt-btn" Width="18" Height="18" Padding="0"
+                        Command="{Binding ConsolidateAllToTabsCommand}" ToolTip.Tip="Consolidate All to Tabs">
+                    <materialIcons:MaterialIcon Kind="Tab" Width="11" Height="11" Foreground="{DynamicResource PsTextDimBrush}" />
+                </Button>
+
+                <!-- Command Palette -->
                 <Button Classes="ps-opt-btn" Width="18" Height="18" Padding="0"
                         Command="{Binding ToggleCommandPaletteCommand}" ToolTip.Tip="Search / Command Palette (Ctrl+K)">
                     <materialIcons:MaterialIcon Kind="Magnify" Width="11" Height="11" Foreground="{DynamicResource PsTextDimBrush}" />

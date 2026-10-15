@@ -432,6 +432,55 @@
                 <Button Classes="ps-menu-btn" Content="Window">
                     <Button.Flyout>
                         <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                            <MenuItem Header="Arrange">
+                                <MenuItem Header="Consolidate All to Tabs" Command="{Binding ConsolidateAllToTabsCommand}" />
+                                <MenuItem Header="Cascade" Command="{Binding CascadeCommand}" />
+                                <MenuItem Header="Tile All Horizontally" Command="{Binding TileAllHorizontallyCommand}" />
+                                <MenuItem Header="Tile All Vertically" Command="{Binding TileAllVerticallyCommand}" />
+                                <MenuItem Header="2-up Vertical" Command="{Binding TwoUpVerticalCommand}" />
+                                <MenuItem Header="2-up Horizontal" Command="{Binding TwoUpHorizontalCommand}" />
+                                <MenuItem Header="4-up" Command="{Binding FourUpCommand}" />
+                                <Separator />
+                                <MenuItem Header="Float in Window" Command="{Binding FloatInWindowCommand}" />
+                                <MenuItem Header="Float All in Windows" Command="{Binding FloatAllInWindowsCommand}" />
+                                <Separator />
+                                <MenuItem Header="Match Zoom" Command="{Binding MatchZoomCommand}" />
+                                <MenuItem Header="Match Location" Command="{Binding MatchLocationCommand}" />
+                                <MenuItem Header="Match Rotation" Command="{Binding MatchRotationCommand}" />
+                                <MenuItem Header="Match All" Command="{Binding MatchAllCommand}" />
+                            </MenuItem>
+                            <MenuItem Header="Workspace">
+                                <MenuItem Header="Essentials (Default Right Stack)" Command="{Binding ApplyDefaultWorkspaceCommand}" />
+                                <MenuItem Header="Unity 2-by-3 (Layers Left, Inspector Right)" Command="{Binding ApplyUnityTwoByThreeWorkspaceCommand}" />
+                                <MenuItem Header="Unity 4-Split / Wide (Left, Bottom, Right)" Command="{Binding ApplyUnityFourSplitWorkspaceCommand}" />
+                                <MenuItem Header="Tall Dual-Sidebar (Layers &amp; Props Left, Color Right)" Command="{Binding ApplyTallWorkspaceCommand}" />
+                                <MenuItem Header="Unity Tabbed Groups (Right Tabbed Dock)" Command="{Binding ApplyUnityTabbedWorkspaceCommand}" />
+                                <Separator />
+                                <MenuItem Header="Toggle Right Dock: Stacked / Tabbed" Command="{Binding ToggleRightDockModeCommand}" />
+                                <Separator />
+                                <MenuItem Header="Reset Essentials Workspace" Command="{Binding ResetEssentialsWorkspaceCommand}" />
+                            </MenuItem>
+                            <MenuItem Header="Panel Placement">
+                                <MenuItem Header="Layers Panel">
+                                    <MenuItem Header="Dock to Left Sidebar" Command="{Binding SetPanelPlacementParamCommand}" CommandParameter="Layers:Left" />
+                                    <MenuItem Header="Dock to Right Sidebar" Command="{Binding SetPanelPlacementParamCommand}" CommandParameter="Layers:Right" />
+                                    <MenuItem Header="Dock to Bottom Shelf" Command="{Binding SetPanelPlacementParamCommand}" CommandParameter="Layers:Bottom" />
+                                    <MenuItem Header="Float in Window" Command="{Binding SetPanelPlacementParamCommand}" CommandParameter="Layers:Floating" />
+                                </MenuItem>
+                                <MenuItem Header="Properties Panel">
+                                    <MenuItem Header="Dock to Left Sidebar" Command="{Binding SetPanelPlacementParamCommand}" CommandParameter="Properties:Left" />
+                                    <MenuItem Header="Dock to Right Sidebar" Command="{Binding SetPanelPlacementParamCommand}" CommandParameter="Properties:Right" />
+                                    <MenuItem Header="Dock to Bottom Shelf" Command="{Binding SetPanelPlacementParamCommand}" CommandParameter="Properties:Bottom" />
+                                    <MenuItem Header="Float in Window" Command="{Binding SetPanelPlacementParamCommand}" CommandParameter="Properties:Floating" />
+                                </MenuItem>
+                                <MenuItem Header="Color &amp; Swatches Panel">
+                                    <MenuItem Header="Dock to Left Sidebar" Command="{Binding SetPanelPlacementParamCommand}" CommandParameter="Color:Left" />
+                                    <MenuItem Header="Dock to Right Sidebar" Command="{Binding SetPanelPlacementParamCommand}" CommandParameter="Color:Right" />
+                                    <MenuItem Header="Dock to Bottom Shelf" Command="{Binding SetPanelPlacementParamCommand}" CommandParameter="Color:Bottom" />
+                                    <MenuItem Header="Float in Window" Command="{Binding SetPanelPlacementParamCommand}" CommandParameter="Color:Floating" />
+                                </MenuItem>
+                            </MenuItem>
+                            <Separator />
                             <MenuItem Header="Properties" Command="{Binding SelectRightDockTabCommand}" CommandParameter="Properties" />
                             <MenuItem Header="Adjustments &amp; Histogram" Command="{Binding SelectRightDockTabCommand}" CommandParameter="Histogram" />
                             <MenuItem Header="Navigator" Command="{Binding SelectRightDockTabCommand}" CommandParameter="Navigator" />

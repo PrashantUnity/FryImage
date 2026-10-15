@@ -14,6 +14,10 @@
         <StyleInclude Source="avares://ImageEditorPlugin/Styles/StudioStyles.axaml" />
     </UserControl.Styles>
 
+    <UserControl.Resources>
+        <local:StringEqualsConverter x:Key="StringEqualsConverter" />
+    </UserControl.Resources>
+
     <!-- Master Grid Layout (FryImage Studio Architecture)
          Row 0: Top Menu Bar (Height 28)
          Row 1: Tool Options Bar (Height 34)
@@ -28,13 +32,112 @@
         <!-- Row 1: Tool Options Bar -->
         <controls:ToolOptionsBar Grid.Row="1" />
 
-        <!-- Row 2: Main Studio Workspace -->
-        <Grid Grid.Row="2" ColumnDefinitions="Auto,*,3,310">
-            <!-- Left Tool Palette (36px or 68px depending on 1-column / 2-column mode) -->
+        <!-- Row 2: Main Studio Workspace (Left Tool Palette + Left Dock + Canvas/Bottom Shelf + Right Dock) -->
+        <Grid x:Name="MasterWorkspaceGrid" Grid.Row="2"
+              PointerMoved="OnWorkspacePointerMoved"
+              PointerReleased="OnWorkspacePointerReleased">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" /> <!-- Col 0: Tool Palette -->
+                <ColumnDefinition Width="Auto" MinWidth="0" /> <!-- Col 1: Left Dock -->
+                <ColumnDefinition Width="Auto" MinWidth="0" /> <!-- Col 2: Left Splitter -->
+                <ColumnDefinition Width="*" MinWidth="200" /> <!-- Col 3: Center Canvas Column -->
+                <ColumnDefinition Width="Auto" MinWidth="0" /> <!-- Col 4: Right Splitter -->
+                <ColumnDefinition Width="Auto" MinWidth="0" /> <!-- Col 5: Right Dock -->
+            </Grid.ColumnDefinitions>
+
+            <!-- Column 0: Left Tool Palette (36px or 68px depending on 1-column / 2-column mode) -->
             <controls:ToolPaletteControl Grid.Column="0" />
 
-            <!-- Main Canvas Column (Tab Strip + Rulers & Viewport) -->
-            <Grid Grid.Column="1" RowDefinitions="26,*" Background="{DynamicResource PsCanvasBrush}">
+            <!-- Column 1: Left Dock Zone (Unity-Style Left Sidebar) -->
+            <Border Grid.Column="1"
+                    MinWidth="180" MaxWidth="700"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    Background="{DynamicResource PsPanelBrush}"
+                    BorderBrush="{DynamicResource PsBorderBrush}"
+                    BorderThickness="0,0,1,0"
+                    IsVisible="{Binding HasAnyLeftPanelDocked}">
+                <Grid RowDefinitions="Auto,*">
+                    <!-- Zone Tab Strip & Header -->
+                    <Border Grid.Row="0"
+                            Background="{DynamicResource PsPanelHeaderBrush}"
+                            BorderBrush="{DynamicResource PsBorderBrush}"
+                            BorderThickness="0,0,0,1"
+                            Padding="4,0"
+                            IsVisible="{Binding ShowLeftDockTabs}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2">
+                                <Button Classes="ps-panel-tab" Content="Layers"
+                                        IsVisible="{Binding LayersPlacement, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Left'}"
+                                        Classes.active="{Binding ActiveLeftDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Layers'}"
+                                        Command="{Binding SelectLeftZoneTabCommand}" CommandParameter="Layers"
+                                        PointerPressed="OnPanelTabPointerPressed"
+                                        PointerMoved="OnPanelTabPointerMoved" />
+                                <Button Classes="ps-panel-tab" Content="Properties"
+                                        IsVisible="{Binding PropertiesPlacement, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Left'}"
+                                        Classes.active="{Binding ActiveLeftDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Properties'}"
+                                        Command="{Binding SelectLeftZoneTabCommand}" CommandParameter="Properties"
+                                        PointerPressed="OnPanelTabPointerPressed"
+                                        PointerMoved="OnPanelTabPointerMoved" />
+                                <Button Classes="ps-panel-tab" Content="Color"
+                                        IsVisible="{Binding ColorPlacement, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Left'}"
+                                        Classes.active="{Binding ActiveLeftDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Color'}"
+                                        Command="{Binding SelectLeftZoneTabCommand}" CommandParameter="Color"
+                                        PointerPressed="OnPanelTabPointerPressed"
+                                        PointerMoved="OnPanelTabPointerMoved" />
+                            </StackPanel>
+                            <Button Grid.Column="1" Classes="ps-opt-btn" Width="20" Height="20"
+                                    Command="{Binding ToggleLeftDockModeCommand}"
+                                    ToolTip.Tip="Toggle Left Dock: Stacked / Tabbed Layout">
+                                <materialIcons:MaterialIcon Kind="ViewAgendaOutline" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <!-- Panels in Left Dock Zone -->
+                    <Grid Grid.Row="1">
+                        <!-- Mode A: Stacked Left Dock (Unity Vertical Split Architecture) -->
+                        <Grid x:Name="StackedLeftGrid"
+                              IsVisible="{Binding LeftDockMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Stacked'}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="1*" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="1*" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="1*" />
+                            </Grid.RowDefinitions>
+                            <panels:LayersDockPanel Grid.Row="0" VerticalAlignment="Stretch" IsVisible="{Binding IsLayersInLeftVisible}" />
+                            <GridSplitter Grid.Row="1" Classes="ps-splitter" Height="4" HorizontalAlignment="Stretch" ResizeDirection="Rows"
+                                          IsVisible="{Binding IsColorSplitterInLeftVisible}" />
+                            <panels:PropertiesDockPanel Grid.Row="2" VerticalAlignment="Stretch" IsVisible="{Binding IsPropertiesInLeftVisible}" />
+                            <GridSplitter Grid.Row="3" Classes="ps-splitter" Height="4" HorizontalAlignment="Stretch" ResizeDirection="Rows"
+                                          IsVisible="{Binding IsPropertiesSplitterInLeftVisible}" />
+                            <panels:ColorDockPanel Grid.Row="4" VerticalAlignment="Stretch" IsVisible="{Binding IsColorInLeftVisible}" />
+                        </Grid>
+
+                        <!-- Mode B: Tabbed Left Dock (Unity Tabbed Architecture) -->
+                        <Grid IsVisible="{Binding LeftDockMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Tabbed'}">
+                            <panels:LayersDockPanel VerticalAlignment="Stretch" IsVisible="{Binding IsLayersInLeftVisible}" />
+                            <panels:PropertiesDockPanel VerticalAlignment="Stretch" IsVisible="{Binding IsPropertiesInLeftVisible}" />
+                            <panels:ColorDockPanel VerticalAlignment="Stretch" IsVisible="{Binding IsColorInLeftVisible}" />
+                        </Grid>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- Column 2: Left Vertical GridSplitter -->
+            <GridSplitter Grid.Column="2" Classes="ps-splitter" Width="4" VerticalAlignment="Stretch" ResizeDirection="Columns"
+                          IsVisible="{Binding HasAnyLeftPanelDocked}" />
+
+            <!-- Column 3: Center Canvas Column (Tab Strip + Rulers & Viewport + Bottom Shelf Dock) -->
+            <Grid x:Name="CenterWorkAreaGrid" Grid.Column="3" Background="{DynamicResource PsCanvasBrush}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="26" /> <!-- Row 0: Document Tab Strip -->
+                    <RowDefinition Height="*" MinHeight="100" /> <!-- Row 1: Canvas Work Area -->
+                    <RowDefinition Height="Auto" /> <!-- Row 2: Bottom Splitter -->
+                    <RowDefinition Height="Auto" /> <!-- Row 3: Bottom Shelf Dock -->
+                </Grid.RowDefinitions>
+
                 <!-- Row 0: Document Tab Strip (Studio Parity: ✕ Untitled-1 @ 102.4% (RGB/8)*) -->
                 <controls:DocumentTabStrip Grid.Row="0" />
 
@@ -75,109 +178,372 @@
                                                  PageDimension="{Binding CanvasHeight}"
                                                  IsVisible="{Binding ShowRulers}" />
 
-                    <!-- Main Canvas Work Viewport -->
-                    <Grid Grid.Row="1" Grid.Column="1" Background="{DynamicResource PsCanvasBrush}" ClipToBounds="True">
-                        <!-- Canvas View Component -->
-                        <controls:EditorCanvasControl x:Name="CanvasControl"
-                                                   HorizontalAlignment="Stretch"
-                                                   VerticalAlignment="Stretch"
-                                                   Focusable="True">
-                            <controls:EditorCanvasControl.ContextMenu>
-                                <ContextMenu>
-                                    <MenuItem Header="Deselect" InputGesture="Ctrl+D" Command="{Binding DeselectAllCommand}" />
-                                    <Separator />
-                                    <MenuItem Header="Duplicate Layer" InputGesture="Ctrl+J" Command="{Binding DuplicateCommand}" />
-                                    <MenuItem Header="Delete Layer" Command="{Binding DeleteSelectedElementCommand}" />
-                                    <Separator />
-                                    <MenuItem Header="Layer Style / Blending Options..." Command="{Binding OpenLayerStyleDialogCommand}" />
-                                    <MenuItem Header="Warp Text..." Command="{Binding OpenWarpTextDialogCommand}" />
-                                    <Separator />
-                                    <MenuItem Header="New Guide..." Command="{Binding OpenNewGuideDialogCommand}" />
-                                    <MenuItem Header="New Guide Layout..." Command="{Binding OpenNewGuideLayoutDialogCommand}" />
-                                    <MenuItem Header="Clear Guides" Command="{Binding ClearGuidesCommand}" />
-                                    <Separator />
-                                    <MenuItem Header="Export As..." InputGesture="Ctrl+Shift+W" Command="{Binding OpenExportDialogCommand}" />
-                                </ContextMenu>
-                            </controls:EditorCanvasControl.ContextMenu>
-                        </controls:EditorCanvasControl>
+                    <!-- Main Canvas Work Viewport Container with Split View Support -->
+                    <Grid x:Name="ViewportContainerGrid" Grid.Row="1" Grid.Column="1" Background="{DynamicResource PsCanvasBrush}" ClipToBounds="True">
+                        <!-- Left/Primary Viewport -->
+                        <Grid x:Name="PrimaryViewportGrid">
+                            <!-- Canvas View Component -->
+                            <controls:EditorCanvasControl x:Name="CanvasControl"
+                                                       HorizontalAlignment="Stretch"
+                                                       VerticalAlignment="Stretch"
+                                                       Focusable="True">
+                                <controls:EditorCanvasControl.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Deselect" InputGesture="Ctrl+D" Command="{Binding DeselectAllCommand}" />
+                                        <Separator />
+                                        <MenuItem Header="Duplicate Layer" InputGesture="Ctrl+J" Command="{Binding DuplicateCommand}" />
+                                        <MenuItem Header="Delete Layer" Command="{Binding DeleteSelectedElementCommand}" />
+                                        <Separator />
+                                        <MenuItem Header="Layer Style / Blending Options..." Command="{Binding OpenLayerStyleDialogCommand}" />
+                                        <MenuItem Header="Warp Text..." Command="{Binding OpenWarpTextDialogCommand}" />
+                                        <Separator />
+                                        <MenuItem Header="New Guide..." Command="{Binding OpenNewGuideDialogCommand}" />
+                                        <MenuItem Header="New Guide Layout..." Command="{Binding OpenNewGuideLayoutDialogCommand}" />
+                                        <MenuItem Header="Clear Guides" Command="{Binding ClearGuidesCommand}" />
+                                        <Separator />
+                                        <MenuItem Header="Export As..." InputGesture="Ctrl+Shift+W" Command="{Binding OpenExportDialogCommand}" />
+                                    </ContextMenu>
+                                </controls:EditorCanvasControl.ContextMenu>
+                            </controls:EditorCanvasControl>
 
-                        <!-- Adorner: Floating Quick Actions Cluster -->
-                        <Border x:Name="QuickActionsCluster"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Top"
-                                Background="{DynamicResource PsPanelHeaderBrush}"
-                                BorderBrush="{DynamicResource PsBorderBrush}"
-                                BorderThickness="1"
-                                CornerRadius="2"
-                                Padding="2"
-                                BoxShadow="0 2 8 #40000000"
-                                IsVisible="False">
-                            <StackPanel Orientation="Horizontal" Spacing="2">
-                                <Button Classes="ps-opt-btn" Command="{Binding OpenLayerStyleDialogCommand}" ToolTip.Tip="Layer Style (fx)">
-                                    <TextBlock Text="fx" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource PsAccentBrush}" />
-                                </Button>
-                                <Button Classes="ps-opt-btn" Command="{Binding DuplicateCommand}" ToolTip.Tip="Duplicate (⌘J)">
-                                    <materialIcons:MaterialIcon Kind="ContentCopy" Width="13" Height="13" />
-                                </Button>
-                                <Button Classes="ps-opt-btn" Command="{Binding BringForwardCommand}" ToolTip.Tip="Bring Forward (⌘])">
-                                    <materialIcons:MaterialIcon Kind="ArrangeBringForward" Width="13" Height="13" />
-                                </Button>
-                                <Button Classes="ps-opt-btn" Command="{Binding SendBackwardCommand}" ToolTip.Tip="Send Backward (⌘[)">
-                                    <materialIcons:MaterialIcon Kind="ArrangeSendBackward" Width="13" Height="13" />
-                                </Button>
-                                <Button Classes="ps-opt-btn" Command="{Binding DeleteSelectedElementCommand}" ToolTip.Tip="Delete (Delete / ⌫)">
-                                    <materialIcons:MaterialIcon Kind="DeleteOutline" Width="13" Height="13" Foreground="#EC5B62" />
-                                </Button>
-                            </StackPanel>
-                        </Border>
+                            <!-- Adorner: Floating Quick Actions Cluster -->
+                            <Border x:Name="QuickActionsCluster"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Top"
+                                    Background="{DynamicResource PsPanelHeaderBrush}"
+                                    BorderBrush="{DynamicResource PsBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="2"
+                                    Padding="2"
+                                    BoxShadow="0 2 8 #40000000"
+                                    IsVisible="False">
+                                <StackPanel Orientation="Horizontal" Spacing="2">
+                                    <Button Classes="ps-opt-btn" Command="{Binding OpenLayerStyleDialogCommand}" ToolTip.Tip="Layer Style (fx)">
+                                        <TextBlock Text="fx" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource PsAccentBrush}" />
+                                    </Button>
+                                    <Button Classes="ps-opt-btn" Command="{Binding DuplicateCommand}" ToolTip.Tip="Duplicate (⌘J)">
+                                        <materialIcons:MaterialIcon Kind="ContentCopy" Width="13" Height="13" />
+                                    </Button>
+                                    <Button Classes="ps-opt-btn" Command="{Binding BringForwardCommand}" ToolTip.Tip="Bring Forward (⌘])">
+                                        <materialIcons:MaterialIcon Kind="ArrangeBringForward" Width="13" Height="13" />
+                                    </Button>
+                                    <Button Classes="ps-opt-btn" Command="{Binding SendBackwardCommand}" ToolTip.Tip="Send Backward (⌘[)">
+                                        <materialIcons:MaterialIcon Kind="ArrangeSendBackward" Width="13" Height="13" />
+                                    </Button>
+                                    <Button Classes="ps-opt-btn" Command="{Binding DeleteSelectedElementCommand}" ToolTip.Tip="Delete (Delete / ⌫)">
+                                        <materialIcons:MaterialIcon Kind="DeleteOutline" Width="13" Height="13" Foreground="#EC5B62" />
+                                    </Button>
+                                </StackPanel>
+                            </Border>
 
-                        <!-- Adorner: Inline Text Edit Overlay -->
-                        <TextBox x:Name="InlineTextEditBox"
-                                 HorizontalAlignment="Left"
-                                 VerticalAlignment="Top"
-                                 IsVisible="False"
-                                 AcceptsReturn="True"
-                                 TextWrapping="Wrap"
-                                 Padding="0"
-                                 Margin="0"
-                                 BorderThickness="1"
-                                 BorderBrush="{DynamicResource PsAccentBrush}"
-                                 Background="Transparent"
-                                 KeyDown="InlineTextEditBox_KeyDown"
-                                  LostFocus="InlineTextEditBox_LostFocus"
-                                  ZIndex="200" />
+                            <!-- Adorner: Inline Text Edit Overlay -->
+                            <TextBox x:Name="InlineTextEditBox"
+                                     HorizontalAlignment="Left"
+                                     VerticalAlignment="Top"
+                                     IsVisible="False"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     Padding="0"
+                                     Margin="0"
+                                     BorderThickness="1"
+                                     BorderBrush="{DynamicResource PsAccentBrush}"
+                                     Background="Transparent"
+                                     KeyDown="InlineTextEditBox_KeyDown"
+                                     LostFocus="InlineTextEditBox_LostFocus"
+                                     ZIndex="200" />
 
-                        <!-- Adorner: Floating Modern Studio Contextual Task Bar -->
-                        <controls:ContextualTaskBarControl HorizontalAlignment="Center"
-                                                           VerticalAlignment="Bottom"
-                                                           Margin="0,0,0,16"
-                                                           ZIndex="150" />
+                            <!-- Adorner: Floating Modern Studio Contextual Task Bar -->
+                            <controls:ContextualTaskBarControl HorizontalAlignment="Center"
+                                                               VerticalAlignment="Bottom"
+                                                               Margin="0,0,0,16"
+                                                               ZIndex="150" />
+                        </Grid>
+
+                        <!-- Split View Divider -->
+                        <GridSplitter x:Name="SplitViewDivider"
+                                      Classes="ps-splitter"
+                                      Width="4"
+                                      VerticalAlignment="Stretch"
+                                      IsVisible="False" />
+
+                        <!-- Right/Secondary Viewport for Split View -->
+                        <Grid x:Name="SecondaryViewportGrid"
+                              Background="{DynamicResource PsCanvasBrush}"
+                              IsVisible="False">
+                            <Grid RowDefinitions="24,*">
+                                <Border Grid.Row="0"
+                                        Background="{DynamicResource PsChromeBrush}"
+                                        BorderBrush="{DynamicResource PsBorderBrush}"
+                                        BorderThickness="0,0,0,1"
+                                        Padding="6,0">
+                                    <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding SecondaryDocument.Title, StringFormat='Split View: {0}'}"
+                                                   FontSize="11"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource PsTextDimBrush}"
+                                                   VerticalAlignment="Center" />
+                                        <Button Grid.Column="1"
+                                                Classes="ps-opt-btn"
+                                                Width="16" Height="16" Padding="0"
+                                                Command="{Binding ConsolidateAllToTabsCommand}"
+                                                ToolTip.Tip="Close Split View (Consolidate to Tabs)">
+                                            <materialIcons:MaterialIcon Kind="Close" Width="10" Height="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                                <controls:EditorCanvasControl x:Name="SecondaryCanvasControl"
+                                                              Grid.Row="1"
+                                                              HorizontalAlignment="Stretch"
+                                                              VerticalAlignment="Stretch"
+                                                              Focusable="True" />
+                            </Grid>
+                        </Grid>
                     </Grid>
                 </Grid>
             </Grid>
-        </Grid>
 
-            <!-- Column 2: Vertical Splitter -->
-            <GridSplitter Grid.Column="2" Classes="ps-splitter" Width="3" VerticalAlignment="Stretch" />
+                <!-- Row 2: Bottom Shelf GridSplitter -->
+                <GridSplitter Grid.Row="2" Classes="ps-splitter" Height="4" HorizontalAlignment="Stretch" ResizeDirection="Rows"
+                              IsVisible="{Binding HasAnyBottomPanelDocked}" />
 
-            <!-- Column 3: Studio Right Dock Panels Stack -->
-            <Border Grid.Column="3"
+                <!-- Row 3: Bottom Shelf Dock Zone (Unity-Style Bottom Shelf) -->
+                <Border Grid.Row="3"
+                        MinHeight="100" MaxHeight="600"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"
+                        Background="{DynamicResource PsPanelBrush}"
+                        BorderBrush="{DynamicResource PsBorderBrush}"
+                        BorderThickness="0,1,0,0"
+                        IsVisible="{Binding HasAnyBottomPanelDocked}">
+                    <Grid RowDefinitions="Auto,*">
+                        <!-- Zone Tab Strip (Visible when multiple panels are docked on bottom) -->
+                        <Border Grid.Row="0"
+                                Background="{DynamicResource PsPanelHeaderBrush}"
+                                BorderBrush="{DynamicResource PsBorderBrush}"
+                                BorderThickness="0,0,0,1"
+                                Padding="4,0"
+                                IsVisible="{Binding ShowBottomDockTabs}">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2">
+                                    <Button Classes="ps-panel-tab" Content="Layers"
+                                            IsVisible="{Binding LayersPlacement, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Bottom'}"
+                                            Classes.active="{Binding ActiveBottomDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Layers'}"
+                                            Command="{Binding SelectBottomZoneTabCommand}" CommandParameter="Layers"
+                                            PointerPressed="OnPanelTabPointerPressed"
+                                            PointerMoved="OnPanelTabPointerMoved" />
+                                    <Button Classes="ps-panel-tab" Content="Properties"
+                                            IsVisible="{Binding PropertiesPlacement, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Bottom'}"
+                                            Classes.active="{Binding ActiveBottomDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Properties'}"
+                                            Command="{Binding SelectBottomZoneTabCommand}" CommandParameter="Properties"
+                                            PointerPressed="OnPanelTabPointerPressed"
+                                            PointerMoved="OnPanelTabPointerMoved" />
+                                    <Button Classes="ps-panel-tab" Content="Color"
+                                            IsVisible="{Binding ColorPlacement, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Bottom'}"
+                                            Classes.active="{Binding ActiveBottomDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Color'}"
+                                            Command="{Binding SelectBottomZoneTabCommand}" CommandParameter="Color"
+                                            PointerPressed="OnPanelTabPointerPressed"
+                                            PointerMoved="OnPanelTabPointerMoved" />
+                                </StackPanel>
+                                <Button Grid.Column="1" Classes="ps-opt-btn" Width="20" Height="20"
+                                        Command="{Binding ToggleBottomDockModeCommand}"
+                                        ToolTip.Tip="Toggle Bottom Shelf: Side-by-Side Split / Tabbed Layout">
+                                    <materialIcons:MaterialIcon Kind="ViewSplitVertical" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
+                                </Button>
+                            </Grid>
+                        </Border>
+
+                        <!-- Panels in Bottom Dock Zone -->
+                        <Grid Grid.Row="1">
+                            <!-- Mode A: Side-by-Side Split Bottom Shelf -->
+                            <Grid x:Name="BottomShelfSplitGrid"
+                                  IsVisible="{Binding BottomDockMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Split'}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="1*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="1*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="1*" />
+                                </Grid.ColumnDefinitions>
+                                <panels:LayersDockPanel Grid.Column="0" VerticalAlignment="Stretch" IsVisible="{Binding IsLayersInBottomVisible}" />
+                                <GridSplitter Grid.Column="1" Classes="ps-splitter" Width="4" VerticalAlignment="Stretch" ResizeDirection="Columns"
+                                              IsVisible="{Binding IsBottomShelfSplitterVisible}" />
+                                <panels:PropertiesDockPanel Grid.Column="2" VerticalAlignment="Stretch" IsVisible="{Binding IsPropertiesInBottomVisible}" />
+                                <GridSplitter Grid.Column="3" Classes="ps-splitter" Width="4" VerticalAlignment="Stretch" ResizeDirection="Columns"
+                                              IsVisible="{Binding IsBottomShelfSplitterVisible}" />
+                                <panels:ColorDockPanel Grid.Column="4" VerticalAlignment="Stretch" IsVisible="{Binding IsColorInBottomVisible}" />
+                            </Grid>
+
+                            <!-- Mode B: Tabbed Bottom Shelf -->
+                            <Grid IsVisible="{Binding BottomDockMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Tabbed'}">
+                                <panels:LayersDockPanel VerticalAlignment="Stretch" IsVisible="{Binding IsLayersInBottomVisible}" />
+                                <panels:PropertiesDockPanel VerticalAlignment="Stretch" IsVisible="{Binding IsPropertiesInBottomVisible}" />
+                                <panels:ColorDockPanel VerticalAlignment="Stretch" IsVisible="{Binding IsColorInBottomVisible}" />
+                            </Grid>
+                        </Grid>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- Column 4: Right Vertical GridSplitter -->
+            <GridSplitter Grid.Column="4" Classes="ps-splitter" Width="4" VerticalAlignment="Stretch" ResizeDirection="Columns"
+                          IsVisible="{Binding HasAnyRightPanelDocked}" />
+
+            <!-- Column 5: Studio Right Dock Panels (Stacked / Tabbed Multi-Mode) -->
+            <Border Grid.Column="5"
+                    MinWidth="180" MaxWidth="800"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
                     Background="{DynamicResource PsPanelBrush}"
                     BorderBrush="{DynamicResource PsBorderBrush}"
-                    BorderThickness="1,0,0,0">
-                <Grid RowDefinitions="195,3,255,3,*">
-                    <!-- Panel 1 (Top): Color / Swatches / Gradients / Patterns -->
-                    <panels:ColorDockPanel Grid.Row="0" />
-                    <GridSplitter Grid.Row="1" Classes="ps-splitter" Height="3" HorizontalAlignment="Stretch" />
+                    BorderThickness="1,0,0,0"
+                    IsVisible="{Binding HasAnyRightPanelDocked}">
+                <Grid RowDefinitions="Auto,*">
+                    <!-- Zone Tab Strip (Visible in Tabbed mode when multiple panels exist) -->
+                    <Border Grid.Row="0"
+                            Background="{DynamicResource PsPanelHeaderBrush}"
+                            BorderBrush="{DynamicResource PsBorderBrush}"
+                            BorderThickness="0,0,0,1"
+                            Padding="4,0"
+                            IsVisible="{Binding ShowRightDockTabs}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2">
+                                <Button Classes="ps-panel-tab" Content="Layers"
+                                        IsVisible="{Binding LayersPlacement, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Right'}"
+                                        Classes.active="{Binding ActiveRightDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Layers'}"
+                                        Command="{Binding SelectRightZoneTabCommand}" CommandParameter="Layers"
+                                        PointerPressed="OnPanelTabPointerPressed"
+                                        PointerMoved="OnPanelTabPointerMoved" />
+                                <Button Classes="ps-panel-tab" Content="Properties"
+                                        IsVisible="{Binding PropertiesPlacement, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Right'}"
+                                        Classes.active="{Binding ActiveRightDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Properties'}"
+                                        Command="{Binding SelectRightZoneTabCommand}" CommandParameter="Properties"
+                                        PointerPressed="OnPanelTabPointerPressed"
+                                        PointerMoved="OnPanelTabPointerMoved" />
+                                <Button Classes="ps-panel-tab" Content="Color"
+                                        IsVisible="{Binding ColorPlacement, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Right'}"
+                                        Classes.active="{Binding ActiveRightDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Color'}"
+                                        Command="{Binding SelectRightZoneTabCommand}" CommandParameter="Color"
+                                        PointerPressed="OnPanelTabPointerPressed"
+                                        PointerMoved="OnPanelTabPointerMoved" />
+                            </StackPanel>
+                            <Button Grid.Column="1" Classes="ps-opt-btn" Width="20" Height="20"
+                                    Command="{Binding ToggleRightDockModeCommand}"
+                                    ToolTip.Tip="Toggle Stacked / Tabbed View">
+                                <materialIcons:MaterialIcon Kind="ViewAgendaOutline" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
+                            </Button>
+                        </Grid>
+                    </Border>
 
-                    <!-- Panel 2 (Middle): Properties / Adjustments / Histogram -->
-                    <panels:PropertiesDockPanel Grid.Row="2" />
-                    <GridSplitter Grid.Row="3" Classes="ps-splitter" Height="3" HorizontalAlignment="Stretch" />
+                    <!-- Panels in Right Dock Zone -->
+                    <Grid Grid.Row="1">
+                        <!-- Mode A: Stacked Right Dock (Default Studio Architecture) -->
+                        <Grid x:Name="StackedRightGrid"
+                              IsVisible="{Binding RightDockMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Stacked'}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="1*" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="1.2*" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="1.6*" />
+                            </Grid.RowDefinitions>
+                            <!-- Panel 1 (Top): Color / Swatches / Gradients / Patterns -->
+                            <panels:ColorDockPanel Grid.Row="0" VerticalAlignment="Stretch" IsVisible="{Binding IsColorInRightVisible}" />
+                            <GridSplitter Grid.Row="1" Classes="ps-splitter" Height="4" HorizontalAlignment="Stretch" ResizeDirection="Rows"
+                                          IsVisible="{Binding IsColorSplitterInRightVisible}" />
 
-                    <!-- Panel 3 (Bottom): Layers / Channels / Paths / History -->
-                    <panels:LayersDockPanel Grid.Row="4" />
+                            <!-- Panel 2 (Middle): Properties / Adjustments / Histogram -->
+                            <panels:PropertiesDockPanel Grid.Row="2" VerticalAlignment="Stretch" IsVisible="{Binding IsPropertiesInRightVisible}" />
+                            <GridSplitter Grid.Row="3" Classes="ps-splitter" Height="4" HorizontalAlignment="Stretch" ResizeDirection="Rows"
+                                          IsVisible="{Binding IsPropertiesSplitterInRightVisible}" />
+
+                            <!-- Panel 3 (Bottom): Layers / Channels / Paths / History -->
+                            <panels:LayersDockPanel Grid.Row="4" VerticalAlignment="Stretch" IsVisible="{Binding IsLayersInRightVisible}" />
+                        </Grid>
+
+                        <!-- Mode B: Tabbed Right Dock (Unity Tabbed Architecture) -->
+                        <Grid IsVisible="{Binding RightDockMode, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Tabbed'}">
+                            <panels:ColorDockPanel VerticalAlignment="Stretch" IsVisible="{Binding IsColorInRightVisible}" />
+                            <panels:PropertiesDockPanel VerticalAlignment="Stretch" IsVisible="{Binding IsPropertiesInRightVisible}" />
+                            <panels:LayersDockPanel VerticalAlignment="Stretch" IsVisible="{Binding IsLayersInRightVisible}" />
+                        </Grid>
+                    </Grid>
                 </Grid>
             </Border>
+
+            <!-- ============================================================
+                 UNITY-STYLE DOCK DROP TARGET OVERLAY
+                 Activates visually when dragging any panel tab or header
+                 ============================================================ -->
+            <Grid Grid.Column="0" Grid.ColumnSpan="6"
+                  IsVisible="{Binding IsDraggingPanel}"
+                  ZIndex="450"
+                  IsHitTestVisible="True"
+                  Background="#25000000"
+                  PointerMoved="OnWorkspacePointerMoved"
+                  PointerReleased="OnWorkspacePointerReleased">
+                <Grid ColumnDefinitions="260,*,280" RowDefinitions="*,180">
+                    <!-- Left Dock Drop Target Indicator -->
+                    <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="2"
+                            Margin="6"
+                            CornerRadius="6"
+                            BorderThickness="2"
+                            BorderBrush="{DynamicResource PsAccentBrush}"
+                            Background="#35378EF0"
+                            PointerEntered="OnDropLeftPointerEntered"
+                            PointerReleased="OnDropLeftPointerReleased">
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8">
+                            <materialIcons:MaterialIcon Kind="DockLeft" Width="36" Height="36" Foreground="{DynamicResource PsAccentBrush}" />
+                            <TextBlock Text="Dock to Left Sidebar" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource PsTextBrush}" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Center Area: Float in Window -->
+                    <Border Grid.Column="1" Grid.Row="0"
+                            Margin="12"
+                            CornerRadius="8"
+                            BorderThickness="2"
+                            BorderBrush="#F59E0B"
+                            Background="#25F59E0B"
+                            PointerEntered="OnDropFloatPointerEntered"
+                            PointerReleased="OnDropFloatPointerReleased">
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8">
+                            <materialIcons:MaterialIcon Kind="OpenInNew" Width="40" Height="40" Foreground="#F59E0B" />
+                            <TextBlock Text="Drop Here to Float in Separate Window" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource PsTextBrush}" />
+                            <TextBlock Text="Or drag to edges (Left, Right, Bottom) to dock" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Bottom Shelf Drop Target Indicator -->
+                    <Border Grid.Column="1" Grid.Row="1"
+                            Margin="6"
+                            CornerRadius="6"
+                            BorderThickness="2"
+                            BorderBrush="{DynamicResource PsAccentBrush}"
+                            Background="#35378EF0"
+                            PointerEntered="OnDropBottomPointerEntered"
+                            PointerReleased="OnDropBottomPointerReleased">
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="6">
+                            <materialIcons:MaterialIcon Kind="DockBottom" Width="32" Height="32" Foreground="{DynamicResource PsAccentBrush}" />
+                            <TextBlock Text="Dock to Bottom Shelf" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource PsTextBrush}" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Right Dock Drop Target Indicator -->
+                    <Border Grid.Column="2" Grid.Row="0" Grid.RowSpan="2"
+                            Margin="6"
+                            CornerRadius="6"
+                            BorderThickness="2"
+                            BorderBrush="{DynamicResource PsAccentBrush}"
+                            Background="#35378EF0"
+                            PointerEntered="OnDropRightPointerEntered"
+                            PointerReleased="OnDropRightPointerReleased">
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8">
+                            <materialIcons:MaterialIcon Kind="DockRight" Width="36" Height="36" Foreground="{DynamicResource PsAccentBrush}" />
+                            <TextBlock Text="Dock to Right Sidebar" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource PsTextBrush}" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Grid>
         </Grid>
 
         <!-- Row 3: Bottom Status Bar -->

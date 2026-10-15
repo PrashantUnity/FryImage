@@ -18,6 +18,7 @@ using PdfEditorApp.Plugins.ImageEditor.Core.Canvas;
 using PdfEditorApp.Plugins.ImageEditor.Core.Printing;
 using PdfEditorApp.Plugins.ImageEditor.Controls;
 using PdfEditorApp.Plugins.ImageEditor.Models;
+using PdfEditorApp.Plugins.ImageEditor.Models.Session;
 using PdfEditorApp.Plugins.ImageEditor.UISnapshots.Core;
 
 namespace PdfEditorApp.Plugins.ImageEditor.UISnapshots.Suites;
@@ -1747,7 +1748,219 @@ public static class ParityFeatureSnapshotSuite
         if (vm.FilterRandomSeed == 100)
             throw new InvalidOperationException("RandomizeFilterSeedCommand failed to generate new seed.");
         Console.WriteLine("  ✓ Filter random seed generation for procedural noise/clouds (#b8e48d6d) verified.");
+
+        // 85. Test Multi-Document Session, Tab Re-ordering, Window Arrange, and Unity-Style Panel Docking
+        if (vm.Documents.Count == 0)
+            vm.InitializeDocumentSession();
+
+        int initialDocCount = vm.Documents.Count;
+        vm.CreateNewDocumentTab();
+        if (vm.Documents.Count != initialDocCount + 1)
+            throw new InvalidOperationException("Failed to add new document to multi-document session.");
+
+        var secondDoc = vm.ActiveDocument;
+        if (secondDoc == null || !secondDoc.Title.StartsWith("Untitled-"))
+            throw new InvalidOperationException("New document tab did not activate properly.");
+
+        var firstDoc = vm.Documents[0];
+        vm.SwitchDocument(firstDoc);
+        if (vm.ActiveDocument != firstDoc)
+            throw new InvalidOperationException("SwitchDocument failed to activate first document.");
+
+        // Tab reordering
+        vm.ReorderDocuments(0, 1);
+        if (vm.Documents[1] != firstDoc)
+            throw new InvalidOperationException("ReorderDocuments failed to move document in tab strip.");
+
+        // Window > Arrange: 2-up Vertical & Consolidate to Tabs
+        vm.TwoUpVertical();
+        if (vm.SplitLayoutMode != "TwoUpVertical" || vm.SecondaryDocument == null)
+            throw new InvalidOperationException("TwoUpVertical failed to configure split layout mode.");
+
+        vm.MatchZoom();
+        if (Math.Abs(firstDoc.ZoomLevel - secondDoc.ZoomLevel) > 0.001)
+            throw new InvalidOperationException("MatchZoom failed to synchronize zoom levels across documents.");
+
+        vm.ConsolidateAllToTabs();
+        if (vm.SplitLayoutMode != "None" || vm.SecondaryDocument != null)
+            throw new InvalidOperationException("ConsolidateAllToTabs failed to reset split layout mode.");
+
+        // Unity-Style Panel Docking
+        vm.TearOffPanel("Layers");
+        if (vm.IsLayersDocked)
+            throw new InvalidOperationException("TearOffPanel failed to set IsLayersDocked = false.");
+        if (!vm.HasAnyRightPanelDocked)
+            throw new InvalidOperationException("HasAnyRightPanelDocked should be true when Properties and Color remain docked.");
+
+        vm.RedockPanel("Layers");
+        if (!vm.IsLayersDocked)
+            throw new InvalidOperationException("RedockPanel failed to restore IsLayersDocked = true.");
+
+        vm.ResetEssentialsWorkspace();
+        if (!vm.IsLayersDocked || !vm.IsPropertiesDocked || !vm.IsColorDocked || !vm.IsToolsDocked)
+            throw new InvalidOperationException("ResetEssentialsWorkspace failed to restore all panels to docked state.");
+
+        Console.WriteLine("  ✓ Multi-Document Tabs, Window Arrange (2-Up, Match Zoom, Consolidate), and Unity-style Docking verified.");
+
+        // 86. Test Smart Filter Stack Reordering, Selection, and Editor Dispatch (#f4b3766b, #665cb581, #f79f2193) & 45° Snapping (#7efebfa0)
+        var testElement = new ImageElement { Name = "Smart Filter Test Layer", IsSmartObject = true };
+        vm.Elements.Add(testElement);
+        vm.SelectedElement = testElement;
+
+        var filter1 = new SmartFilter { Name = "Gaussian Blur", FilterType = "GaussianBlur", Radius = 4.0 };
+        var filter2 = new SmartFilter { Name = "Unsharp Mask", FilterType = "UnsharpMask", Radius = 2.0, Amount = 1.5 };
+        testElement.SmartFilters.Add(filter1);
+        testElement.SmartFilters.Add(filter2);
+
+        // Reordering
+        vm.MoveSmartFilterDown(filter1);
+        if (testElement.SmartFilters[0] != filter2 || testElement.SmartFilters[1] != filter1)
+            throw new InvalidOperationException("MoveSmartFilterDown failed to reorder filters.");
+
+        vm.MoveSmartFilterUp(filter1);
+        if (testElement.SmartFilters[0] != filter1 || testElement.SmartFilters[1] != filter2)
+            throw new InvalidOperationException("MoveSmartFilterUp failed to restore filter order.");
+
+        // Selection & Deletion
+        vm.SelectSmartFilter(filter1);
+        if (vm.SelectedSmartFilter != filter1 || !filter1.IsSelected)
+            throw new InvalidOperationException("SelectSmartFilter failed to select filter1.");
+
+        vm.DeleteSmartFilter(filter1);
+        if (testElement.SmartFilters.Contains(filter1) || vm.SelectedSmartFilter != null)
+            throw new InvalidOperationException("DeleteSmartFilter failed to delete filter1 or clear selection.");
+
+        // Editor Dispatch
+        vm.OpenSmartFilterEditor(filter2);
+        if (!vm.IsFilterDialogOpen || vm.SelectedSmartFilter != filter2)
+            throw new InvalidOperationException("OpenSmartFilterEditor failed to open filter dialog.");
+        vm.IsFilterDialogOpen = false;
+
+        // 45° Angle Snapping (#7efebfa0, #5475, #5498)
+        var snappedH = CurvaturePenEngine.SnapTo45Degrees(new Point(0, 0), new Point(100, 5));
+        if (Math.Abs(snappedH.Y) > 0.001 || Math.Abs(snappedH.X - 100.125) > 0.01)
+            throw new InvalidOperationException($"SnapTo45Degrees horizontal snap failed: got ({snappedH.X}, {snappedH.Y})");
+
+        var snappedDiag = CurvaturePenEngine.SnapTo45Degrees(new Point(0, 0), new Point(98, 102));
+        if (Math.Abs(snappedDiag.X - snappedDiag.Y) > 0.001)
+            throw new InvalidOperationException($"SnapTo45Degrees diagonal 45° snap failed: got ({snappedDiag.X}, {snappedDiag.Y})");
+
+        Console.WriteLine("  ✓ Smart Filter stack reordering, selection, editor dispatch, and 45° anchor snapping (#f4b3766b, #665cb581, #f79f2193, #7efebfa0) verified.");
+
+        // 87. Test Unity-Style Multi-Zone Docking & Tabbed Groups
+        // Test individual zone placement
+        vm.SetPanelPlacementParam("Layers:Left");
+        if (vm.LayersPlacement != DockZone.Left || !vm.HasAnyLeftPanelDocked)
+            throw new InvalidOperationException("SetPanelPlacementParam failed to place Layers into Left zone.");
+
+        vm.SetPanelPlacementParam("Color:Bottom");
+        if (vm.ColorPlacement != DockZone.Bottom || !vm.HasAnyBottomPanelDocked)
+            throw new InvalidOperationException("SetPanelPlacementParam failed to place Color into Bottom zone.");
+
+        vm.SetPanelPlacementParam("Properties:Right");
+        if (vm.PropertiesPlacement != DockZone.Right || !vm.HasAnyRightPanelDocked)
+            throw new InvalidOperationException("SetPanelPlacementParam failed to place Properties into Right zone.");
+
+        // Test tabbed merging within Left zone
+        vm.SetPanelPlacement("Properties", DockZone.Left);
+        if (vm.LeftDockedCount != 2 || !vm.ShowLeftDockTabs)
+            throw new InvalidOperationException("Multi-panel docking in Left zone should show tabs.");
+
+        vm.SelectLeftZoneTab("Properties");
+        if (vm.ActiveLeftDockTab != "Properties" || !vm.IsPropertiesInLeftVisible || vm.IsLayersInLeftVisible)
+            throw new InvalidOperationException("SelectLeftZoneTab failed to switch active tab to Properties.");
+
+        vm.SelectLeftZoneTab("Layers");
+        if (vm.ActiveLeftDockTab != "Layers" || !vm.IsLayersInLeftVisible || vm.IsPropertiesInLeftVisible)
+            throw new InvalidOperationException("SelectLeftZoneTab failed to switch active tab to Layers.");
+
+        // Test multi-mode Right Dock (Stacked vs Tabbed)
+        vm.SetPanelPlacement("Layers", DockZone.Right);
+        vm.SetPanelPlacement("Properties", DockZone.Right);
+        vm.SetPanelPlacement("Color", DockZone.Right);
+        if (vm.RightDockMode != "Stacked")
+            throw new InvalidOperationException("Default right dock mode should be Stacked.");
+
+        vm.ToggleRightDockMode();
+        if (vm.RightDockMode != "Tabbed" || !vm.ShowRightDockTabs)
+            throw new InvalidOperationException("ToggleRightDockMode failed to switch to Tabbed mode.");
+
+        vm.SelectRightZoneTab("Color");
+        if (vm.ActiveRightDockTab != "Color" || !vm.IsColorInRightVisible || vm.IsLayersInRightVisible)
+            throw new InvalidOperationException("SelectRightZoneTab failed in Tabbed mode.");
+
+        // Test Multi-Mode Splitting for Left and Bottom Zones
+        vm.ToggleLeftDockMode();
+        if (vm.LeftDockMode != "Stacked")
+            throw new InvalidOperationException("ToggleLeftDockMode failed to switch to Stacked mode.");
+        vm.ToggleLeftDockMode();
+        if (vm.LeftDockMode != "Tabbed")
+            throw new InvalidOperationException("ToggleLeftDockMode failed to switch to Tabbed mode.");
+
+        vm.ToggleBottomDockMode();
+        if (vm.BottomDockMode != "Split")
+            throw new InvalidOperationException("ToggleBottomDockMode failed to switch to Split mode.");
+        vm.ToggleBottomDockMode();
+        if (vm.BottomDockMode != "Tabbed")
+            throw new InvalidOperationException("ToggleBottomDockMode failed to switch to Tabbed mode.");
+
+        // Test Interactive Drag-and-Drop Docking Lifecycle
+        vm.StartPanelDrag("Layers", 120, 240);
+        if (!vm.IsDraggingPanel || vm.DraggedPanelName != "Layers")
+            throw new InvalidOperationException("StartPanelDrag failed to activate drag state.");
+
+        vm.UpdatePanelDrag(DockZone.Left, 40, 200, "Dock Layers to Left");
+        if (vm.HoveredDockZone != DockZone.Left || !vm.IsDropLeftActive)
+            throw new InvalidOperationException("UpdatePanelDrag failed to activate Left drop zone.");
+
+        vm.CompletePanelDrag();
+        if (vm.IsDraggingPanel || vm.LayersPlacement != DockZone.Left)
+            throw new InvalidOperationException("CompletePanelDrag failed to dock panel to Left zone.");
+
+        // Test Drop to Float Window
+        vm.StartPanelDrag("Color", 400, 300);
+        vm.UpdatePanelDrag(DockZone.Floating, 400, 300, "Float Color");
+        if (!vm.IsDropFloatActive)
+            throw new InvalidOperationException("UpdatePanelDrag failed to activate Floating drop target.");
+        vm.CompletePanelDrag();
+        if (vm.ColorPlacement != DockZone.Floating)
+            throw new InvalidOperationException("CompletePanelDrag failed to float panel in separate window.");
+
+        // Test Drop to Bottom Shelf
+        vm.StartPanelDrag("Properties", 400, 700);
+        vm.UpdatePanelDrag(DockZone.Bottom, 400, 700, "Dock Properties to Bottom");
+        if (!vm.IsDropBottomActive)
+            throw new InvalidOperationException("UpdatePanelDrag failed to activate Bottom shelf drop target.");
+        vm.CompletePanelDrag();
+        if (vm.PropertiesPlacement != DockZone.Bottom)
+            throw new InvalidOperationException("CompletePanelDrag failed to dock panel to Bottom shelf.");
+
+        // Test Drag Cancellation
+        vm.StartPanelDrag("Layers", 200, 200);
+        vm.CancelPanelDrag();
+        if (vm.IsDraggingPanel || !string.IsNullOrEmpty(vm.DraggedPanelName))
+            throw new InvalidOperationException("CancelPanelDrag failed to reset drag state.");
+
+        // Test Layout Presets
+        vm.ApplyUnityTwoByThreeWorkspace();
+        if (vm.LayersPlacement != DockZone.Left || vm.PropertiesPlacement != DockZone.Right || vm.ColorPlacement != DockZone.Right)
+            throw new InvalidOperationException("ApplyUnityTwoByThreeWorkspace failed.");
+
+        vm.ApplyUnityFourSplitWorkspace();
+        if (vm.LayersPlacement != DockZone.Left || vm.ColorPlacement != DockZone.Bottom || vm.PropertiesPlacement != DockZone.Right)
+            throw new InvalidOperationException("ApplyUnityFourSplitWorkspace failed.");
+
+        vm.ApplyTallWorkspace();
+        if (vm.LayersPlacement != DockZone.Left || vm.PropertiesPlacement != DockZone.Left || vm.ColorPlacement != DockZone.Right)
+            throw new InvalidOperationException("ApplyTallWorkspace failed.");
+
+        vm.ApplyDefaultWorkspace();
+        if (vm.HasAnyLeftPanelDocked || vm.HasAnyBottomPanelDocked || !vm.HasAnyRightPanelDocked || vm.RightDockMode != "Stacked")
+            throw new InvalidOperationException("ApplyDefaultWorkspace failed to restore default stacked right dock.");
+
+        Console.WriteLine("  ✓ Unity-style Interactive Drag-and-Drop Docking, Multi-Zone Splitting, and Presets verified.");
     }
+
 
     private static byte[] CreateSyntheticPcx24(int width, int height)
     {

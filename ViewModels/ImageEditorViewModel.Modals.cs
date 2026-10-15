@@ -489,17 +489,22 @@ public partial class ImageEditorViewModel
     [RelayCommand]
     public void ConfirmCreateDocument()
     {
-        ClearCanvas();
-        CanvasWidth = (double)NewDocWidth;
-        CanvasHeight = (double)NewDocHeight;
-        DocumentTitle = NewDocTitle;
+        Color bg = NewDocBackgroundMode switch
+        {
+            "Transparent" => Colors.Transparent,
+            "Black" => Colors.Black,
+            _ => Colors.White
+        };
 
-        if (NewDocBackgroundMode == "Transparent")
-            BackgroundColor = Colors.Transparent;
-        else if (NewDocBackgroundMode == "Black")
-            BackgroundColor = Colors.Black;
-        else
-            BackgroundColor = Colors.White;
+        var doc = new Models.Session.StudioDocument(NewDocTitle, (double)NewDocWidth, (double)NewDocHeight, bg)
+        {
+            ColorMode = "RGB",
+            BitsPerChannel = 8,
+            ZoomLevel = 1.0
+        };
+
+        Documents.Add(doc);
+        SwitchDocument(doc);
 
         IsNewDocumentDialogOpen = false;
         FitToWindow();

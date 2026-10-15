@@ -7,6 +7,7 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 using PdfEditorApp.Plugins.ImageEditor.Controls;
+using PdfEditorApp.Plugins.ImageEditor.Models.Session;
 
 namespace PdfEditorApp.Plugins.ImageEditor.Views;
 
@@ -82,6 +83,86 @@ public partial class ImageEditorView : UserControl
             }
         };
         SyncRulerOrigins();
+
+        SecondaryCanvasControl.PointerPressed += (_, _) =>
+        {
+            if (vm.SecondaryDocument != null && vm.ActiveDocument != vm.SecondaryDocument)
+            {
+                var prevActive = vm.ActiveDocument;
+                vm.SwitchDocument(vm.SecondaryDocument);
+                vm.SecondaryDocument = prevActive;
+            }
+        };
+
+        void UpdateSplitView()
+        {
+            if (vm.SplitLayoutMode == "TwoUpVertical")
+            {
+                ViewportContainerGrid.ColumnDefinitions = ColumnDefinitions.Parse("*,4,*");
+                ViewportContainerGrid.RowDefinitions = RowDefinitions.Parse("*");
+                Grid.SetColumn(PrimaryViewportGrid, 0);
+                Grid.SetRow(PrimaryViewportGrid, 0);
+                Grid.SetColumn(SplitViewDivider, 1);
+                Grid.SetRow(SplitViewDivider, 0);
+                SplitViewDivider.Width = 4;
+                SplitViewDivider.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center;
+                SplitViewDivider.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Stretch;
+                Grid.SetColumn(SecondaryViewportGrid, 2);
+                Grid.SetRow(SecondaryViewportGrid, 0);
+                SplitViewDivider.IsVisible = true;
+                SecondaryViewportGrid.IsVisible = true;
+
+                if (vm.SecondaryDocument != null)
+                {
+                    SecondaryCanvasControl.SetElements(vm.SecondaryDocument.Elements.ToList());
+                    SecondaryCanvasControl.SetLogicalCanvasSize(vm.SecondaryDocument.CanvasWidth, vm.SecondaryDocument.CanvasHeight);
+                    SecondaryCanvasControl.SetBackgroundColor(vm.SecondaryDocument.BackgroundColor);
+                    SecondaryCanvasControl.SetZoom(vm.SecondaryDocument.ZoomLevel);
+                }
+            }
+            else if (vm.SplitLayoutMode == "TwoUpHorizontal")
+            {
+                ViewportContainerGrid.ColumnDefinitions = ColumnDefinitions.Parse("*");
+                ViewportContainerGrid.RowDefinitions = RowDefinitions.Parse("*,4,*");
+                Grid.SetColumn(PrimaryViewportGrid, 0);
+                Grid.SetRow(PrimaryViewportGrid, 0);
+                Grid.SetColumn(SplitViewDivider, 0);
+                Grid.SetRow(SplitViewDivider, 1);
+                SplitViewDivider.Height = 4;
+                SplitViewDivider.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch;
+                SplitViewDivider.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center;
+                Grid.SetColumn(SecondaryViewportGrid, 0);
+                Grid.SetRow(SecondaryViewportGrid, 2);
+                SplitViewDivider.IsVisible = true;
+                SecondaryViewportGrid.IsVisible = true;
+
+                if (vm.SecondaryDocument != null)
+                {
+                    SecondaryCanvasControl.SetElements(vm.SecondaryDocument.Elements.ToList());
+                    SecondaryCanvasControl.SetLogicalCanvasSize(vm.SecondaryDocument.CanvasWidth, vm.SecondaryDocument.CanvasHeight);
+                    SecondaryCanvasControl.SetBackgroundColor(vm.SecondaryDocument.BackgroundColor);
+                    SecondaryCanvasControl.SetZoom(vm.SecondaryDocument.ZoomLevel);
+                }
+            }
+            else
+            {
+                ViewportContainerGrid.ColumnDefinitions = ColumnDefinitions.Parse("*");
+                ViewportContainerGrid.RowDefinitions = RowDefinitions.Parse("*");
+                Grid.SetColumn(PrimaryViewportGrid, 0);
+                Grid.SetRow(PrimaryViewportGrid, 0);
+                SplitViewDivider.IsVisible = false;
+                SecondaryViewportGrid.IsVisible = false;
+            }
+        }
+
+        vm.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(vm.SplitLayoutMode) || e.PropertyName == nameof(vm.SecondaryDocument))
+            {
+                UpdateSplitView();
+            }
+        };
+        UpdateSplitView();
 
         // Keep the floating quick-actions cluster anchored to the selection whenever anything
         // that could move its screen position happens (selection change, a live drag, pan, or
@@ -245,14 +326,35 @@ public partial class ImageEditorView : UserControl
                 CanvasControl.PasteboardColor = vm.CanvasPasteboardColor;
                 CanvasControl.InvalidateVisual();
             }
+            else if (args.PropertyName == nameof(ImageEditorViewModel.HasAnyLeftPanelDocked) ||
+                     args.PropertyName == nameof(ImageEditorViewModel.HasAnyRightPanelDocked) ||
+                     args.PropertyName == nameof(ImageEditorViewModel.HasAnyBottomPanelDocked) ||
+                     args.PropertyName == nameof(ImageEditorViewModel.LeftDockMode) ||
+                     args.PropertyName == nameof(ImageEditorViewModel.RightDockMode) ||
+                     args.PropertyName == nameof(ImageEditorViewModel.BottomDockMode) ||
+                     args.PropertyName == nameof(ImageEditorViewModel.IsLayersInLeftVisible) ||
+                     args.PropertyName == nameof(ImageEditorViewModel.IsPropertiesInLeftVisible) ||
+                     args.PropertyName == nameof(ImageEditorViewModel.IsColorInLeftVisible) ||
+                     args.PropertyName == nameof(ImageEditorViewModel.IsLayersInRightVisible) ||
+                     args.PropertyName == nameof(ImageEditorViewModel.IsPropertiesInRightVisible) ||
+                     args.PropertyName == nameof(ImageEditorViewModel.IsColorInRightVisible) ||
+                     args.PropertyName == nameof(ImageEditorViewModel.IsLayersInBottomVisible) ||
+                     args.PropertyName == nameof(ImageEditorViewModel.IsPropertiesInBottomVisible) ||
+                     args.PropertyName == nameof(ImageEditorViewModel.IsColorInBottomVisible))
+            {
+                UpdateWorkspaceDockColumns(vm);
+            }
             else if (_editingTextElement is { } editing &&
                      (args.PropertyName == nameof(ImageEditorViewModel.IsBold) ||
                       args.PropertyName == nameof(ImageEditorViewModel.IsItalic) ||
-                      args.PropertyName == nameof(ImageEditorViewModel.TextAlignmentField)))
+                      args.PropertyName == nameof(ImageEditorViewModel.TextAlignmentField) ||
+                      args.PropertyName == nameof(ImageEditorViewModel.PrimaryColor)))
             {
                 InlineTextEditBox.FontWeight = editing.FontWeight;
                 InlineTextEditBox.FontStyle = editing.FontStyle;
                 InlineTextEditBox.TextAlignment = editing.Alignment;
+                InlineTextEditBox.Foreground = new SolidColorBrush(vm.PrimaryColor);
+                editing.TextColor = vm.PrimaryColor;
             }
         };
         CanvasControl.ActiveToolMode = vm.ActiveToolMode;
@@ -271,6 +373,7 @@ public partial class ImageEditorView : UserControl
         CanvasControl.BrushColor = vm.PrimaryColor;
         CanvasControl.PendingRemoveStrokes = vm.PendingRemoveStrokes;
         CanvasControl.PasteboardColor = vm.CanvasPasteboardColor;
+        UpdateWorkspaceDockColumns(vm);
 
         // Initial canvas push
         CanvasControl.SetElements([.. vm.Elements]);
@@ -374,6 +477,7 @@ public partial class ImageEditorView : UserControl
         // Escape: dismiss any open modal dialogs, cancel Free Transform, cancel crop, deselect, or reset tool
         if (e.Key == Key.Escape)
         {
+            if (vm.IsDraggingPanel) { vm.CancelPanelDrag(); e.Handled = true; return; }
             if (vm.IsPrintDialogOpen) { vm.CancelPrintCommand.Execute(null); e.Handled = true; return; }
             if (vm.IsChannelOptionsDialogOpen) { vm.CancelChannelOptionsCommand.Execute(null); e.Handled = true; return; }
             if (vm.IsNewSpotChannelDialogOpen) { vm.CancelNewSpotChannelCommand.Execute(null); e.Handled = true; return; }
@@ -672,6 +776,14 @@ public partial class ImageEditorView : UserControl
         // Delete
         if (e.Key is Key.Delete or Key.Back && !ctrl && !alt && !shift)
         {
+            // Smart Filters: Delete removes the selected filter, not its smart object (#665cb581, #4751)
+            if (vm.SelectedSmartFilter != null && vm.SelectedElement != null && vm.SelectedElement.SmartFilters.Contains(vm.SelectedSmartFilter))
+            {
+                vm.DeleteSmartFilter(vm.SelectedSmartFilter);
+                e.Handled = true;
+                return;
+            }
+
             if ((vm.ActiveToolMode is "pen" or "pathselection") && CanvasControl.ActiveDocumentPath != null)
             {
                 CanvasControl.ActiveDocumentPath = null;
@@ -779,11 +891,24 @@ public partial class ImageEditorView : UserControl
 
     // ── Inline double-click text editing ────────────────────────────────────
     private Models.TextElement? _editingTextElement;
+    private string? _textEditReturnTool;
 
     private void BeginInlineTextEdit(Models.TextElement textEl)
     {
         _editingTextElement = textEl;
-        if (DataContext is ImageEditorViewModel beginVm) beginVm.IsInlineEditingText = true;
+        if (DataContext is ImageEditorViewModel beginVm)
+        {
+            beginVm.IsInlineEditingText = true;
+            if (beginVm.ActiveToolMode != "text")
+            {
+                _textEditReturnTool = beginVm.ActiveToolMode;
+                beginVm.SetToolCommand.Execute("text");
+            }
+            else
+            {
+                _textEditReturnTool = null;
+            }
+        }
 
         var screenRect = CanvasControl.CanvasToScreenRect(textEl.Bounds);
 
@@ -813,6 +938,13 @@ public partial class ImageEditorView : UserControl
             if (el != null && !cancel)
             {
                 vm.CommitTextEdit(el, InlineTextEditBox.Text ?? string.Empty);
+            }
+
+            // Restore previous tool when committing or canceling text edit (#cc996765, #5527, #5528)
+            if (_textEditReturnTool != null && vm.ActiveToolMode == "text")
+            {
+                vm.SetToolCommand.Execute(_textEditReturnTool);
+                _textEditReturnTool = null;
             }
         }
         CanvasControl.Focus();
@@ -875,6 +1007,245 @@ public partial class ImageEditorView : UserControl
         var canvasPt = CanvasControl.ScreenToCanvas(e.GetPosition(CanvasControl));
         vm.SetRulerOrigin(canvasPt.X, canvasPt.Y);
         e.Handled = true;
+    }
+
+    // ── Dynamic Workspace Docking & Resizing ────────────────────────────────
+    private double _savedLeftDockWidth = 280;
+    private double _savedRightDockWidth = 310;
+    private double _savedBottomShelfHeight = 220;
+
+    private void UpdateWorkspaceDockColumns(ImageEditorViewModel vm)
+    {
+        if (MasterWorkspaceGrid == null || CenterWorkAreaGrid == null) return;
+
+        // 1. Left Dock Sidebar Column (MasterWorkspaceGrid.ColumnDefinitions[1] and Splitter [2])
+        if (vm.HasAnyLeftPanelDocked)
+        {
+            var col = MasterWorkspaceGrid.ColumnDefinitions[1];
+            if (col.Width.IsAbsolute && col.Width.Value > 50)
+            {
+                _savedLeftDockWidth = col.Width.Value;
+            }
+            MasterWorkspaceGrid.ColumnDefinitions[1].Width = new GridLength(_savedLeftDockWidth > 180 ? _savedLeftDockWidth : 280, GridUnitType.Pixel);
+            MasterWorkspaceGrid.ColumnDefinitions[2].Width = GridLength.Auto;
+        }
+        else
+        {
+            var col = MasterWorkspaceGrid.ColumnDefinitions[1];
+            if (col.Width.IsAbsolute && col.Width.Value > 50)
+            {
+                _savedLeftDockWidth = col.Width.Value;
+            }
+            MasterWorkspaceGrid.ColumnDefinitions[1].Width = new GridLength(0, GridUnitType.Pixel);
+            MasterWorkspaceGrid.ColumnDefinitions[2].Width = new GridLength(0, GridUnitType.Pixel);
+        }
+
+        // 2. Right Dock Sidebar Column (MasterWorkspaceGrid.ColumnDefinitions[5] and Splitter [4])
+        if (vm.HasAnyRightPanelDocked)
+        {
+            var col = MasterWorkspaceGrid.ColumnDefinitions[5];
+            if (col.Width.IsAbsolute && col.Width.Value > 50)
+            {
+                _savedRightDockWidth = col.Width.Value;
+            }
+            MasterWorkspaceGrid.ColumnDefinitions[5].Width = new GridLength(_savedRightDockWidth > 180 ? _savedRightDockWidth : 310, GridUnitType.Pixel);
+            MasterWorkspaceGrid.ColumnDefinitions[4].Width = GridLength.Auto;
+        }
+        else
+        {
+            var col = MasterWorkspaceGrid.ColumnDefinitions[5];
+            if (col.Width.IsAbsolute && col.Width.Value > 50)
+            {
+                _savedRightDockWidth = col.Width.Value;
+            }
+            MasterWorkspaceGrid.ColumnDefinitions[5].Width = new GridLength(0, GridUnitType.Pixel);
+            MasterWorkspaceGrid.ColumnDefinitions[4].Width = new GridLength(0, GridUnitType.Pixel);
+        }
+
+        // 3. Bottom Shelf Row (CenterWorkAreaGrid.RowDefinitions[3] and Splitter [2])
+        if (vm.HasAnyBottomPanelDocked)
+        {
+            var row = CenterWorkAreaGrid.RowDefinitions[3];
+            if (row.Height.IsAbsolute && row.Height.Value > 50)
+            {
+                _savedBottomShelfHeight = row.Height.Value;
+            }
+            CenterWorkAreaGrid.RowDefinitions[3].Height = new GridLength(_savedBottomShelfHeight > 100 ? _savedBottomShelfHeight : 220, GridUnitType.Pixel);
+            CenterWorkAreaGrid.RowDefinitions[2].Height = GridLength.Auto;
+        }
+        else
+        {
+            var row = CenterWorkAreaGrid.RowDefinitions[3];
+            if (row.Height.IsAbsolute && row.Height.Value > 50)
+            {
+                _savedBottomShelfHeight = row.Height.Value;
+            }
+            CenterWorkAreaGrid.RowDefinitions[3].Height = new GridLength(0, GridUnitType.Pixel);
+            CenterWorkAreaGrid.RowDefinitions[2].Height = new GridLength(0, GridUnitType.Pixel);
+        }
+
+        // 4. Stacked Left Rows (Dynamic collapse to avoid empty gaps)
+        if (StackedLeftGrid != null && StackedLeftGrid.RowDefinitions.Count >= 5)
+        {
+            StackedLeftGrid.RowDefinitions[0].Height = vm.IsLayersInLeftVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+            StackedLeftGrid.RowDefinitions[1].Height = vm.IsColorSplitterInLeftVisible ? GridLength.Auto : new GridLength(0);
+            StackedLeftGrid.RowDefinitions[2].Height = vm.IsPropertiesInLeftVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+            StackedLeftGrid.RowDefinitions[3].Height = vm.IsPropertiesSplitterInLeftVisible ? GridLength.Auto : new GridLength(0);
+            StackedLeftGrid.RowDefinitions[4].Height = vm.IsColorInLeftVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+        }
+
+        // 5. Stacked Right Rows (Dynamic collapse to avoid empty gaps)
+        if (StackedRightGrid != null && StackedRightGrid.RowDefinitions.Count >= 5)
+        {
+            StackedRightGrid.RowDefinitions[0].Height = vm.IsColorInRightVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+            StackedRightGrid.RowDefinitions[1].Height = vm.IsColorSplitterInRightVisible ? GridLength.Auto : new GridLength(0);
+            StackedRightGrid.RowDefinitions[2].Height = vm.IsPropertiesInRightVisible ? new GridLength(1.2, GridUnitType.Star) : new GridLength(0);
+            StackedRightGrid.RowDefinitions[3].Height = vm.IsPropertiesSplitterInRightVisible ? GridLength.Auto : new GridLength(0);
+            StackedRightGrid.RowDefinitions[4].Height = vm.IsLayersInRightVisible ? new GridLength(1.6, GridUnitType.Star) : new GridLength(0);
+        }
+
+        // 6. Split Bottom Shelf Columns
+        if (BottomShelfSplitGrid != null && BottomShelfSplitGrid.ColumnDefinitions.Count >= 5)
+        {
+            BottomShelfSplitGrid.ColumnDefinitions[0].Width = vm.IsLayersInBottomVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+            BottomShelfSplitGrid.ColumnDefinitions[1].Width = (vm.IsLayersInBottomVisible && (vm.IsPropertiesInBottomVisible || vm.IsColorInBottomVisible)) ? GridLength.Auto : new GridLength(0);
+            BottomShelfSplitGrid.ColumnDefinitions[2].Width = vm.IsPropertiesInBottomVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+            BottomShelfSplitGrid.ColumnDefinitions[3].Width = (vm.IsPropertiesInBottomVisible && vm.IsColorInBottomVisible) ? GridLength.Auto : new GridLength(0);
+            BottomShelfSplitGrid.ColumnDefinitions[4].Width = vm.IsColorInBottomVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+        }
+    }
+
+    // ── Interactive Panel Drag-and-Drop Handlers ────────────────────────────
+    private Point _panelDragStartPos;
+    private bool _isPotentialPanelDrag;
+    private string _draggedPanelName = "";
+
+    public void OnPanelTabPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (DataContext is not ImageEditorViewModel vm) return;
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            _isPotentialPanelDrag = true;
+            _panelDragStartPos = e.GetPosition(this);
+            if (sender is Button btn && btn.Content is string content)
+            {
+                _draggedPanelName = content;
+            }
+            else if (sender is Control c && c.Tag is string tag)
+            {
+                _draggedPanelName = tag;
+            }
+        }
+    }
+
+    public void OnPanelTabPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_isPotentialPanelDrag || DataContext is not ImageEditorViewModel vm) return;
+        var curPos = e.GetPosition(this);
+        var diff = curPos - _panelDragStartPos;
+        if (Math.Abs(diff.X) > 6 || Math.Abs(diff.Y) > 6)
+        {
+            _isPotentialPanelDrag = false;
+            if (!string.IsNullOrEmpty(_draggedPanelName))
+            {
+                vm.StartPanelDrag(_draggedPanelName, curPos.X, curPos.Y);
+            }
+        }
+    }
+
+    public void OnWorkspacePointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (DataContext is not ImageEditorViewModel vm || !vm.IsDraggingPanel) return;
+        var pt = e.GetPosition(this);
+        vm.DragPointerX = pt.X;
+        vm.DragPointerY = pt.Y;
+    }
+
+    public void OnWorkspacePointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        _isPotentialPanelDrag = false;
+        if (DataContext is not ImageEditorViewModel vm) return;
+        if (vm.IsDraggingPanel)
+        {
+            vm.CompletePanelDrag();
+            e.Handled = true;
+        }
+    }
+
+    public void OnDropLeftPointerEntered(object? sender, PointerEventArgs e)
+    {
+        if (DataContext is ImageEditorViewModel vm && vm.IsDraggingPanel)
+        {
+            var pt = e.GetPosition(this);
+            vm.UpdatePanelDrag(DockZone.Left, pt.X, pt.Y, $"Dock '{vm.DraggedPanelName}' to Left Sidebar");
+        }
+    }
+
+    public void OnDropLeftPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (DataContext is ImageEditorViewModel vm && vm.IsDraggingPanel)
+        {
+            vm.HoveredDockZone = DockZone.Left;
+            vm.CompletePanelDrag();
+            e.Handled = true;
+        }
+    }
+
+    public void OnDropFloatPointerEntered(object? sender, PointerEventArgs e)
+    {
+        if (DataContext is ImageEditorViewModel vm && vm.IsDraggingPanel)
+        {
+            var pt = e.GetPosition(this);
+            vm.UpdatePanelDrag(DockZone.Floating, pt.X, pt.Y, $"Float '{vm.DraggedPanelName}' in Separate Window");
+        }
+    }
+
+    public void OnDropFloatPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (DataContext is ImageEditorViewModel vm && vm.IsDraggingPanel)
+        {
+            vm.HoveredDockZone = DockZone.Floating;
+            vm.CompletePanelDrag();
+            e.Handled = true;
+        }
+    }
+
+    public void OnDropBottomPointerEntered(object? sender, PointerEventArgs e)
+    {
+        if (DataContext is ImageEditorViewModel vm && vm.IsDraggingPanel)
+        {
+            var pt = e.GetPosition(this);
+            vm.UpdatePanelDrag(DockZone.Bottom, pt.X, pt.Y, $"Dock '{vm.DraggedPanelName}' to Bottom Shelf");
+        }
+    }
+
+    public void OnDropBottomPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (DataContext is ImageEditorViewModel vm && vm.IsDraggingPanel)
+        {
+            vm.HoveredDockZone = DockZone.Bottom;
+            vm.CompletePanelDrag();
+            e.Handled = true;
+        }
+    }
+
+    public void OnDropRightPointerEntered(object? sender, PointerEventArgs e)
+    {
+        if (DataContext is ImageEditorViewModel vm && vm.IsDraggingPanel)
+        {
+            var pt = e.GetPosition(this);
+            vm.UpdatePanelDrag(DockZone.Right, pt.X, pt.Y, $"Dock '{vm.DraggedPanelName}' to Right Sidebar");
+        }
+    }
+
+    public void OnDropRightPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (DataContext is ImageEditorViewModel vm && vm.IsDraggingPanel)
+        {
+            vm.HoveredDockZone = DockZone.Right;
+            vm.CompletePanelDrag();
+            e.Handled = true;
+        }
     }
 
     // ── Clean teardown ─────────────────────────────────────────────────────

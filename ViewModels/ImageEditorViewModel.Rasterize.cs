@@ -168,6 +168,20 @@ public partial class ImageEditorViewModel
         RefreshCanvas();
     }
 
+
+    [ObservableProperty]
+    private SmartFilter? _selectedSmartFilter;
+
+    [RelayCommand]
+    public void SelectSmartFilter(SmartFilter? filter)
+    {
+        if (SelectedElement != null)
+        {
+            foreach (var sf in SelectedElement.SmartFilters) sf.IsSelected = (sf == filter);
+        }
+        SelectedSmartFilter = filter;
+    }
+
     [RelayCommand]
     public void ToggleSmartFilterVisibility(SmartFilter? filter)
     {
@@ -177,10 +191,61 @@ public partial class ImageEditorViewModel
     }
 
     [RelayCommand]
+    public void MoveSmartFilterUp(SmartFilter? filter)
+    {
+        if (filter == null || SelectedElement == null) return;
+        var list = SelectedElement.SmartFilters;
+        int idx = list.IndexOf(filter);
+        if (idx > 0)
+        {
+            list.Move(idx, idx - 1);
+            RefreshCanvas();
+            StatusMessage = $"Moved '{filter.Name}' up.";
+        }
+    }
+
+    [RelayCommand]
+    public void MoveSmartFilterDown(SmartFilter? filter)
+    {
+        if (filter == null || SelectedElement == null) return;
+        var list = SelectedElement.SmartFilters;
+        int idx = list.IndexOf(filter);
+        if (idx >= 0 && idx < list.Count - 1)
+        {
+            list.Move(idx, idx + 1);
+            RefreshCanvas();
+            StatusMessage = $"Moved '{filter.Name}' down.";
+        }
+    }
+
+    [RelayCommand]
+    public void OpenSmartFilterEditor(SmartFilter? filter)
+    {
+        if (filter == null) return;
+        SelectSmartFilter(filter);
+
+        if (filter.FilterType.Equals("BrightnessContrast", StringComparison.OrdinalIgnoreCase) ||
+            filter.FilterType.Equals("Levels", StringComparison.OrdinalIgnoreCase) ||
+            filter.FilterType.Equals("Curves", StringComparison.OrdinalIgnoreCase) ||
+            filter.FilterType.Equals("HueSaturation", StringComparison.OrdinalIgnoreCase))
+        {
+            OpenAdjustmentDialog(filter.FilterType);
+        }
+        else
+        {
+            OpenFilterDialog(filter.FilterType);
+        }
+        StatusMessage = $"Editing Smart Filter '{filter.Name}'.";
+    }
+
+    [RelayCommand]
     public void DeleteSmartFilter(SmartFilter? filter)
     {
         if (filter == null || SelectedElement == null) return;
         SelectedElement.SmartFilters.Remove(filter);
+        if (SelectedSmartFilter == filter) SelectedSmartFilter = null;
         RefreshCanvas();
+        StatusMessage = $"Removed Smart Filter '{filter.Name}'.";
     }
 }
+

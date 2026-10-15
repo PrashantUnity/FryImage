@@ -596,6 +596,12 @@
     <Style Selector="GridSplitter.ps-splitter">
         <Setter Property="Background" Value="{StaticResource PsBorderBrush}" />
         <Setter Property="Opacity" Value="0.8" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
+                <BrushTransition Property="Background" Duration="0:0:0.15" />
+            </Transitions>
+        </Setter>
     </Style>
     <Style Selector="GridSplitter.ps-splitter:pointerover">
         <Setter Property="Background" Value="{StaticResource PsAccentBrush}" />

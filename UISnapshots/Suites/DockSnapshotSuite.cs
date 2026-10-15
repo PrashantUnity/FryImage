@@ -67,5 +67,26 @@ public static class DockSnapshotSuite
         // Reset to Layers dock panel
         vm.SelectRightDockTabCommand.Execute("Layers");
         ctx.FlushUi();
+
+        // 9. Visual Audit: Unity 4-Split Multi-Zone Workspace (Left, Bottom, Right splits)
+        vm.ApplyUnityFourSplitWorkspaceCommand.Execute(null);
+        ctx.Capture("dock_unity_4split_workspace.png");
+
+        // 10. Visual Audit: Unity 2-by-3 Workspace (Layers Left, Inspector Right)
+        vm.ApplyUnityTwoByThreeWorkspaceCommand.Execute(null);
+        ctx.Capture("dock_unity_2by3_workspace.png");
+
+        // 11. Visual Audit: Tabbed Mode Dock
+        vm.ApplyUnityTabbedWorkspaceCommand.Execute(null);
+        ctx.Capture("dock_tabbed_mode.png");
+
+        // 12. Visual Audit: Interactive Drag & Drop Overlay with Drop Zones & Detach Badge
+        vm.StartPanelDrag("Layers", 500, 350);
+        ctx.Capture("dock_drag_drop_overlay.png");
+        vm.CancelPanelDrag();
+
+        // 13. Restore Default Studio Workspace
+        vm.ApplyDefaultWorkspaceCommand.Execute(null);
+        ctx.FlushUi();
     }
 }

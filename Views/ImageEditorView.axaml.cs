@@ -1143,7 +1143,7 @@ public partial class ImageEditorView : UserControl
         if (!_isPotentialPanelDrag || DataContext is not ImageEditorViewModel vm) return;
         var curPos = e.GetPosition(this);
         var diff = curPos - _panelDragStartPos;
-        if (Math.Abs(diff.X) > 6 || Math.Abs(diff.Y) > 6)
+        if (Math.Abs(diff.X) > 16 || Math.Abs(diff.Y) > 16)
         {
             _isPotentialPanelDrag = false;
             if (!string.IsNullOrEmpty(_draggedPanelName))
@@ -1151,6 +1151,11 @@ public partial class ImageEditorView : UserControl
                 vm.StartPanelDrag(_draggedPanelName, curPos.X, curPos.Y);
             }
         }
+    }
+
+    public void OnPanelTabPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        _isPotentialPanelDrag = false;
     }
 
     public void OnWorkspacePointerMoved(object? sender, PointerEventArgs e)
@@ -1167,7 +1172,19 @@ public partial class ImageEditorView : UserControl
         if (DataContext is not ImageEditorViewModel vm) return;
         if (vm.IsDraggingPanel)
         {
-            vm.CompletePanelDrag();
+            // Releasing outside a designated dock zone safely cancels the drag.
+            // Never tear off or float automatically!
+            vm.CancelPanelDrag();
+            e.Handled = true;
+        }
+    }
+
+    public void OnDropCenterCancelPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        _isPotentialPanelDrag = false;
+        if (DataContext is ImageEditorViewModel vm && vm.IsDraggingPanel)
+        {
+            vm.CancelPanelDrag();
             e.Handled = true;
         }
     }

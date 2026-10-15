@@ -16,9 +16,7 @@
     <Border BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1">
         <Grid RowDefinitions="26,*">
             <!-- Tab Strip -->
-            <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" Padding="4,0"
-                    PointerPressed="OnPanelHeaderPointerPressed"
-                    PointerMoved="OnPanelHeaderPointerMoved">
+            <Border Grid.Row="0" Background="{DynamicResource PsPanelHeaderBrush}" Padding="4,0">
                 <Grid ColumnDefinitions="*,Auto">
                     <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                         <StackPanel Orientation="Horizontal" Spacing="0">
@@ -40,6 +38,13 @@
                         </StackPanel>
                     </ScrollViewer>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
+                        <!-- Dedicated Panel Drag Grip Handle -->
+                        <Border Classes="ps-opt-btn" Width="20" Height="20" Cursor="SizeAll"
+                                ToolTip.Tip="Drag to reposition or dock Properties panel"
+                                PointerPressed="OnPanelGripPointerPressed"
+                                PointerMoved="OnPanelGripPointerMoved">
+                            <materialIcons:MaterialIcon Kind="DragVertical" Width="14" Height="14" Foreground="{DynamicResource PsTextDimBrush}" />
+                        </Border>
                         <!-- Dock Placement Menu (Unity Studio Style) -->
                         <Button Classes="ps-opt-btn" Width="20" Height="20" ToolTip.Tip="Dock Zone Placement">
                             <Button.Flyout>

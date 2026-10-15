@@ -72,19 +72,22 @@
                                         Classes.active="{Binding ActiveLeftDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Layers'}"
                                         Command="{Binding SelectLeftZoneTabCommand}" CommandParameter="Layers"
                                         PointerPressed="OnPanelTabPointerPressed"
-                                        PointerMoved="OnPanelTabPointerMoved" />
+                                        PointerMoved="OnPanelTabPointerMoved"
+                                        PointerReleased="OnPanelTabPointerReleased" />
                                 <Button Classes="ps-panel-tab" Content="Properties"
                                         IsVisible="{Binding PropertiesPlacement, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Left'}"
                                         Classes.active="{Binding ActiveLeftDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Properties'}"
                                         Command="{Binding SelectLeftZoneTabCommand}" CommandParameter="Properties"
                                         PointerPressed="OnPanelTabPointerPressed"
-                                        PointerMoved="OnPanelTabPointerMoved" />
+                                        PointerMoved="OnPanelTabPointerMoved"
+                                        PointerReleased="OnPanelTabPointerReleased" />
                                 <Button Classes="ps-panel-tab" Content="Color"
                                         IsVisible="{Binding ColorPlacement, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Left'}"
                                         Classes.active="{Binding ActiveLeftDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Color'}"
                                         Command="{Binding SelectLeftZoneTabCommand}" CommandParameter="Color"
                                         PointerPressed="OnPanelTabPointerPressed"
-                                        PointerMoved="OnPanelTabPointerMoved" />
+                                        PointerMoved="OnPanelTabPointerMoved"
+                                        PointerReleased="OnPanelTabPointerReleased" />
                             </StackPanel>
                             <Button Grid.Column="1" Classes="ps-opt-btn" Width="20" Height="20"
                                     Command="{Binding ToggleLeftDockModeCommand}"
@@ -107,10 +110,10 @@
                                 <RowDefinition Height="1*" />
                             </Grid.RowDefinitions>
                             <panels:LayersDockPanel Grid.Row="0" VerticalAlignment="Stretch" IsVisible="{Binding IsLayersInLeftVisible}" />
-                            <GridSplitter Grid.Row="1" Classes="ps-splitter" Height="4" HorizontalAlignment="Stretch" ResizeDirection="Rows"
+                            <GridSplitter Grid.Row="1" Classes="ps-splitter" Height="5" HorizontalAlignment="Stretch" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"
                                           IsVisible="{Binding IsColorSplitterInLeftVisible}" />
                             <panels:PropertiesDockPanel Grid.Row="2" VerticalAlignment="Stretch" IsVisible="{Binding IsPropertiesInLeftVisible}" />
-                            <GridSplitter Grid.Row="3" Classes="ps-splitter" Height="4" HorizontalAlignment="Stretch" ResizeDirection="Rows"
+                            <GridSplitter Grid.Row="3" Classes="ps-splitter" Height="5" HorizontalAlignment="Stretch" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"
                                           IsVisible="{Binding IsPropertiesSplitterInLeftVisible}" />
                             <panels:ColorDockPanel Grid.Row="4" VerticalAlignment="Stretch" IsVisible="{Binding IsColorInLeftVisible}" />
                         </Grid>
@@ -126,7 +129,7 @@
             </Border>
 
             <!-- Column 2: Left Vertical GridSplitter -->
-            <GridSplitter Grid.Column="2" Classes="ps-splitter" Width="4" VerticalAlignment="Stretch" ResizeDirection="Columns"
+            <GridSplitter Grid.Column="2" Classes="ps-splitter" Width="5" VerticalAlignment="Stretch" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"
                           IsVisible="{Binding HasAnyLeftPanelDocked}" />
 
             <!-- Column 3: Center Canvas Column (Tab Strip + Rulers & Viewport + Bottom Shelf Dock) -->
@@ -262,8 +265,10 @@
                         <!-- Split View Divider -->
                         <GridSplitter x:Name="SplitViewDivider"
                                       Classes="ps-splitter"
-                                      Width="4"
+                                      Width="5"
                                       VerticalAlignment="Stretch"
+                                      ResizeDirection="Columns"
+                                      ResizeBehavior="PreviousAndNext"
                                       IsVisible="False" />
 
                         <!-- Right/Secondary Viewport for Split View -->
@@ -303,7 +308,7 @@
             </Grid>
 
                 <!-- Row 2: Bottom Shelf GridSplitter -->
-                <GridSplitter Grid.Row="2" Classes="ps-splitter" Height="4" HorizontalAlignment="Stretch" ResizeDirection="Rows"
+                <GridSplitter Grid.Row="2" Classes="ps-splitter" Height="5" HorizontalAlignment="Stretch" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"
                               IsVisible="{Binding HasAnyBottomPanelDocked}" />
 
                 <!-- Row 3: Bottom Shelf Dock Zone (Unity-Style Bottom Shelf) -->
@@ -330,19 +335,22 @@
                                             Classes.active="{Binding ActiveBottomDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Layers'}"
                                             Command="{Binding SelectBottomZoneTabCommand}" CommandParameter="Layers"
                                             PointerPressed="OnPanelTabPointerPressed"
-                                            PointerMoved="OnPanelTabPointerMoved" />
+                                            PointerMoved="OnPanelTabPointerMoved"
+                                            PointerReleased="OnPanelTabPointerReleased" />
                                     <Button Classes="ps-panel-tab" Content="Properties"
                                             IsVisible="{Binding PropertiesPlacement, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Bottom'}"
                                             Classes.active="{Binding ActiveBottomDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Properties'}"
                                             Command="{Binding SelectBottomZoneTabCommand}" CommandParameter="Properties"
                                             PointerPressed="OnPanelTabPointerPressed"
-                                            PointerMoved="OnPanelTabPointerMoved" />
+                                            PointerMoved="OnPanelTabPointerMoved"
+                                            PointerReleased="OnPanelTabPointerReleased" />
                                     <Button Classes="ps-panel-tab" Content="Color"
                                             IsVisible="{Binding ColorPlacement, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Bottom'}"
                                             Classes.active="{Binding ActiveBottomDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Color'}"
                                             Command="{Binding SelectBottomZoneTabCommand}" CommandParameter="Color"
                                             PointerPressed="OnPanelTabPointerPressed"
-                                            PointerMoved="OnPanelTabPointerMoved" />
+                                            PointerMoved="OnPanelTabPointerMoved"
+                                            PointerReleased="OnPanelTabPointerReleased" />
                                 </StackPanel>
                                 <Button Grid.Column="1" Classes="ps-opt-btn" Width="20" Height="20"
                                         Command="{Binding ToggleBottomDockModeCommand}"
@@ -365,10 +373,10 @@
                                     <ColumnDefinition Width="1*" />
                                 </Grid.ColumnDefinitions>
                                 <panels:LayersDockPanel Grid.Column="0" VerticalAlignment="Stretch" IsVisible="{Binding IsLayersInBottomVisible}" />
-                                <GridSplitter Grid.Column="1" Classes="ps-splitter" Width="4" VerticalAlignment="Stretch" ResizeDirection="Columns"
+                                <GridSplitter Grid.Column="1" Classes="ps-splitter" Width="5" VerticalAlignment="Stretch" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"
                                               IsVisible="{Binding IsBottomShelfSplitterVisible}" />
                                 <panels:PropertiesDockPanel Grid.Column="2" VerticalAlignment="Stretch" IsVisible="{Binding IsPropertiesInBottomVisible}" />
-                                <GridSplitter Grid.Column="3" Classes="ps-splitter" Width="4" VerticalAlignment="Stretch" ResizeDirection="Columns"
+                                <GridSplitter Grid.Column="3" Classes="ps-splitter" Width="5" VerticalAlignment="Stretch" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"
                                               IsVisible="{Binding IsBottomShelfSplitterVisible}" />
                                 <panels:ColorDockPanel Grid.Column="4" VerticalAlignment="Stretch" IsVisible="{Binding IsColorInBottomVisible}" />
                             </Grid>
@@ -385,7 +393,7 @@
             </Grid>
 
             <!-- Column 4: Right Vertical GridSplitter -->
-            <GridSplitter Grid.Column="4" Classes="ps-splitter" Width="4" VerticalAlignment="Stretch" ResizeDirection="Columns"
+            <GridSplitter Grid.Column="4" Classes="ps-splitter" Width="5" VerticalAlignment="Stretch" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"
                           IsVisible="{Binding HasAnyRightPanelDocked}" />
 
             <!-- Column 5: Studio Right Dock Panels (Stacked / Tabbed Multi-Mode) -->
@@ -412,19 +420,22 @@
                                         Classes.active="{Binding ActiveRightDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Layers'}"
                                         Command="{Binding SelectRightZoneTabCommand}" CommandParameter="Layers"
                                         PointerPressed="OnPanelTabPointerPressed"
-                                        PointerMoved="OnPanelTabPointerMoved" />
+                                        PointerMoved="OnPanelTabPointerMoved"
+                                        PointerReleased="OnPanelTabPointerReleased" />
                                 <Button Classes="ps-panel-tab" Content="Properties"
                                         IsVisible="{Binding PropertiesPlacement, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Right'}"
                                         Classes.active="{Binding ActiveRightDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Properties'}"
                                         Command="{Binding SelectRightZoneTabCommand}" CommandParameter="Properties"
                                         PointerPressed="OnPanelTabPointerPressed"
-                                        PointerMoved="OnPanelTabPointerMoved" />
+                                        PointerMoved="OnPanelTabPointerMoved"
+                                        PointerReleased="OnPanelTabPointerReleased" />
                                 <Button Classes="ps-panel-tab" Content="Color"
                                         IsVisible="{Binding ColorPlacement, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Right'}"
                                         Classes.active="{Binding ActiveRightDockTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Color'}"
                                         Command="{Binding SelectRightZoneTabCommand}" CommandParameter="Color"
                                         PointerPressed="OnPanelTabPointerPressed"
-                                        PointerMoved="OnPanelTabPointerMoved" />
+                                        PointerMoved="OnPanelTabPointerMoved"
+                                        PointerReleased="OnPanelTabPointerReleased" />
                             </StackPanel>
                             <Button Grid.Column="1" Classes="ps-opt-btn" Width="20" Height="20"
                                     Command="{Binding ToggleRightDockModeCommand}"
@@ -448,12 +459,12 @@
                             </Grid.RowDefinitions>
                             <!-- Panel 1 (Top): Color / Swatches / Gradients / Patterns -->
                             <panels:ColorDockPanel Grid.Row="0" VerticalAlignment="Stretch" IsVisible="{Binding IsColorInRightVisible}" />
-                            <GridSplitter Grid.Row="1" Classes="ps-splitter" Height="4" HorizontalAlignment="Stretch" ResizeDirection="Rows"
+                            <GridSplitter Grid.Row="1" Classes="ps-splitter" Height="5" HorizontalAlignment="Stretch" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"
                                           IsVisible="{Binding IsColorSplitterInRightVisible}" />
 
                             <!-- Panel 2 (Middle): Properties / Adjustments / Histogram -->
                             <panels:PropertiesDockPanel Grid.Row="2" VerticalAlignment="Stretch" IsVisible="{Binding IsPropertiesInRightVisible}" />
-                            <GridSplitter Grid.Row="3" Classes="ps-splitter" Height="4" HorizontalAlignment="Stretch" ResizeDirection="Rows"
+                            <GridSplitter Grid.Row="3" Classes="ps-splitter" Height="5" HorizontalAlignment="Stretch" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"
                                           IsVisible="{Binding IsPropertiesSplitterInRightVisible}" />
 
                             <!-- Panel 3 (Bottom): Layers / Channels / Paths / History -->
@@ -484,62 +495,83 @@
                 <Grid ColumnDefinitions="260,*,280" RowDefinitions="*,180">
                     <!-- Left Dock Drop Target Indicator -->
                     <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="2"
-                            Margin="6"
-                            CornerRadius="6"
+                            Margin="8"
+                            CornerRadius="8"
                             BorderThickness="2"
-                            BorderBrush="{DynamicResource PsAccentBrush}"
-                            Background="#35378EF0"
+                            BorderBrush="#378EF0"
+                            Background="#EA181818"
                             PointerEntered="OnDropLeftPointerEntered"
                             PointerReleased="OnDropLeftPointerReleased">
                         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8">
-                            <materialIcons:MaterialIcon Kind="DockLeft" Width="36" Height="36" Foreground="{DynamicResource PsAccentBrush}" />
-                            <TextBlock Text="Dock to Left Sidebar" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource PsTextBrush}" />
+                            <materialIcons:MaterialIcon Kind="DockLeft" Width="36" Height="36" Foreground="#378EF0" />
+                            <TextBlock Text="Dock to Left Sidebar" FontWeight="Bold" FontSize="13" Foreground="#FFFFFF" />
                         </StackPanel>
                     </Border>
 
-                    <!-- Center Area: Float in Window -->
-                    <Border Grid.Column="1" Grid.Row="0"
-                            Margin="12"
-                            CornerRadius="8"
-                            BorderThickness="2"
-                            BorderBrush="#F59E0B"
-                            Background="#25F59E0B"
-                            PointerEntered="OnDropFloatPointerEntered"
-                            PointerReleased="OnDropFloatPointerReleased">
-                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8">
-                            <materialIcons:MaterialIcon Kind="OpenInNew" Width="40" Height="40" Foreground="#F59E0B" />
-                            <TextBlock Text="Drop Here to Float in Separate Window" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource PsTextBrush}" />
-                            <TextBlock Text="Or drag to edges (Left, Right, Bottom) to dock" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" />
-                        </StackPanel>
-                    </Border>
+                    <!-- Center Area: Drop on canvas safely cancels drag; explicit top badge to float -->
+                    <Grid Grid.Column="1" Grid.Row="0" Margin="12"
+                          Background="Transparent"
+                          PointerReleased="OnDropCenterCancelPointerReleased">
+                        <!-- Top Detach Badge (Only floats if deliberately dropped directly on this badge) -->
+                        <Border HorizontalAlignment="Center" VerticalAlignment="Top"
+                                Margin="0,12,0,0"
+                                Padding="18,8"
+                                CornerRadius="16"
+                                BorderThickness="2"
+                                BorderBrush="#F59E0B"
+                                Background="#F01E1E1E"
+                                Cursor="Hand"
+                                PointerEntered="OnDropFloatPointerEntered"
+                                PointerReleased="OnDropFloatPointerReleased">
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <materialIcons:MaterialIcon Kind="OpenInNew" Width="16" Height="16" Foreground="#F59E0B" />
+                                <TextBlock Text="Drop Here to Float in Separate Window" FontSize="12" FontWeight="Bold" Foreground="#F59E0B" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Center Cancel Hint (Releasing anywhere in canvas safely preserves layout) -->
+                        <Border HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Padding="16,10" CornerRadius="8"
+                                Background="#E0181818"
+                                BorderBrush="#40FFFFFF" BorderThickness="1"
+                                IsHitTestVisible="False">
+                            <StackPanel Spacing="4" HorizontalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                                    <materialIcons:MaterialIcon Kind="CursorMove" Width="16" Height="16" Foreground="#E0E0E0" />
+                                    <TextBlock Text="Release on canvas to cancel drag &amp; keep current layout" FontSize="12" FontWeight="SemiBold" Foreground="#FFFFFF" />
+                                </StackPanel>
+                                <TextBlock Text="Drag to Left, Right, or Bottom zones to dock" FontSize="11" Foreground="#A0A0A0" HorizontalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
 
                     <!-- Bottom Shelf Drop Target Indicator -->
                     <Border Grid.Column="1" Grid.Row="1"
-                            Margin="6"
-                            CornerRadius="6"
+                            Margin="8"
+                            CornerRadius="8"
                             BorderThickness="2"
-                            BorderBrush="{DynamicResource PsAccentBrush}"
-                            Background="#35378EF0"
+                            BorderBrush="#378EF0"
+                            Background="#EA181818"
                             PointerEntered="OnDropBottomPointerEntered"
                             PointerReleased="OnDropBottomPointerReleased">
                         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="6">
-                            <materialIcons:MaterialIcon Kind="DockBottom" Width="32" Height="32" Foreground="{DynamicResource PsAccentBrush}" />
-                            <TextBlock Text="Dock to Bottom Shelf" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource PsTextBrush}" />
+                            <materialIcons:MaterialIcon Kind="DockBottom" Width="32" Height="32" Foreground="#378EF0" />
+                            <TextBlock Text="Dock to Bottom Shelf" FontWeight="Bold" FontSize="13" Foreground="#FFFFFF" />
                         </StackPanel>
                     </Border>
 
                     <!-- Right Dock Drop Target Indicator -->
                     <Border Grid.Column="2" Grid.Row="0" Grid.RowSpan="2"
-                            Margin="6"
-                            CornerRadius="6"
+                            Margin="8"
+                            CornerRadius="8"
                             BorderThickness="2"
-                            BorderBrush="{DynamicResource PsAccentBrush}"
-                            Background="#35378EF0"
+                            BorderBrush="#378EF0"
+                            Background="#EA181818"
                             PointerEntered="OnDropRightPointerEntered"
                             PointerReleased="OnDropRightPointerReleased">
                         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8">
-                            <materialIcons:MaterialIcon Kind="DockRight" Width="36" Height="36" Foreground="{DynamicResource PsAccentBrush}" />
-                            <TextBlock Text="Dock to Right Sidebar" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource PsTextBrush}" />
+                            <materialIcons:MaterialIcon Kind="DockRight" Width="36" Height="36" Foreground="#378EF0" />
+                            <TextBlock Text="Dock to Right Sidebar" FontWeight="Bold" FontSize="13" Foreground="#FFFFFF" />
                         </StackPanel>
                     </Border>
                 </Grid>

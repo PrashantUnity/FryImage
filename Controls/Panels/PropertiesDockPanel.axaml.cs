@@ -12,27 +12,31 @@ public partial class PropertiesDockPanel : UserControl
         InitializeComponent();
     }
 
-    private Point _headerDragStart;
-    private bool _isPotentialHeaderDrag;
+    private Point _gripDragStart;
+    private bool _isPotentialGripDrag;
 
-    public void OnPanelHeaderPointerPressed(object? sender, PointerPressedEventArgs e)
+    public void OnPanelGripPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
         {
-            _isPotentialHeaderDrag = true;
-            _headerDragStart = e.GetPosition(this);
+            _isPotentialGripDrag = true;
+            _gripDragStart = e.GetPosition(this);
         }
     }
 
-    public void OnPanelHeaderPointerMoved(object? sender, PointerEventArgs e)
+    public void OnPanelGripPointerMoved(object? sender, PointerEventArgs e)
     {
-        if (!_isPotentialHeaderDrag || DataContext is not ImageEditorViewModel vm) return;
+        if (!_isPotentialGripDrag || DataContext is not ImageEditorViewModel vm) return;
         var curPos = e.GetPosition(this);
-        var diff = curPos - _headerDragStart;
-        if (Math.Abs(diff.X) > 6 || Math.Abs(diff.Y) > 6)
+        var diff = curPos - _gripDragStart;
+        if (Math.Abs(diff.X) > 14 || Math.Abs(diff.Y) > 14)
         {
-            _isPotentialHeaderDrag = false;
+            _isPotentialGripDrag = false;
             vm.StartPanelDrag("Properties", curPos.X, curPos.Y);
         }
     }
+
+    // Retained for backward-compatibility with existing unit test signatures
+    public void OnPanelHeaderPointerPressed(object? sender, PointerPressedEventArgs e) { }
+    public void OnPanelHeaderPointerMoved(object? sender, PointerEventArgs e) { }
 }

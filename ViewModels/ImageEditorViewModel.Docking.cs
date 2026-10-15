@@ -369,10 +369,17 @@ public partial class ImageEditorViewModel
     {
         IsDraggingPanel = true;
         DraggedPanelName = panelName;
-        HoveredDockZone = DockZone.Right;
+        // Default hovered dock zone to current placement to guarantee safe restoration if released without target
+        HoveredDockZone = panelName switch
+        {
+            "Layers" => LayersPlacement,
+            "Properties" => PropertiesPlacement,
+            "Color" or "Color & Swatches" => ColorPlacement,
+            _ => DockZone.Right
+        };
         DragPointerX = x;
         DragPointerY = y;
-        DragTargetHint = $"Dragging '{panelName}' - Drop in Left, Right, Bottom, or Canvas to Float";
+        DragTargetHint = $"Dragging '{panelName}' - Drop in Left, Right, or Bottom dock zones (or top badge to float)";
         RefreshDockZones();
     }
 
@@ -401,6 +408,7 @@ public partial class ImageEditorViewModel
         IsDraggingPanel = false;
         DraggedPanelName = "";
         RefreshDockZones();
+        StatusMessage = "Dock drag cancelled; layout preserved.";
     }
 
     // ── Workspace Presets (Unity & Studio Styles) ───────────────────────────

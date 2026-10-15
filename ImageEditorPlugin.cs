@@ -60,6 +60,12 @@ public class ImageEditorPlugin : IFryPlugin
             if (ctx.TryGetService<IShellService>(out var shell)) shell.NavigateTo("com.fryworld.imageeditor");
         }
 
+        if (ctx.TryGetService<FryWorld.Sdk.Theming.IThemeManager>(out var themeManager))
+        {
+            var tokenReg = themeManager.RegisterTokenContributor(new FryWorld.Sdk.Theming.Contributors.PhotoStudioTokenContributor());
+            ctx.RegisterDisposable(tokenReg);
+        }
+
         // 0. Register Full-Viewport Workspace Studio Page in Left Navigation Rail
         ctx.RegisterNavigationItem(new NavigationItemDescriptor
         {

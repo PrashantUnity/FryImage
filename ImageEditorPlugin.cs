@@ -21,7 +21,7 @@ public class ImageEditorPlugin : IFryPlugin
 {
     public string Id => "com.fryworld.imageeditor";
     public string Name => "Image Editor";
-    public Version Version => new(3, 1, 0);
+    public Version Version => new(3, 2, 1);
     public bool AutoOpenOverlay => false;
     public IReadOnlyList<Type> RequiredServices => Array.Empty<Type>();
 

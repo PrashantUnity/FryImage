@@ -9,7 +9,7 @@
     <AssemblyName>ImageEditorPlugin</AssemblyName>
     <PackageId>FryPdf.Plugin.ImageEditor</PackageId>
     <RootNamespace>PdfEditorApp.Plugins.ImageEditor</RootNamespace>
-    <Version>3.2.0</Version>
+    <Version>3.2.1</Version>
     <!-- FryWorld.Sdk packages the plugin on Release builds; keep the file name the store catalog links to. -->
     <FryPluginPackageName>ImageEditor</FryPluginPackageName>
     <Company>FryPDF Team</Company>

@@ -30,29 +30,15 @@
                                VerticalAlignment="Center" />
                 </StackPanel>
 
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                    <!-- Dock to Left -->
-                    <Button Classes="ps-opt-btn"
-                            Width="20" Height="20" Padding="0"
-                            Click="OnDockLeftClicked"
-                            ToolTip.Tip="Dock to Left Sidebar">
-                        <materialIcons:MaterialIcon Kind="DockLeft" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
-                    </Button>
-                    <!-- Dock to Bottom -->
-                    <Button Classes="ps-opt-btn"
-                            Width="20" Height="20" Padding="0"
-                            Click="OnDockBottomClicked"
-                            ToolTip.Tip="Dock to Bottom Shelf">
-                        <materialIcons:MaterialIcon Kind="DockBottom" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
-                    </Button>
-                    <!-- Dock to Right (Default) -->
-                    <Button Classes="ps-opt-btn"
-                            Width="20" Height="20" Padding="0"
-                            Click="OnDockRightClicked"
-                            ToolTip.Tip="Dock to Right Sidebar">
-                        <materialIcons:MaterialIcon Kind="DockRight" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
-                    </Button>
-                </StackPanel>
+                <!-- Dock back into the workspace (where it was floated from) -->
+                <Button Grid.Column="1"
+                        Classes="ps-opt-btn"
+                        Width="20" Height="20" Padding="0"
+                        VerticalAlignment="Center"
+                        Click="OnDockBackClicked"
+                        ToolTip.Tip="Dock back into the workspace">
+                    <materialIcons:MaterialIcon Kind="DockWindow" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
+                </Button>
             </Grid>
         </Border>
 

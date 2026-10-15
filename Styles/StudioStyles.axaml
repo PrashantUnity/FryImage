@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mi="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia">
 
     <!-- ============================================================
          FRYIMAGE STUDIO DESIGN SYSTEM TOKENS
@@ -606,6 +607,144 @@
     <Style Selector="GridSplitter.ps-splitter:pointerover">
         <Setter Property="Background" Value="{StaticResource PsAccentBrush}" />
         <Setter Property="Opacity" Value="1.0" />
+    </Style>
+
+    <!-- ============================================================
+         DOCK WORKSPACE: draggable tab groups, splits and drop preview
+         ============================================================ -->
+    <Style Selector="Border.ps-dock-group">
+        <Setter Property="Background" Value="{DynamicResource PsPanelBrush}" />
+    </Style>
+    <Style Selector="Border.ps-dock-host">
+        <Setter Property="Background" Value="{DynamicResource PsCanvasBrush}" />
+    </Style>
+    <Style Selector="Border.ps-dock-tabstrip">
+        <Setter Property="Background" Value="{DynamicResource PsPanelHeaderBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource PsBorderBrush}" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="Height" Value="28" />
+    </Style>
+    <Style Selector="Border.ps-dock-tab">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{DynamicResource PsBorderBrush}" />
+        <Setter Property="BorderThickness" Value="0,0,1,0" />
+        <Setter Property="Padding" Value="9,0,4,0" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Border.ps-dock-tab:pointerover">
+        <Setter Property="Background" Value="{DynamicResource PsHoverBrush}" />
+    </Style>
+    <Style Selector="Border.ps-dock-tab.active">
+        <Setter Property="Background" Value="{DynamicResource PsPanelBrush}" />
+    </Style>
+    <Style Selector="Border.ps-dock-tab TextBlock.ps-dock-tab-title">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Foreground" Value="{DynamicResource PsTextDimBrush}" />
+    </Style>
+    <Style Selector="Border.ps-dock-tab.active TextBlock.ps-dock-tab-title">
+        <Setter Property="Foreground" Value="{DynamicResource PsTextBrush}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Border.ps-dock-tab mi|MaterialIcon.ps-dock-tab-icon">
+        <Setter Property="Foreground" Value="{DynamicResource PsTextFaintBrush}" />
+    </Style>
+    <Style Selector="Border.ps-dock-tab.active mi|MaterialIcon.ps-dock-tab-icon">
+        <Setter Property="Foreground" Value="{DynamicResource PsAccentBrush}" />
+    </Style>
+    <Style Selector="Border.ps-dock-tab-accent">
+        <Setter Property="Height" Value="2" />
+        <Setter Property="Margin" Value="-9,0,-4,0" />
+        <Setter Property="Background" Value="{DynamicResource PsAccentBrush}" />
+        <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Border.ps-dock-tab.active Border.ps-dock-tab-accent">
+        <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="Button.ps-dock-tab-close">
+        <Setter Property="Width" Value="16" />
+        <Setter Property="Height" Value="16" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="CornerRadius" Value="2" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource PsTextDimBrush}" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Opacity" Value="0" />
+    </Style>
+    <Style Selector="Border.ps-dock-tab:pointerover Button.ps-dock-tab-close, Border.ps-dock-tab.active Button.ps-dock-tab-close">
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Button.ps-dock-tab-close:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource PsHoverBrush}" />
+        <Setter Property="Foreground" Value="#EC5B62" />
+    </Style>
+    <Style Selector="Button.ps-dock-strip-btn">
+        <Setter Property="Width" Value="22" />
+        <Setter Property="Height" Value="22" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="CornerRadius" Value="2" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource PsTextDimBrush}" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.ps-dock-strip-btn:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource PsHoverBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource PsTextBrush}" />
+    </Style>
+    <Style Selector="TextBlock.ps-dock-empty">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Foreground" Value="{DynamicResource PsTextFaintBrush}" />
+    </Style>
+    <Style Selector="Border.ps-dock-drop">
+        <Setter Property="Background" Value="#33378EF0" />
+        <Setter Property="BorderBrush" Value="{DynamicResource PsAccentBrush}" />
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="CornerRadius" Value="3" />
+    </Style>
+    <Style Selector="Border.ps-dock-caret">
+        <Setter Property="Background" Value="{DynamicResource PsAccentBrush}" />
+        <Setter Property="CornerRadius" Value="1" />
+    </Style>
+    <Style Selector="Border.ps-dock-float-badge">
+        <Setter Property="Background" Value="#F01E1E1E" />
+        <Setter Property="BorderBrush" Value="{DynamicResource PsWarningBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="15" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource PsWarningBrush}" />
+        <Setter Property="TextElement.FontSize" Value="11" />
+        <Setter Property="TextElement.FontWeight" Value="SemiBold" />
+        <Setter Property="BoxShadow" Value="0 2 10 #60000000" />
+    </Style>
+    <Style Selector="Border.ps-dock-float-badge.hot">
+        <Setter Property="Background" Value="#F0F59E0B" />
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="TextElement.Foreground" Value="#1E1E1E" />
+    </Style>
+    <Style Selector="Border.ps-dock-ghost">
+        <Setter Property="Background" Value="{DynamicResource PsPanelHeaderBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource PsAccentBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="3" />
+        <Setter Property="Padding" Value="8,4" />
+        <Setter Property="Opacity" Value="0.92" />
+        <Setter Property="BoxShadow" Value="0 3 12 #70000000" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource PsTextBrush}" />
+    </Style>
+    <Style Selector="TextBlock.ps-dock-ghost-title">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.ps-dock-restore">
+        <Setter Property="Background" Value="#E01E1E1E" />
+        <Setter Property="Foreground" Value="{DynamicResource PsTextBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource PsAccentBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="14" />
+        <Setter Property="Padding" Value="12,5" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Cursor" Value="Hand" />
     </Style>
 
 </Styles>

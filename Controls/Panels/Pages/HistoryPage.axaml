@@ -1,0 +1,132 @@
+ <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:models="using:PdfEditorApp.Plugins.ImageEditor.Models"
+             xmlns:undo="using:PdfEditorApp.Plugins.ImageEditor.Models.Undo"
+             xmlns:codecs="using:PdfEditorApp.Plugins.ImageEditor.Core.Codecs"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Panels.Pages.HistoryPage"
+             x:DataType="local:ImageEditorViewModel"
+             Background="{DynamicResource PsPanelBrush}">
+
+    <UserControl.Resources>
+        <local:ElementTypeToIconConverter x:Key="ElementTypeToIconConverter" />
+        <local:IsVisibleToIconConverter x:Key="IsVisibleToIconConverter" />
+        <local:IsLockedToIconConverter x:Key="IsLockedToIconConverter" />
+        <local:StringEqualsConverter x:Key="StringEqualsConverter" />
+    </UserControl.Resources>
+
+    <Grid RowDefinitions="Auto,3,*,26">
+        <!-- Section 1: Snapshots (Studio Parity Milestone States) -->
+        <Border Grid.Row="0" Background="{DynamicResource PsPanelBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="4,4">
+            <StackPanel Spacing="3">
+                <Grid ColumnDefinitions="Auto,*,Auto" Margin="4,2">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                        <materialIcons:MaterialIcon Kind="CameraOutline" Width="12" Height="12" Foreground="{DynamicResource PsAccentBrush}" />
+                        <TextBlock Text="SNAPSHOTS" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource PsTextDimBrush}" LetterSpacing="0.6" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <Button Grid.Column="2" Classes="ps-opt-btn" Height="18" Padding="4,1"
+                            Command="{Binding CreateNewSnapshotCommand}" ToolTip.Tip="Take Snapshot (Camera)">
+                        <StackPanel Orientation="Horizontal" Spacing="3">
+                            <materialIcons:MaterialIcon Kind="CameraPlusOutline" Width="11" Height="11" Foreground="{DynamicResource PsAccentBrush}" />
+                            <TextBlock Text="New" FontSize="9" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
+                <ListBox Classes="ps-layers"
+                         ItemsSource="{Binding Snapshots}"
+                         SelectedItem="{Binding SelectedSnapshot, Mode=TwoWay}"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         MaxHeight="120">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="undo:HistorySnapshotViewModel">
+                            <Button Classes="ps-opt-btn" HorizontalAlignment="Stretch" Padding="6,3"
+                                    Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).RestoreSnapshotCommand}"
+                                    CommandParameter="{Binding}">
+                                <Button.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Restore Snapshot"
+                                                  Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).RestoreSnapshotCommand}"
+                                                  CommandParameter="{Binding}" />
+                                        <MenuItem Header="Rename Snapshot..."
+                                                  Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).RenameSnapshotCommand}"
+                                                  CommandParameter="{Binding}" />
+                                        <Separator />
+                                        <MenuItem Header="Delete Snapshot"
+                                                  Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).DeleteSnapshotCommand}"
+                                                  CommandParameter="{Binding}" />
+                                    </ContextMenu>
+                                </Button.ContextMenu>
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <Border Grid.Column="0" Width="20" Height="16" Background="#222222" BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1" CornerRadius="2" Margin="0,0,6,0">
+                                        <materialIcons:MaterialIcon Kind="Camera" Width="10" Height="10" Foreground="{DynamicResource PsAccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding FormattedTime}" FontSize="8" Foreground="{DynamicResource PsTextFaintBrush}" />
+                                    </StackPanel>
+                                    <Border Grid.Column="2" Width="6" Height="6" CornerRadius="3"
+                                            Background="{DynamicResource PsAccentBrush}"
+                                            IsVisible="{Binding IsActive}" VerticalAlignment="Center" />
+                                </Grid>
+                            </Button>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </StackPanel>
+        </Border>
+
+        <GridSplitter Grid.Row="1" Classes="ps-splitter" Height="3" HorizontalAlignment="Stretch" />
+
+        <!-- Section 2: Sequential Undo States History List -->
+        <ListBox Grid.Row="2" Classes="ps-layers"
+                 ItemsSource="{Binding HistoryItems}"
+                 Background="Transparent"
+                 BorderThickness="0">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="undo:HistoryItemViewModel">
+                    <Button Classes="ps-opt-btn" HorizontalAlignment="Stretch" Padding="6,4"
+                            Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).JumpToHistoryDepthCommand}"
+                            CommandParameter="{Binding UndoDepth}">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <materialIcons:MaterialIcon Grid.Column="0" Kind="{Binding Icon}" Width="13" Height="13" Margin="0,0,6,0"
+                                                        Foreground="{DynamicResource PsAccentBrush}" />
+                            <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="11"
+                                       Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                            <Border Grid.Column="2" Width="6" Height="6" CornerRadius="3"
+                                    Background="{DynamicResource PsAccentBrush}"
+                                    IsVisible="{Binding IsActive}" VerticalAlignment="Center" />
+                        </Grid>
+                    </Button>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <!-- Section 3: History Action Footer (Trash, Camera, New Document) -->
+        <Border Grid.Row="3" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="6,0">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Text="Click state to restore" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <!-- Delete current state (Trash) -->
+                    <Button Classes="ps-footer-btn" Command="{Binding DeleteCurrentHistoryStateCommand}" ToolTip.Tip="Delete current state">
+                        <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="12" Height="12" />
+                    </Button>
+                    <!-- Create new snapshot (Camera) -->
+                    <Button Classes="ps-footer-btn" Command="{Binding CreateNewSnapshotCommand}" ToolTip.Tip="Create new snapshot">
+                        <materialIcons:MaterialIcon Kind="Camera" Width="12" Height="12" Foreground="{DynamicResource PsAccentBrush}" />
+                    </Button>
+                    <!-- Create new document from current state -->
+                    <Button Classes="ps-footer-btn" Command="{Binding CreateDocumentFromCurrentStateCommand}" ToolTip.Tip="Create new snapshot document from current state">
+                        <materialIcons:MaterialIcon Kind="FilePlusOutline" Width="12" Height="12" />
+                    </Button>
+                    <!-- Step Backward (Undo) -->
+                    <Button Classes="ps-footer-btn" Command="{Binding UndoCommand}" ToolTip.Tip="Step Backward (Undo)">
+                        <materialIcons:MaterialIcon Kind="Undo" Width="12" Height="12" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

@@ -450,36 +450,15 @@
                                 <MenuItem Header="Match All" Command="{Binding MatchAllCommand}" />
                             </MenuItem>
                             <MenuItem Header="Workspace">
-                                <MenuItem Header="Essentials (Default Right Stack)" Command="{Binding ApplyDefaultWorkspaceCommand}" />
-                                <MenuItem Header="Unity 2-by-3 (Layers Left, Inspector Right)" Command="{Binding ApplyUnityTwoByThreeWorkspaceCommand}" />
-                                <MenuItem Header="Unity 4-Split / Wide (Left, Bottom, Right)" Command="{Binding ApplyUnityFourSplitWorkspaceCommand}" />
-                                <MenuItem Header="Tall Dual-Sidebar (Layers &amp; Props Left, Color Right)" Command="{Binding ApplyTallWorkspaceCommand}" />
-                                <MenuItem Header="Unity Tabbed Groups (Right Tabbed Dock)" Command="{Binding ApplyUnityTabbedWorkspaceCommand}" />
+                                <MenuItem Header="Essentials (Color, Properties &amp; Layers Stacked Right)" Command="{Binding ApplyDefaultWorkspaceCommand}" />
+                                <MenuItem Header="2-by-3 (Layers Left, Properties &amp; Color Right)" Command="{Binding ApplyUnityTwoByThreeWorkspaceCommand}" />
+                                <MenuItem Header="4-Split (Layers Left, Color Bottom, Properties Right)" Command="{Binding ApplyUnityFourSplitWorkspaceCommand}" />
+                                <MenuItem Header="Tall Dual-Sidebar (Layers &amp; Properties Left, Color Right)" Command="{Binding ApplyTallWorkspaceCommand}" />
+                                <MenuItem Header="Tabbed (Every Panel as a Tab on the Right)" Command="{Binding ApplyUnityTabbedWorkspaceCommand}" />
                                 <Separator />
-                                <MenuItem Header="Toggle Right Dock: Stacked / Tabbed" Command="{Binding ToggleRightDockModeCommand}" />
-                                <Separator />
-                                <MenuItem Header="Reset Essentials Workspace" Command="{Binding ResetEssentialsWorkspaceCommand}" />
+                                <MenuItem Header="Reset Workspace Layout" Command="{Binding ResetEssentialsWorkspaceCommand}" />
                             </MenuItem>
-                            <MenuItem Header="Panel Placement">
-                                <MenuItem Header="Layers Panel">
-                                    <MenuItem Header="Dock to Left Sidebar" Command="{Binding SetPanelPlacementParamCommand}" CommandParameter="Layers:Left" />
-                                    <MenuItem Header="Dock to Right Sidebar" Command="{Binding SetPanelPlacementParamCommand}" CommandParameter="Layers:Right" />
-                                    <MenuItem Header="Dock to Bottom Shelf" Command="{Binding SetPanelPlacementParamCommand}" CommandParameter="Layers:Bottom" />
-                                    <MenuItem Header="Float in Window" Command="{Binding SetPanelPlacementParamCommand}" CommandParameter="Layers:Floating" />
-                                </MenuItem>
-                                <MenuItem Header="Properties Panel">
-                                    <MenuItem Header="Dock to Left Sidebar" Command="{Binding SetPanelPlacementParamCommand}" CommandParameter="Properties:Left" />
-                                    <MenuItem Header="Dock to Right Sidebar" Command="{Binding SetPanelPlacementParamCommand}" CommandParameter="Properties:Right" />
-                                    <MenuItem Header="Dock to Bottom Shelf" Command="{Binding SetPanelPlacementParamCommand}" CommandParameter="Properties:Bottom" />
-                                    <MenuItem Header="Float in Window" Command="{Binding SetPanelPlacementParamCommand}" CommandParameter="Properties:Floating" />
-                                </MenuItem>
-                                <MenuItem Header="Color &amp; Swatches Panel">
-                                    <MenuItem Header="Dock to Left Sidebar" Command="{Binding SetPanelPlacementParamCommand}" CommandParameter="Color:Left" />
-                                    <MenuItem Header="Dock to Right Sidebar" Command="{Binding SetPanelPlacementParamCommand}" CommandParameter="Color:Right" />
-                                    <MenuItem Header="Dock to Bottom Shelf" Command="{Binding SetPanelPlacementParamCommand}" CommandParameter="Color:Bottom" />
-                                    <MenuItem Header="Float in Window" Command="{Binding SetPanelPlacementParamCommand}" CommandParameter="Color:Floating" />
-                                </MenuItem>
-                            </MenuItem>
+                            <MenuItem Header="Maximize / Restore Active Pane" Command="{Binding ToggleMaximizeActivePaneCommand}" />
                             <Separator />
                             <MenuItem Header="Properties" Command="{Binding SelectRightDockTabCommand}" CommandParameter="Properties" />
                             <MenuItem Header="Adjustments &amp; Histogram" Command="{Binding SelectRightDockTabCommand}" CommandParameter="Histogram" />

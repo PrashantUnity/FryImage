@@ -37,6 +37,9 @@ public sealed class StudioPreferences
     public string CurrentTheme { get; set; } = "ProDark";
     public string SelectedTool { get; set; } = "select";
 
+    /// <summary>Saved dock layout tree (tab groups, splits, sizes); null means the Essentials workspace.</summary>
+    public string? DockLayoutJson { get; set; }
+
     private static StudioPreferences? _instance;
     public static StudioPreferences Instance => _instance ??= Load();
 

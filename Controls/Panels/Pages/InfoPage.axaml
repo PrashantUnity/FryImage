@@ -1,0 +1,65 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:views="using:PdfEditorApp.Plugins.ImageEditor.Controls"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Panels.Pages.InfoPage"
+             x:DataType="local:ImageEditorViewModel"
+             Background="{DynamicResource PsPanelBrush}">
+
+    <UserControl.Resources>
+        <local:StringEqualsConverter x:Key="StringEqualsConverter" />
+        <local:ColorToBrushConverter x:Key="ColorToBrushConverter" />
+        <local:ElementTypeToIconConverter x:Key="ElementTypeToIconConverter" />
+    </UserControl.Resources>
+
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="8" Margin="10,8">
+            <TextBlock Text="Document &amp; Cursor Info" Classes="ps-section-header" />
+
+            <!-- Cursor Position & Selection Metrics -->
+            <Border Background="{DynamicResource PsFieldBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="8">
+                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="6">
+                    <StackPanel Grid.Row="0" Grid.Column="0">
+                        <TextBlock Text="CURSOR X" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource PsTextDimBrush}" />
+                        <TextBlock Text="{Binding CursorInfoX, StringFormat='{}{0:0} px'}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource PsTextBrush}" />
+                    </StackPanel>
+                    <StackPanel Grid.Row="0" Grid.Column="1">
+                        <TextBlock Text="CURSOR Y" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource PsTextDimBrush}" />
+                        <TextBlock Text="{Binding CursorInfoY, StringFormat='{}{0:0} px'}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource PsTextBrush}" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1" Grid.Column="0">
+                        <TextBlock Text="SELECTION W" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource PsTextDimBrush}" />
+                        <TextBlock Text="{Binding SelectedElement.Width, FallbackValue=0, StringFormat='{}{0:0} px'}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource PsTextBrush}" />
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Grid.Column="1">
+                        <TextBlock Text="SELECTION H" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource PsTextDimBrush}" />
+                        <TextBlock Text="{Binding SelectedElement.Height, FallbackValue=0, StringFormat='{}{0:0} px'}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource PsTextBrush}" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2">
+                        <TextBlock Text="COLOR UNDER CURSOR" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource PsTextDimBrush}" />
+                        <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2,0,0">
+                            <Border Width="16" Height="16" CornerRadius="2"
+                                    Background="{Binding PrimaryColor, Converter={StaticResource ColorToBrushConverter}}"
+                                    BorderBrush="#FFFFFF" BorderThickness="1" />
+                            <TextBlock Text="{Binding PrimaryColorHex}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Document Metadata Readouts -->
+            <StackPanel Spacing="4" Margin="2,0">
+                <TextBlock Text="DOCUMENT DETAILS" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource PsTextDimBrush}" />
+                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" RowSpacing="3">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Dimensions:" Classes="ps-label" />
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding CanvasDimensionsString}" HorizontalAlignment="Right" Foreground="{DynamicResource PsTextBrush}" FontSize="10" />
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Color Space:" Classes="ps-label" />
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="RGB / 8-bit (sRGB)" HorizontalAlignment="Right" Foreground="{DynamicResource PsTextBrush}" FontSize="10" />
+                </Grid>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

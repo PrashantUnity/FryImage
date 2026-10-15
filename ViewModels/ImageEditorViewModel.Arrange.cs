@@ -171,18 +171,30 @@ public partial class ImageEditorViewModel
         StatusMessage = "Matched zoom, location, and rotation across all documents.";
     }
 
-    // ── Unity-Style Docking Commands ────────────────────────────────────────
+    // ── Panel Tear-Off Commands ─────────────────────────────────────────────
 
+    /// <summary>Floats a panel's page ("Layers", "Color & Swatches", or any page id) in its own window.</summary>
     [RelayCommand]
     public void TearOffPanel(string panelName)
     {
         SetPanelPlacement(panelName, DockZone.Floating);
     }
 
+    /// <summary>Docks a floating (or closed) panel page back into the workspace.</summary>
     [RelayCommand]
     public void RedockPanel(string panelName)
     {
-        SetPanelPlacement(panelName, DockZone.Right);
+        if (panelName == "Tools")
+        {
+            SetPanelPlacement("Tools", DockZone.Left);
+            return;
+        }
+
+        var family = Models.Session.Docking.DockPageRegistry.FamilyOfPanel(panelName);
+        string pageId = family != null
+            ? (Models.Session.Docking.DockPageRegistry.Find(panelName)?.Id ?? Models.Session.Docking.DockPageRegistry.PagesInFamily(family).First())
+            : panelName;
+        SetPageDocked(pageId, true);
     }
 
     [RelayCommand]
@@ -233,6 +245,7 @@ public partial class ImageEditorViewModel
         }
     }
 
+    /// <summary>Opens the floating window for a page id (or "Tools" for the tool palette).</summary>
     private void OpenFloatingPalette(string panelKey)
     {
         if (_floatingPaletteWindows.TryGetValue(panelKey, out var existing))
@@ -247,21 +260,17 @@ public partial class ImageEditorViewModel
             {
                 DataContext = this,
                 PanelKey = panelKey,
-                Title = panelKey,
                 Width = panelKey == "Tools" ? 80 : 330,
                 Height = panelKey == "Tools" ? 640 : 480
             };
 
             paletteWin.Closed += (_, _) =>
             {
+                // Only the window the user closed re-docks; windows closed by the layout code are already detached.
+                if (!_floatingPaletteWindows.TryGetValue(panelKey, out var current) || current != paletteWin) return;
                 _floatingPaletteWindows.Remove(panelKey);
-                switch (panelKey)
-                {
-                    case "Layers": IsLayersDocked = true; break;
-                    case "Properties": IsPropertiesDocked = true; break;
-                    case "Color & Swatches": IsColorDocked = true; break;
-                    case "Tools": IsToolsDocked = true; break;
-                }
+                if (panelKey == "Tools") IsToolsDocked = true;
+                else RedockFloatingPage(panelKey);
             };
 
             _floatingPaletteWindows[panelKey] = paletteWin;
@@ -271,10 +280,17 @@ public partial class ImageEditorViewModel
 
     private void CloseFloatingPalette(string panelKey)
     {
-        if (_floatingPaletteWindows.TryGetValue(panelKey, out var win))
+        if (_floatingPaletteWindows.Remove(panelKey, out var win))
         {
             try { win.Close(); } catch { }
-            _floatingPaletteWindows.Remove(panelKey);
+        }
+    }
+
+    private void FocusFloatingPalette(string panelKey)
+    {
+        if (_floatingPaletteWindows.TryGetValue(panelKey, out var win))
+        {
+            win.Activate();
         }
     }
 }

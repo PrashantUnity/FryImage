@@ -162,6 +162,8 @@ public partial class ImageEditorViewModel
         AddCmd("window.layers", "Layers Panel", "Window", "F7", "LayersTripleOutline", () => SelectRightDockTab("Layers"));
         AddCmd("window.color", "Color Panel", "Window", "F6", "PaletteOutline", () => SelectRightDockTab("Color"));
         AddCmd("window.properties", "Properties Panel", "Window", null, "TuneVertical", () => SelectRightDockTab("Properties"));
+        AddCmd("window.workspace.reset", "Reset Workspace Layout", "Window", null, "ViewDashboardOutline", ResetEssentialsWorkspace);
+        AddCmd("window.pane.maximize", "Maximize / Restore Active Pane", "Window", null, "ArrowExpandAll", ToggleMaximizeActivePane);
         AddCmd("brush.symmetry.off", "Symmetry: Off", "Brush", null, "VectorLine", () => ActiveSymmetryMode = SymmetryMode.Off);
         AddCmd("brush.symmetry.vertical", "Symmetry: Vertical", "Brush", null, "FlipHorizontal", () => ActiveSymmetryMode = SymmetryMode.Vertical);
         AddCmd("brush.symmetry.horizontal", "Symmetry: Horizontal", "Brush", null, "FlipVertical", () => ActiveSymmetryMode = SymmetryMode.Horizontal);

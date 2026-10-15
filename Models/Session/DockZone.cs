@@ -18,5 +18,8 @@ public enum DockZone
     Floating,
 
     /// <summary>Hidden from the workspace.</summary>
-    Hidden
+    Hidden,
+
+    /// <summary>Docked above the canvas.</summary>
+    Top
 }

@@ -1,23 +1,27 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using PdfEditorApp.Plugins.ImageEditor.Controls;
-using PdfEditorApp.Plugins.ImageEditor.Controls.Panels;
+using PdfEditorApp.Plugins.ImageEditor.Controls.Docking;
+using PdfEditorApp.Plugins.ImageEditor.Models.Session.Docking;
 
 namespace PdfEditorApp.Plugins.ImageEditor.Views;
 
+/// <summary>A torn-off dock page (or the tool palette) in its own window.</summary>
 public partial class FloatingPaletteWindow : Window
 {
     private string _panelKey = "Palette";
 
+    /// <summary>A dock page id ("Layers", "Swatches", …) or "Tools".</summary>
     public string PanelKey
     {
         get => _panelKey;
         set
         {
             _panelKey = value;
-            Title = $"{value} - FryImage Studio";
-            TitleTextBlock.Text = value;
-            UpdatePanelContent();
+            string title = DockPageRegistry.Find(value)?.Title ?? value;
+            Title = $"{title} - FryImage Studio";
+            TitleTextBlock.Text = title;
+            PanelContentHost.Content = value == "Tools" ? new ToolPaletteControl() : DockPageFactory.Create(value);
         }
     }
 
@@ -26,54 +30,13 @@ public partial class FloatingPaletteWindow : Window
         InitializeComponent();
     }
 
-    private void UpdatePanelContent()
-    {
-        switch (_panelKey)
-        {
-            case "Layers":
-                PanelContentHost.Content = new LayersDockPanel();
-                break;
-            case "Properties":
-                PanelContentHost.Content = new PropertiesDockPanel();
-                break;
-            case "Color & Swatches":
-                PanelContentHost.Content = new ColorDockPanel();
-                break;
-            case "Tools":
-                PanelContentHost.Content = new ToolPaletteControl();
-                break;
-        }
-    }
-
-    private void OnRedockClicked(object? sender, RoutedEventArgs e)
-    {
-        OnDockRightClicked(sender, e);
-    }
-
-    private void OnDockLeftClicked(object? sender, RoutedEventArgs e)
+    private void OnDockBackClicked(object? sender, RoutedEventArgs e)
     {
         if (DataContext is ImageEditorViewModel vm)
         {
-            vm.SetPanelPlacement(PanelKey, Models.Session.DockZone.Left);
+            vm.RedockPanel(PanelKey);
         }
-        Close();
-    }
 
-    private void OnDockRightClicked(object? sender, RoutedEventArgs e)
-    {
-        if (DataContext is ImageEditorViewModel vm)
-        {
-            vm.SetPanelPlacement(PanelKey, Models.Session.DockZone.Right);
-        }
-        Close();
-    }
-
-    private void OnDockBottomClicked(object? sender, RoutedEventArgs e)
-    {
-        if (DataContext is ImageEditorViewModel vm)
-        {
-            vm.SetPanelPlacement(PanelKey, Models.Session.DockZone.Bottom);
-        }
-        Close();
+        if (IsVisible) Close();
     }
 }

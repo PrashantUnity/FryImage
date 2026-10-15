@@ -1,0 +1,85 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             xmlns:colorPrimitives="clr-namespace:Avalonia.Controls.Primitives;assembly=Avalonia.Controls.ColorPicker"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Panels.Pages.GradientsPage"
+             x:DataType="local:ImageEditorViewModel"
+             Background="{DynamicResource PsPanelBrush}">
+
+    <UserControl.Resources>
+        <local:ColorToBrushConverter x:Key="ColorToBrushConverter" />
+        <local:StringEqualsConverter x:Key="StringEqualsConverter" />
+    </UserControl.Resources>
+
+    <Grid Margin="8,6" RowDefinitions="Auto,*">
+        <TextBlock Grid.Row="0" Margin="0,0,0,6" Text="Presets" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource PsTextDimBrush}" />
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" MaxHeight="140">
+            <StackPanel Spacing="4">
+                <!-- Black / White -->
+                <Button Height="24" HorizontalAlignment="Stretch" Padding="4,2" Classes="ps-opt-btn"
+                        Command="{Binding SetDefaultColorsCommand}">
+                    <Grid ColumnDefinitions="50,*">
+                        <Border Grid.Column="0" Height="14" CornerRadius="2" BorderBrush="#555" BorderThickness="1">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
+                                    <GradientStop Color="#000000" Offset="0" />
+                                    <GradientStop Color="#FFFFFF" Offset="1" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                        </Border>
+                        <TextBlock Grid.Column="1" Margin="8,0,0,0" Text="Black, White" FontSize="11" VerticalAlignment="Center" />
+                    </Grid>
+                </Button>
+
+                <!-- Sunset Glow -->
+                <Button Height="24" HorizontalAlignment="Stretch" Padding="4,2" Classes="ps-opt-btn"
+                        Command="{Binding PickSwatchColorCommand}" CommandParameter="#EC5B62">
+                    <Grid ColumnDefinitions="50,*">
+                        <Border Grid.Column="0" Height="14" CornerRadius="2" BorderBrush="#555" BorderThickness="1">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
+                                    <GradientStop Color="#EC5B62" Offset="0" />
+                                    <GradientStop Color="#F97316" Offset="1" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                        </Border>
+                        <TextBlock Grid.Column="1" Margin="8,0,0,0" Text="Warm Sunset" FontSize="11" VerticalAlignment="Center" />
+                    </Grid>
+                </Button>
+
+                <!-- Ocean Blue -->
+                <Button Height="24" HorizontalAlignment="Stretch" Padding="4,2" Classes="ps-opt-btn"
+                        Command="{Binding PickSwatchColorCommand}" CommandParameter="#3B82F6">
+                    <Grid ColumnDefinitions="50,*">
+                        <Border Grid.Column="0" Height="14" CornerRadius="2" BorderBrush="#555" BorderThickness="1">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
+                                    <GradientStop Color="#06B6D4" Offset="0" />
+                                    <GradientStop Color="#3B82F6" Offset="1" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                        </Border>
+                        <TextBlock Grid.Column="1" Margin="8,0,0,0" Text="Ocean Waves" FontSize="11" VerticalAlignment="Center" />
+                    </Grid>
+                </Button>
+
+                <!-- Violet Dream -->
+                <Button Height="24" HorizontalAlignment="Stretch" Padding="4,2" Classes="ps-opt-btn"
+                        Command="{Binding PickSwatchColorCommand}" CommandParameter="#A855F7">
+                    <Grid ColumnDefinitions="50,*">
+                        <Border Grid.Column="0" Height="14" CornerRadius="2" BorderBrush="#555" BorderThickness="1">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
+                                    <GradientStop Color="#EC4899" Offset="0" />
+                                    <GradientStop Color="#8B5CF6" Offset="1" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                        </Border>
+                        <TextBlock Grid.Column="1" Margin="8,0,0,0" Text="Violet Aurora" FontSize="11" VerticalAlignment="Center" />
+                    </Grid>
+                </Button>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

@@ -1,0 +1,67 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             xmlns:colorPrimitives="clr-namespace:Avalonia.Controls.Primitives;assembly=Avalonia.Controls.ColorPicker"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Panels.Pages.ColorPage"
+             x:DataType="local:ImageEditorViewModel"
+             Background="{DynamicResource PsPanelBrush}">
+
+    <UserControl.Resources>
+        <local:ColorToBrushConverter x:Key="ColorToBrushConverter" />
+        <local:StringEqualsConverter x:Key="StringEqualsConverter" />
+    </UserControl.Resources>
+
+    <Grid Margin="8,6" RowDefinitions="Auto,Auto">
+        <!-- Spectrum Area -->
+        <Grid ColumnDefinitions="32,*,18" ColumnSpacing="6" Height="120">
+            <!-- Foreground / Background Dual Squares & Swappers -->
+            <StackPanel Grid.Column="0" Spacing="3" VerticalAlignment="Top">
+                <Grid Width="28" Height="28">
+                    <Border Width="16" Height="16" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                            Background="{Binding SecondaryColor, Converter={StaticResource ColorToBrushConverter}}"
+                            BorderBrush="#FFFFFF" BorderThickness="1" />
+                    <Border Width="16" Height="16" HorizontalAlignment="Left" VerticalAlignment="Top"
+                            Background="{Binding PrimaryColor, Converter={StaticResource ColorToBrushConverter}}"
+                            BorderBrush="#FFFFFF" BorderThickness="1" />
+                </Grid>
+                <StackPanel Orientation="Horizontal" Spacing="2" HorizontalAlignment="Center">
+                    <Button Classes="ps-opt-btn" Width="12" Height="12" Padding="0"
+                            Command="{Binding SwapColorsCommand}" ToolTip.Tip="Switch Foreground and Background Colors (X)">
+                        <materialIcons:MaterialIcon Kind="SwapHorizontal" Width="10" Height="10" />
+                    </Button>
+                    <Button Classes="ps-opt-btn" Width="12" Height="12" Padding="0"
+                            Command="{Binding ResetColorsCommand}" ToolTip.Tip="Default Foreground and Background Colors (D)">
+                        <materialIcons:MaterialIcon Kind="CheckboxBlankOutline" Width="10" Height="10" />
+                    </Button>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- 2D Saturation / Value Spectrum Box -->
+            <Border Grid.Column="1" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" CornerRadius="1">
+                <colorPrimitives:ColorSpectrum Color="{Binding PrimaryColor, Mode=TwoWay}"
+                                               Components="SaturationValue"
+                                               Shape="Box"
+                                               MinHeight="110" />
+            </Border>
+
+            <!-- Vertical Rainbow Hue Slider -->
+            <Border Grid.Column="2" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" CornerRadius="1">
+                <colorPrimitives:ColorSlider Color="{Binding PrimaryColor, Mode=TwoWay}"
+                                             ColorModel="Hsva"
+                                             ColorComponent="Component1"
+                                             Orientation="Vertical"
+                                             Width="16" />
+            </Border>
+        </Grid>
+
+        <!-- Hex and Values Row -->
+        <Grid Grid.Row="1" Margin="0,6,0,0" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6" VerticalAlignment="Center">
+            <TextBlock Grid.Column="0" Text="#" VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource PsTextDimBrush}" />
+            <TextBox Grid.Column="1" Height="20" Padding="4,1" FontSize="11"
+                     Text="{Binding PrimaryColorHex, Mode=OneWay}"
+                     Classes="ps-input" />
+            <TextBlock Grid.Column="2" Text="RGB" VerticalAlignment="Center" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" />
+        </Grid>
+    </Grid>
+</UserControl>

@@ -1,0 +1,66 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:views="using:PdfEditorApp.Plugins.ImageEditor.Controls"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Panels.Pages.AdjustmentsPage"
+             x:DataType="local:ImageEditorViewModel"
+             Background="{DynamicResource PsPanelBrush}">
+
+    <UserControl.Resources>
+        <local:StringEqualsConverter x:Key="StringEqualsConverter" />
+        <local:ColorToBrushConverter x:Key="ColorToBrushConverter" />
+        <local:ElementTypeToIconConverter x:Key="ElementTypeToIconConverter" />
+    </UserControl.Resources>
+
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="8" Margin="8,6">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Text="Histogram" Classes="ps-section-header" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
+                    <Button Classes="ps-opt-btn" Content="RGB" Padding="5,1" Command="{Binding SetHistogramChannelCommand}" CommandParameter="RGB" />
+                    <Button Classes="ps-opt-btn" Content="R" Padding="4,1" Command="{Binding SetHistogramChannelCommand}" CommandParameter="Red" />
+                    <Button Classes="ps-opt-btn" Content="G" Padding="4,1" Command="{Binding SetHistogramChannelCommand}" CommandParameter="Green" />
+                    <Button Classes="ps-opt-btn" Content="B" Padding="4,1" Command="{Binding SetHistogramChannelCommand}" CommandParameter="Blue" />
+                </StackPanel>
+            </Grid>
+
+            <!-- 256-bin Continuous RGB Ribbon Histogram -->
+            <Border Background="#14181E" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" CornerRadius="2" Padding="2">
+                <views:RgbHistogramControl Height="100"
+                                           RedBins="{Binding HistogramRed}"
+                                           GreenBins="{Binding HistogramGreen}"
+                                           BlueBins="{Binding HistogramBlue}"
+                                           LumBins="{Binding HistogramLuminance}"
+                                           ChannelMode="{Binding HistogramChannel}" />
+            </Border>
+
+            <!-- Histogram Metrics Readout -->
+            <Grid ColumnDefinitions="*,*,*" Margin="2,0">
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="Mean" Classes="ps-label" FontSize="10" />
+                    <TextBlock Text="{Binding HistogramMean, StringFormat='{}{0:0.0}'}" FontSize="11" Foreground="#FFFFFF" />
+                </StackPanel>
+                <StackPanel Grid.Column="1">
+                    <TextBlock Text="Median" Classes="ps-label" FontSize="10" />
+                    <TextBlock Text="{Binding HistogramMedian, StringFormat='{}{0:0}'}" FontSize="11" Foreground="#FFFFFF" />
+                </StackPanel>
+                <StackPanel Grid.Column="2">
+                    <TextBlock Text="Std Dev" Classes="ps-label" FontSize="10" />
+                    <TextBlock Text="{Binding HistogramStdDev, StringFormat='{}{0:0.0}'}" FontSize="11" Foreground="#FFFFFF" />
+                </StackPanel>
+            </Grid>
+
+            <!-- Quick Preset Adjustment Actions -->
+            <TextBlock Text="Adjustments" Classes="ps-section-header" Margin="0,4,0,0" />
+            <WrapPanel Orientation="Horizontal">
+                <Button Classes="ps-opt-btn" Content="Auto Tone" Margin="0,0,4,4" Command="{Binding ApplyAutoToneCommand}" ToolTip.Tip="Auto Tone (Per-channel stretch)" />
+                <Button Classes="ps-opt-btn" Content="Invert" Margin="0,0,4,4" Command="{Binding ApplyInvertCommand}" ToolTip.Tip="Invert Colors (Ctrl+I)" />
+                <Button Classes="ps-opt-btn" Content="Levels..." Margin="0,0,4,4" Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Levels" ToolTip.Tip="Levels Adjustment" />
+                <Button Classes="ps-opt-btn" Content="Brightness..." Margin="0,0,4,4" Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="BrightnessContrast" ToolTip.Tip="Brightness / Contrast" />
+                <Button Classes="ps-opt-btn" Content="Hue/Sat..." Margin="0,0,4,4" Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="HueSaturation" ToolTip.Tip="Hue / Saturation" />
+                <Button Classes="ps-opt-btn" Content="Threshold..." Margin="0,0,4,4" Command="{Binding OpenAdjustmentDialogCommand}" CommandParameter="Threshold" ToolTip.Tip="1-Bit Threshold" />
+            </WrapPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

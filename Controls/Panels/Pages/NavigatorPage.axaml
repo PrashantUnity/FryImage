@@ -1,0 +1,56 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:views="using:PdfEditorApp.Plugins.ImageEditor.Controls"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Panels.Pages.NavigatorPage"
+             x:DataType="local:ImageEditorViewModel"
+             Background="{DynamicResource PsPanelBrush}">
+
+    <UserControl.Resources>
+        <local:StringEqualsConverter x:Key="StringEqualsConverter" />
+        <local:ColorToBrushConverter x:Key="ColorToBrushConverter" />
+        <local:ElementTypeToIconConverter x:Key="ElementTypeToIconConverter" />
+    </UserControl.Resources>
+
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="10" Margin="10,8">
+            <TextBlock Text="Navigator" Classes="ps-section-header" />
+
+            <!-- Mini Canvas Thumbnail Box -->
+            <Border Height="140" Background="#111111" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="1" CornerRadius="4">
+                <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <!-- Canvas Scaled Aspect Box -->
+                    <Border Width="160" Height="100" Background="#262626" BorderBrush="#444444" BorderThickness="1">
+                        <!-- Red Viewport Indicator Frame -->
+                        <Border Width="70" Height="48" BorderBrush="#EC5B62" BorderThickness="1.5"
+                                Background="#15EC5B62" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Zoom Controls Row -->
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="6" VerticalAlignment="Center">
+                <Button Grid.Column="0" Classes="ps-opt-btn" Width="20" Height="20" Padding="0"
+                        Command="{Binding ZoomOutCommand}" ToolTip.Tip="Zoom Out">
+                    <materialIcons:MaterialIcon Kind="MagnifyMinusOutline" Width="13" Height="13" />
+                </Button>
+                <Slider Grid.Column="1" Minimum="10" Maximum="1600"
+                        Value="{Binding ZoomPercent, Mode=TwoWay}" VerticalAlignment="Center" />
+                <Button Grid.Column="2" Classes="ps-opt-btn" Width="20" Height="20" Padding="0"
+                        Command="{Binding ZoomInCommand}" ToolTip.Tip="Zoom In">
+                    <materialIcons:MaterialIcon Kind="MagnifyPlusOutline" Width="13" Height="13" />
+                </Button>
+                <TextBlock Grid.Column="3" Text="{Binding ZoomPercent, StringFormat='{}{0:0}%'}"
+                           FontSize="11" Foreground="{DynamicResource PsTextBrush}" Width="45" TextAlignment="Right" VerticalAlignment="Center" />
+            </Grid>
+
+            <!-- Zoom Preset Buttons -->
+            <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center">
+                <Button Classes="ps-opt-btn" Content="Fit Screen" Padding="8,3" Command="{Binding FitToWindowCommand}" ToolTip.Tip="Fit on Screen (Ctrl+0)" />
+                <Button Classes="ps-opt-btn" Content="100%" Padding="8,3" Command="{Binding ResetZoomCommand}" ToolTip.Tip="100% Actual Pixels (Ctrl+1)" />
+                <Button Classes="ps-opt-btn" Content="200%" Padding="8,3" Command="{Binding ZoomInCommand}" ToolTip.Tip="200%" />
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

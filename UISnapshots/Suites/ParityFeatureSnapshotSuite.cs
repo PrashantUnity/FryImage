@@ -19,6 +19,7 @@ using PdfEditorApp.Plugins.ImageEditor.Core.Printing;
 using PdfEditorApp.Plugins.ImageEditor.Controls;
 using PdfEditorApp.Plugins.ImageEditor.Models;
 using PdfEditorApp.Plugins.ImageEditor.Models.Session;
+using PdfEditorApp.Plugins.ImageEditor.Models.Session.Docking;
 using PdfEditorApp.Plugins.ImageEditor.UISnapshots.Core;
 
 namespace PdfEditorApp.Plugins.ImageEditor.UISnapshots.Suites;
@@ -1789,8 +1790,8 @@ public static class ParityFeatureSnapshotSuite
         vm.TearOffPanel("Layers");
         if (vm.IsLayersDocked)
             throw new InvalidOperationException("TearOffPanel failed to set IsLayersDocked = false.");
-        if (!vm.HasAnyRightPanelDocked)
-            throw new InvalidOperationException("HasAnyRightPanelDocked should be true when Properties and Color remain docked.");
+        if (!vm.IsPropertiesDocked || !vm.IsColorDocked || vm.LayersPlacement != DockZone.Floating)
+            throw new InvalidOperationException("Tearing off Layers should leave Properties and Color docked and Layers floating.");
 
         vm.RedockPanel("Layers");
         if (!vm.IsLayersDocked)
@@ -1847,118 +1848,181 @@ public static class ParityFeatureSnapshotSuite
 
         Console.WriteLine("  ✓ Smart Filter stack reordering, selection, editor dispatch, and 45° anchor snapping (#f4b3766b, #665cb581, #f79f2193, #7efebfa0) verified.");
 
-        // 87. Test Unity-Style Multi-Zone Docking & Tabbed Groups
-        // Test individual zone placement
-        vm.SetPanelPlacementParam("Layers:Left");
-        if (vm.LayersPlacement != DockZone.Left || !vm.HasAnyLeftPanelDocked)
-            throw new InvalidOperationException("SetPanelPlacementParam failed to place Layers into Left zone.");
+        // 87. Test Dockable Tab Workspace (LeetCode-style grouping, splitting, reorder, close/reopen, float, maximize, persistence)
+        vm.ApplyDefaultWorkspace();
+        DockGroupNode DockGroupOf(string page) =>
+            DockLayoutOps.FindGroupOf(vm.DockRoot, page) ?? throw new InvalidOperationException($"Page '{page}' should be docked.");
+        int PanelGroupCount() => DockLayoutOps.Groups(vm.DockRoot).Count(g => !g.IsDocumentHost);
+        string LayoutSignature(DockNode node) => node switch
+        {
+            DockSplitNode split => $"{split.Orientation}({LayoutSignature(split.First)}|{LayoutSignature(split.Second)})",
+            DockGroupNode { IsDocumentHost: true } => "Canvas",
+            DockGroupNode group => $"[{string.Join(",", group.Pages)}>{group.ActivePage}]",
+            _ => "?"
+        };
 
+        // Default workspace: one canvas, three stacked right panes, every page docked, icons resolvable
+        if (DockLayoutOps.DocumentHost(vm.DockRoot) == null || PanelGroupCount() != 3)
+            throw new InvalidOperationException("Essentials workspace should have the canvas and three panel panes.");
+        if (DockPageRegistry.AllIds.Any(id => !vm.IsDockPageDocked(id)) || vm.HasClosedDockPages)
+            throw new InvalidOperationException("Essentials workspace should dock all 13 pages.");
+        if (vm.LayersPlacement != DockZone.Right || vm.PropertiesPlacement != DockZone.Right || vm.ColorPlacement != DockZone.Right)
+            throw new InvalidOperationException("Essentials workspace should place Layers, Properties and Color right of the canvas.");
+        var badIcons = DockPageRegistry.All.Where(page => !PdfEditorApp.Plugins.ImageEditor.Controls.Docking.DockPageFactory.TryParseIcon(page.Icon, out _)).Select(page => page.Icon).ToList();
+        if (badIcons.Count > 0)
+            throw new InvalidOperationException($"Dock page icons are not Material icon kinds: {string.Join(", ", badIcons)}");
+        foreach (var page in DockPageRegistry.All)
+        {
+            if (PdfEditorApp.Plugins.ImageEditor.Controls.Docking.DockPageFactory.Create(page.Id) == null)
+                throw new InvalidOperationException($"No view registered for dock page '{page.Id}'.");
+        }
+
+        // Center drop groups a tab with another pane
+        vm.MoveDockPage("Swatches", DockGroupOf("Layers").Id, DockDropPosition.Center);
+        if (DockGroupOf("Swatches") != DockGroupOf("Layers") || DockGroupOf("Layers").ActivePage != "Swatches")
+            throw new InvalidOperationException("Center drop should group Swatches into the Layers pane and activate it.");
+
+        // Edge drop splits the target pane
+        var layersPane = DockGroupOf("Layers");
+        vm.MoveDockPage("Navigator", layersPane.Id, DockDropPosition.Bottom);
+        var navigatorPane = DockGroupOf("Navigator");
+        var navigatorParent = DockLayoutOps.FindParent(vm.DockRoot, navigatorPane);
+        if (navigatorPane == layersPane || navigatorParent is not { Orientation: DockOrientation.Vertical } || navigatorParent.First != layersPane || navigatorParent.Second != navigatorPane)
+            throw new InvalidOperationException("Bottom-edge drop should split the Layers pane with Navigator below it.");
+
+        // Moving a pane's last tab away collapses the empty pane
+        int panesBeforeCollapse = PanelGroupCount();
+        vm.MoveDockPage("Navigator", DockGroupOf("Properties").Id, DockDropPosition.Center);
+        if (PanelGroupCount() != panesBeforeCollapse - 1 || DockLayoutOps.FindGroup(vm.DockRoot, navigatorPane.Id) != null)
+            throw new InvalidOperationException("Emptied pane should collapse into its sibling.");
+
+        // The canvas pane takes no tabs and can never be closed, but its edges split it
+        var infoPane = DockGroupOf("Info");
+        vm.MoveDockPage("Info", DockGroupNode.DocumentHostId, DockDropPosition.Center);
+        vm.CloseDockGroup(DockGroupNode.DocumentHostId);
+        if (DockGroupOf("Info") != infoPane || DockLayoutOps.DocumentHost(vm.DockRoot) == null)
+            throw new InvalidOperationException("Canvas pane must reject center drops and never close.");
+        vm.MoveDockPage("Info", DockGroupNode.DocumentHostId, DockDropPosition.Left);
+        if (DockLayoutOps.ZoneOf(vm.DockRoot, DockGroupOf("Info")) != DockZone.Left)
+            throw new InvalidOperationException("Left-edge drop on the canvas should dock Info left of the canvas.");
+
+        // Dropping a lone tab on its own pane is a no-op
+        int versionBeforeNoOp = vm.DockLayoutVersion;
+        vm.MoveDockPage("Info", DockGroupOf("Info").Id, DockDropPosition.Right);
+        if (vm.DockLayoutVersion != versionBeforeNoOp)
+            throw new InvalidOperationException("Splitting a pane's only tab off itself should be a no-op.");
+
+        // Reorder within a tab strip
+        vm.MoveDockPage("History", DockGroupOf("Layers").Id, DockDropPosition.Center, 0);
+        if (DockGroupOf("Layers").Pages[0] != "History" || DockGroupOf("Layers").ActivePage != "History")
+            throw new InvalidOperationException("Tab-strip drop at index 0 should move History to the front.");
+
+        // Close & reopen (reopens next to its family)
+        vm.CloseDockPage("Channels");
+        if (!vm.IsDockPageClosed("Channels") || vm.ClosedDockPages.All(page => page.Id != "Channels"))
+            throw new InvalidOperationException("CloseDockPage should close Channels and list it as reopenable.");
+        vm.ReopenDockPage("Channels");
+        if (!DockGroupOf("Channels").Pages.Contains("Layers"))
+            throw new InvalidOperationException("Reopened Channels should return to the pane holding its family (Layers).");
+        vm.CloseDockPage("Paths");
+        vm.SelectRightDockTab("Paths");
+        if (!vm.IsDockPageDocked("Paths") || DockGroupOf("Paths").ActivePage != "Paths")
+            throw new InvalidOperationException("Window › Paths should reopen and activate a closed Paths tab.");
+
+        // Legacy tab properties reveal pages too (Modals sets ActiveLayersDockTab = "Actions" after loading .atn)
+        vm.SelectDockTab(DockGroupOf("Layers").Id, "Layers");
+        vm.ActiveLayersDockTab = "Actions";
+        if (DockGroupOf("Actions").ActivePage != "Actions")
+            throw new InvalidOperationException("Setting ActiveLayersDockTab should activate the Actions tab.");
+
+        // Float & re-dock
+        vm.FloatDockPage("Gradients");
+        if (!vm.IsDockPageFloating("Gradients") || vm.IsDockPageDocked("Gradients"))
+            throw new InvalidOperationException("FloatDockPage should move Gradients into a floating window.");
+        vm.RedockFloatingPage("Gradients");
+        if (vm.IsDockPageFloating("Gradients") || !vm.IsDockPageDocked("Gradients"))
+            throw new InvalidOperationException("RedockFloatingPage should dock Gradients again.");
+
+        // Maximize / restore, and maximize is cleared when its pane closes
+        string colorPaneId = DockGroupOf("Color").Id;
+        vm.ToggleMaximizeDockGroup(colorPaneId);
+        if (vm.MaximizedDockGroupId != colorPaneId || !vm.IsDockMaximized)
+            throw new InvalidOperationException("ToggleMaximizeDockGroup should maximize the Color pane.");
+        vm.ToggleMaximizeDockGroup(colorPaneId);
+        if (vm.IsDockMaximized)
+            throw new InvalidOperationException("Second ToggleMaximizeDockGroup should restore the layout.");
+        vm.ToggleMaximizeDockGroup(colorPaneId);
+        vm.CloseDockGroup(colorPaneId);
+        if (vm.IsDockMaximized || DockLayoutOps.FindGroup(vm.DockRoot, colorPaneId) != null)
+            throw new InvalidOperationException("Closing the maximized pane should close it and restore the layout.");
+
+        // Outer-edge docking wraps the whole workspace
+        vm.DockPageAtWorkspaceEdge("Actions", DockDropPosition.Left);
+        if (vm.DockRoot is not DockSplitNode { Orientation: DockOrientation.Horizontal } edgeRoot || edgeRoot.First != DockGroupOf("Actions"))
+            throw new InvalidOperationException("Outer-edge drop should create a full-height Actions column on the left.");
+
+        // Splitter positions are stored without rebuilding
+        int versionBeforeResize = vm.DockLayoutVersion;
+        vm.SetDockSplitSize(edgeRoot.Id, 0.3, 420);
+        if (edgeRoot.PanelSize != 420 || vm.DockLayoutVersion != versionBeforeResize)
+            throw new InvalidOperationException("SetDockSplitSize should store the pane size without a rebuild.");
+
+        // Family placement (Window menu / legacy callers)
         vm.SetPanelPlacementParam("Color:Bottom");
-        if (vm.ColorPlacement != DockZone.Bottom || !vm.HasAnyBottomPanelDocked)
-            throw new InvalidOperationException("SetPanelPlacementParam failed to place Color into Bottom zone.");
+        if (vm.ColorPlacement != DockZone.Bottom || DockPageRegistry.PagesInFamily(DockPageRegistry.ColorFamily).Any(id => DockGroupOf(id) != DockGroupOf("Color")))
+            throw new InvalidOperationException("Color:Bottom should place all Color pages in one pane below the canvas.");
+        vm.SetPanelPlacementParam("Layers:Left");
+        if (vm.LayersPlacement != DockZone.Left)
+            throw new InvalidOperationException("Layers:Left should place the Layers pages left of the canvas.");
+        vm.SetPanelPlacement("Properties", DockZone.Hidden);
+        if (DockPageRegistry.PagesInFamily(DockPageRegistry.PropertiesFamily).Any(vm.IsDockPageDocked) || vm.PropertiesPlacement != DockZone.Hidden)
+            throw new InvalidOperationException("Properties:Hidden should close every Properties page.");
 
-        vm.SetPanelPlacementParam("Properties:Right");
-        if (vm.PropertiesPlacement != DockZone.Right || !vm.HasAnyRightPanelDocked)
-            throw new InvalidOperationException("SetPanelPlacementParam failed to place Properties into Right zone.");
+        // Persistence: the saved JSON round-trips to the same layout
+        string savedJson = StudioPreferences.Instance.DockLayoutJson
+            ?? throw new InvalidOperationException("Dock layout was not saved to the studio preferences.");
+        if (!DockLayoutSerializer.TryDeserialize(savedJson, DockPageRegistry.AllIds, out var restoredLayout) || restoredLayout == null
+            || LayoutSignature(restoredLayout) != LayoutSignature(vm.DockRoot))
+            throw new InvalidOperationException("Saved dock layout should round-trip to the same tree.");
 
-        // Test tabbed merging within Left zone
-        vm.SetPanelPlacement("Properties", DockZone.Left);
-        if (vm.LeftDockedCount != 2 || !vm.ShowLeftDockTabs)
-            throw new InvalidOperationException("Multi-panel docking in Left zone should show tabs.");
+        // Corrupt, foreign and future layouts are rejected or repaired
+        if (DockLayoutSerializer.TryDeserialize("{not json", DockPageRegistry.AllIds, out _))
+            throw new InvalidOperationException("Corrupt dock layout JSON should be rejected.");
+        if (DockLayoutSerializer.TryDeserialize("""{"Version":1,"Root":{"Kind":"group","Pages":["Layers"]}}""", DockPageRegistry.AllIds, out _))
+            throw new InvalidOperationException("A dock layout without the canvas pane should be rejected.");
+        if (DockLayoutSerializer.TryDeserialize("""{"Version":99,"Root":{"Kind":"group","Host":true}}""", DockPageRegistry.AllIds, out _))
+            throw new InvalidOperationException("A dock layout from a newer schema should be rejected.");
+        const string messyLayout = """{"Version":1,"Root":{"Kind":"split","Orientation":"Horizontal","Ratio":0.5,"PanelSize":300,"First":{"Kind":"group","Host":true},"Second":{"Kind":"split","Orientation":"Vertical","Ratio":7,"PanelSize":300,"First":{"Kind":"group","Pages":["Layers","Bogus","Layers"],"Active":"Bogus"},"Second":{"Kind":"group","Pages":["Bogus"]}}}}""";
+        if (!DockLayoutSerializer.TryDeserialize(messyLayout, DockPageRegistry.AllIds, out var repairedLayout) || repairedLayout == null
+            || LayoutSignature(repairedLayout) != "Horizontal(Canvas|[Layers>Layers])")
+            throw new InvalidOperationException($"Unknown/duplicate pages should be dropped and empty panes collapsed (got {(repairedLayout == null ? "null" : LayoutSignature(repairedLayout))}).");
 
-        vm.SelectLeftZoneTab("Properties");
-        if (vm.ActiveLeftDockTab != "Properties" || !vm.IsPropertiesInLeftVisible || vm.IsLayersInLeftVisible)
-            throw new InvalidOperationException("SelectLeftZoneTab failed to switch active tab to Properties.");
-
-        vm.SelectLeftZoneTab("Layers");
-        if (vm.ActiveLeftDockTab != "Layers" || !vm.IsLayersInLeftVisible || vm.IsPropertiesInLeftVisible)
-            throw new InvalidOperationException("SelectLeftZoneTab failed to switch active tab to Layers.");
-
-        // Test multi-mode Right Dock (Stacked vs Tabbed)
-        vm.SetPanelPlacement("Layers", DockZone.Right);
-        vm.SetPanelPlacement("Properties", DockZone.Right);
-        vm.SetPanelPlacement("Color", DockZone.Right);
-        if (vm.RightDockMode != "Stacked")
-            throw new InvalidOperationException("Default right dock mode should be Stacked.");
-
-        vm.ToggleRightDockMode();
-        if (vm.RightDockMode != "Tabbed" || !vm.ShowRightDockTabs)
-            throw new InvalidOperationException("ToggleRightDockMode failed to switch to Tabbed mode.");
-
-        vm.SelectRightZoneTab("Color");
-        if (vm.ActiveRightDockTab != "Color" || !vm.IsColorInRightVisible || vm.IsLayersInRightVisible)
-            throw new InvalidOperationException("SelectRightZoneTab failed in Tabbed mode.");
-
-        // Test Multi-Mode Splitting for Left and Bottom Zones
-        vm.ToggleLeftDockMode();
-        if (vm.LeftDockMode != "Stacked")
-            throw new InvalidOperationException("ToggleLeftDockMode failed to switch to Stacked mode.");
-        vm.ToggleLeftDockMode();
-        if (vm.LeftDockMode != "Tabbed")
-            throw new InvalidOperationException("ToggleLeftDockMode failed to switch to Tabbed mode.");
-
-        vm.ToggleBottomDockMode();
-        if (vm.BottomDockMode != "Split")
-            throw new InvalidOperationException("ToggleBottomDockMode failed to switch to Split mode.");
-        vm.ToggleBottomDockMode();
-        if (vm.BottomDockMode != "Tabbed")
-            throw new InvalidOperationException("ToggleBottomDockMode failed to switch to Tabbed mode.");
-
-        // Test Interactive Drag-and-Drop Docking Lifecycle
+        // Drag lifecycle state (the workspace view does hit-testing)
         vm.StartPanelDrag("Layers", 120, 240);
         if (!vm.IsDraggingPanel || vm.DraggedPanelName != "Layers")
             throw new InvalidOperationException("StartPanelDrag failed to activate drag state.");
-
-        vm.UpdatePanelDrag(DockZone.Left, 40, 200, "Dock Layers to Left");
-        if (vm.HoveredDockZone != DockZone.Left || !vm.IsDropLeftActive)
-            throw new InvalidOperationException("UpdatePanelDrag failed to activate Left drop zone.");
-
-        vm.CompletePanelDrag();
-        if (vm.IsDraggingPanel || vm.LayersPlacement != DockZone.Left)
-            throw new InvalidOperationException("CompletePanelDrag failed to dock panel to Left zone.");
-
-        // Test Drop to Float Window
-        vm.StartPanelDrag("Color", 400, 300);
-        vm.UpdatePanelDrag(DockZone.Floating, 400, 300, "Float Color");
-        if (!vm.IsDropFloatActive)
-            throw new InvalidOperationException("UpdatePanelDrag failed to activate Floating drop target.");
-        vm.CompletePanelDrag();
-        if (vm.ColorPlacement != DockZone.Floating)
-            throw new InvalidOperationException("CompletePanelDrag failed to float panel in separate window.");
-
-        // Test Drop to Bottom Shelf
-        vm.StartPanelDrag("Properties", 400, 700);
-        vm.UpdatePanelDrag(DockZone.Bottom, 400, 700, "Dock Properties to Bottom");
-        if (!vm.IsDropBottomActive)
-            throw new InvalidOperationException("UpdatePanelDrag failed to activate Bottom shelf drop target.");
-        vm.CompletePanelDrag();
-        if (vm.PropertiesPlacement != DockZone.Bottom)
-            throw new InvalidOperationException("CompletePanelDrag failed to dock panel to Bottom shelf.");
-
-        // Test Drag Cancellation
-        vm.StartPanelDrag("Layers", 200, 200);
         vm.CancelPanelDrag();
         if (vm.IsDraggingPanel || !string.IsNullOrEmpty(vm.DraggedPanelName))
             throw new InvalidOperationException("CancelPanelDrag failed to reset drag state.");
 
-        // Test Layout Presets
+        // Presets
         vm.ApplyUnityTwoByThreeWorkspace();
         if (vm.LayersPlacement != DockZone.Left || vm.PropertiesPlacement != DockZone.Right || vm.ColorPlacement != DockZone.Right)
             throw new InvalidOperationException("ApplyUnityTwoByThreeWorkspace failed.");
-
         vm.ApplyUnityFourSplitWorkspace();
         if (vm.LayersPlacement != DockZone.Left || vm.ColorPlacement != DockZone.Bottom || vm.PropertiesPlacement != DockZone.Right)
             throw new InvalidOperationException("ApplyUnityFourSplitWorkspace failed.");
-
         vm.ApplyTallWorkspace();
         if (vm.LayersPlacement != DockZone.Left || vm.PropertiesPlacement != DockZone.Left || vm.ColorPlacement != DockZone.Right)
             throw new InvalidOperationException("ApplyTallWorkspace failed.");
-
+        vm.ApplyUnityTabbedWorkspace();
+        if (PanelGroupCount() != 1 || DockGroupOf("Layers").Pages.Count != DockPageRegistry.All.Count)
+            throw new InvalidOperationException("ApplyUnityTabbedWorkspace should put every page in one pane.");
         vm.ApplyDefaultWorkspace();
-        if (vm.HasAnyLeftPanelDocked || vm.HasAnyBottomPanelDocked || !vm.HasAnyRightPanelDocked || vm.RightDockMode != "Stacked")
-            throw new InvalidOperationException("ApplyDefaultWorkspace failed to restore default stacked right dock.");
+        if (LayoutSignature(vm.DockRoot) != LayoutSignature(DockLayoutPresets.Essentials()) || vm.HasClosedDockPages)
+            throw new InvalidOperationException("ApplyDefaultWorkspace failed to restore the Essentials layout.");
 
-        Console.WriteLine("  ✓ Unity-style Interactive Drag-and-Drop Docking, Multi-Zone Splitting, and Presets verified.");
+        Console.WriteLine("  ✓ Dockable tab workspace: grouping, edge splits, collapse, reorder, close/reopen, float, maximize, outer-edge docking, persistence and presets verified.");
     }
 
 

@@ -1,0 +1,101 @@
+ <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:models="using:PdfEditorApp.Plugins.ImageEditor.Models"
+             xmlns:undo="using:PdfEditorApp.Plugins.ImageEditor.Models.Undo"
+             xmlns:codecs="using:PdfEditorApp.Plugins.ImageEditor.Core.Codecs"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Panels.Pages.ActionsPage"
+             x:DataType="local:ImageEditorViewModel"
+             Background="{DynamicResource PsPanelBrush}">
+
+    <UserControl.Resources>
+        <local:ElementTypeToIconConverter x:Key="ElementTypeToIconConverter" />
+        <local:IsVisibleToIconConverter x:Key="IsVisibleToIconConverter" />
+        <local:IsLockedToIconConverter x:Key="IsLockedToIconConverter" />
+        <local:StringEqualsConverter x:Key="StringEqualsConverter" />
+    </UserControl.Resources>
+
+    <Grid RowDefinitions="*,26">
+        <ScrollViewer Grid.Row="0">
+            <ItemsControl ItemsSource="{Binding ActionSets}" Margin="4,4">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="codecs:AtnCodec+AtnFile">
+                        <StackPanel Margin="0,0,0,4">
+                            <!-- Action Set Header -->
+                            <Border Background="{DynamicResource PsActiveTabBrush}" CornerRadius="2" Padding="4,3">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <materialIcons:MaterialIcon Grid.Column="0" Kind="FolderOutline" Width="14" Height="14" Foreground="{DynamicResource PsAccentBrush}" VerticalAlignment="Center" Margin="2,0,4,0" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="2" Text="{Binding Actions.Count, StringFormat='{}({0})'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                </Grid>
+                            </Border>
+                            <!-- Actions in this Set -->
+                            <ItemsControl ItemsSource="{Binding Actions}" Margin="16,2,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="codecs:AtnCodec+AtnAction">
+                                        <Button Classes="ps-tool-btn" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                                Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SelectActionCommand}"
+                                                CommandParameter="{Binding}"
+                                                Padding="4,2" Margin="0,1" Height="22">
+                                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                                <materialIcons:MaterialIcon Grid.Column="0" Kind="PlayOutline" Width="11" Height="11" Foreground="{DynamicResource PsAccentBrush}" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                                <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Grid.Column="2" Text="{Binding Items.Count, StringFormat='{}{0} steps'}" FontSize="9" Foreground="{DynamicResource PsTextFaintBrush}" VerticalAlignment="Center" Margin="4,0,2,0" />
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <!-- Actions Action Footer -->
+        <Border Grid.Row="1" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="4,0">
+            <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+                <!-- Playback Controls -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2">
+                    <!-- Stop Button -->
+                    <Button Classes="ps-footer-btn" Command="{Binding StopActionCommand}" ToolTip.Tip="Stop playing/recording action">
+                        <materialIcons:MaterialIcon Kind="Stop" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
+                    </Button>
+                    <!-- Record Button -->
+                    <Button Classes="ps-footer-btn" Command="{Binding ToggleActionRecordingCommand}" ToolTip.Tip="Begin recording action">
+                        <materialIcons:MaterialIcon Kind="RecordCircle" Width="12" Height="12" Foreground="Red" />
+                    </Button>
+                    <!-- Play Button -->
+                    <Button Classes="ps-footer-btn" Command="{Binding PlaySelectedActionCommand}" ToolTip.Tip="Play selected action">
+                        <materialIcons:MaterialIcon Kind="Play" Width="13" Height="13" Foreground="{DynamicResource PsAccentBrush}" />
+                    </Button>
+                </StackPanel>
+
+                <!-- Selected Action Indicator -->
+                <TextBlock Grid.Column="1" Text="{Binding SelectedAction.Name, FallbackValue='None'}"
+                           FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center"
+                           HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="4,0" />
+
+                <!-- Management Buttons -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2">
+                    <Button Classes="ps-footer-btn" Command="{Binding CreateNewActionSetCommand}" ToolTip.Tip="Create new set">
+                        <materialIcons:MaterialIcon Kind="FolderPlusOutline" Width="12" Height="12" />
+                    </Button>
+                    <Button Classes="ps-footer-btn" Command="{Binding CreateNewActionCommand}" ToolTip.Tip="Create new action">
+                        <materialIcons:MaterialIcon Kind="Plus" Width="13" Height="13" />
+                    </Button>
+                    <Button Classes="ps-footer-btn" Command="{Binding DeleteSelectedActionCommand}" ToolTip.Tip="Delete selected action">
+                        <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="12" Height="12" />
+                    </Button>
+                    <Button Classes="ps-footer-btn" Command="{Binding LoadActionsFileCommand}" ToolTip.Tip="Load Actions (.atn)">
+                        <materialIcons:MaterialIcon Kind="FolderOpenOutline" Width="12" Height="12" />
+                    </Button>
+                    <Button Classes="ps-footer-btn" Command="{Binding SaveActionsFileCommand}" ToolTip.Tip="Save Actions (.atn)">
+                        <materialIcons:MaterialIcon Kind="ContentSaveOutline" Width="12" Height="12" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

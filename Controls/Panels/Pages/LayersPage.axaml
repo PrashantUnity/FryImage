@@ -1,0 +1,466 @@
+ <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:models="using:PdfEditorApp.Plugins.ImageEditor.Models"
+             xmlns:undo="using:PdfEditorApp.Plugins.ImageEditor.Models.Undo"
+             xmlns:codecs="using:PdfEditorApp.Plugins.ImageEditor.Core.Codecs"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Panels.Pages.LayersPage"
+             x:DataType="local:ImageEditorViewModel"
+             Background="{DynamicResource PsPanelBrush}">
+
+    <UserControl.Resources>
+        <local:ElementTypeToIconConverter x:Key="ElementTypeToIconConverter" />
+        <local:IsVisibleToIconConverter x:Key="IsVisibleToIconConverter" />
+        <local:IsLockedToIconConverter x:Key="IsLockedToIconConverter" />
+        <local:StringEqualsConverter x:Key="StringEqualsConverter" />
+    </UserControl.Resources>
+
+    <Grid RowDefinitions="24,Auto,*,26">
+        <!-- Sub-Header Row 1: Filter Bar (Studio parity #5048, #5268) -->
+        <Border Grid.Row="0" Background="{DynamicResource PsPanelBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="6,2">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <materialIcons:MaterialIcon Kind="Magnify" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
+                    <ComboBox Classes="ps-combo" Width="68" Height="20" Padding="4,1"
+                              ItemsSource="{Binding AvailableLayerFilterBy}"
+                              SelectedItem="{Binding LayerFilterBy, Mode=TwoWay}" />
+                </StackPanel>
+
+                <!-- Kind Controls -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4"
+                            IsVisible="{Binding LayerFilterBy, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Kind'}">
+                    <Button Classes="ps-tool-btn" Width="20" Height="18" ToolTip.Tip="Filter for pixel layers"
+                            Classes.active="{Binding FilterKindPixel}"
+                            Command="{Binding ToggleFilterKindCommand}" CommandParameter="pixel">
+                        <materialIcons:MaterialIcon Kind="ImageOutline" Width="11" Height="11" />
+                    </Button>
+                    <Button Classes="ps-tool-btn" Width="20" Height="18" ToolTip.Tip="Filter for adjustment layers"
+                            Classes.active="{Binding FilterKindAdjustment}"
+                            Command="{Binding ToggleFilterKindCommand}" CommandParameter="adjustment">
+                        <materialIcons:MaterialIcon Kind="CircleHalfFull" Width="11" Height="11" />
+                    </Button>
+                    <Button Classes="ps-tool-btn" Width="20" Height="18" ToolTip.Tip="Filter for type layers"
+                            Classes.active="{Binding FilterKindType}"
+                            Command="{Binding ToggleFilterKindCommand}" CommandParameter="type">
+                        <materialIcons:MaterialIcon Kind="FormatText" Width="11" Height="11" />
+                    </Button>
+                    <Button Classes="ps-tool-btn" Width="20" Height="18" ToolTip.Tip="Filter for shape layers"
+                            Classes.active="{Binding FilterKindShape}"
+                            Command="{Binding ToggleFilterKindCommand}" CommandParameter="shape">
+                        <materialIcons:MaterialIcon Kind="ShapeOutline" Width="11" Height="11" />
+                    </Button>
+                </StackPanel>
+
+                <!-- Name Search Control -->
+                <TextBox Grid.Column="1" Grid.ColumnSpan="2" Height="20" Padding="4,1" FontSize="11"
+                         Classes="ps-input" Margin="6,0,0,0"
+                         PlaceholderText="Search layers..."
+                         Text="{Binding LayerFilterName, Mode=TwoWay}"
+                         IsVisible="{Binding LayerFilterBy, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Name'}" />
+
+                <!-- Mode Filter Control -->
+                <ComboBox Grid.Column="1" Grid.ColumnSpan="2" Height="20" Padding="4,1" FontSize="11"
+                          Classes="ps-combo" Margin="6,0,0,0"
+                          ItemsSource="{Binding AvailableBlendModes}"
+                          SelectedItem="{Binding LayerFilterMode, Mode=TwoWay}"
+                          IsVisible="{Binding LayerFilterBy, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Mode'}" />
+
+                <!-- Layers Panel Options -->
+                <Button Grid.Column="3" Classes="ps-opt-btn" Width="20" Height="20" Margin="4,0,0,0" ToolTip.Tip="Layers Panel Options">
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedRight">
+                            <MenuItem Header="Clip Thumbnails to Layer Bounds"
+                                      ToggleType="CheckBox"
+                                      IsChecked="{Binding ClipThumbnailsToLayerBounds, Mode=TwoWay}" />
+                        </MenuFlyout>
+                    </Button.Flyout>
+                    <materialIcons:MaterialIcon Kind="Menu" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- Sub-Header Row 2: Blend Mode, Opacity, Lock, Fill -->
+        <Border Grid.Row="1" Background="{DynamicResource PsPanelBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,0,0,1" Padding="6,3">
+            <StackPanel Spacing="3">
+                <!-- Row A: Blend Mode & Opacity -->
+                <Grid ColumnDefinitions="*,*">
+                    <ComboBox Grid.Column="0" Classes="ps-combo"
+                              ItemsSource="{Binding AvailableBlendModes}"
+                              SelectedItem="{Binding BlendModeField, Mode=TwoWay}"
+                              PointerWheelChanged="OnBlendModePointerWheelChanged"
+                              Margin="0,0,4,0" />
+                    <Grid Grid.Column="1" ColumnDefinitions="Auto,*" Margin="4,0,0,0">
+                        <TextBlock Grid.Column="0" Text="Opacity:" Classes="ps-label" Margin="0,0,4,0" />
+                        <NumericUpDown Grid.Column="1" Classes="ps-num"
+                                       Minimum="0" Maximum="100" Increment="5"
+                                       Value="{Binding OpacityField, Mode=TwoWay}"
+                                       FormatString="{}{0:0}%" />
+                    </Grid>
+                </Grid>
+
+                <!-- Row B: Lock Icons & Fill -->
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Text="Lock:" Classes="ps-label" Margin="0,0,2,0" />
+                        <Button Classes="ps-tool-btn" Width="18" Height="18"
+                                Command="{Binding ToggleLockTransparencyCommand}"
+                                ToolTip.Tip="Lock transparent pixels (/)">
+                            <materialIcons:MaterialIcon Kind="Checkerboard" Width="11" Height="11" />
+                        </Button>
+                        <Button Classes="ps-tool-btn" Width="18" Height="18"
+                                Classes.active="{Binding SelectedElement.IsPixelsLocked}"
+                                Command="{Binding ToggleLockPixelsCommand}"
+                                ToolTip.Tip="Lock image pixels">
+                            <materialIcons:MaterialIcon Kind="Brush" Width="11" Height="11" />
+                        </Button>
+                        <Button Classes="ps-tool-btn" Width="18" Height="18"
+                                Classes.active="{Binding SelectedElement.IsPositionLocked}"
+                                Command="{Binding ToggleLockPositionCommand}"
+                                ToolTip.Tip="Lock position">
+                            <materialIcons:MaterialIcon Kind="ArrowAll" Width="11" Height="11" />
+                        </Button>
+                        <Button Classes="ps-tool-btn" Width="18" Height="18"
+                                Command="{Binding ToggleLayerLockCommand}"
+                                CommandParameter="{Binding SelectedElement}"
+                                ToolTip.Tip="Lock all">
+                            <materialIcons:MaterialIcon Kind="LockOutline" Width="11" Height="11" />
+                        </Button>
+                    </StackPanel>
+                    <Grid Grid.Column="2" ColumnDefinitions="Auto,*" Width="95">
+                        <TextBlock Grid.Column="0" Text="Fill:" Classes="ps-label" Margin="0,0,4,0" />
+                        <NumericUpDown Grid.Column="1" Classes="ps-num"
+                                       Minimum="0" Maximum="100" Increment="5"
+                                       Value="{Binding FillOpacityField, Mode=TwoWay}"
+                                       FormatString="{}{0:0}%" />
+                    </Grid>
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- Scrollable Layers List (Topmost layer first) -->
+        <ListBox Grid.Row="2" Classes="ps-layers"
+                 ItemsSource="{Binding LayersDescendingZ}"
+                 SelectedItem="{Binding SelectedElement, Mode=TwoWay}"
+                 DoubleTapped="OnLayersListDoubleTapped"
+                 Background="Transparent"
+                 BorderThickness="0">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="models:CanvasElement">
+                    <StackPanel>
+                        <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" Height="26" VerticalAlignment="Center"
+                              PointerEntered="OnLayerRowPointerEntered" PointerExited="OnLayerRowPointerExited">
+                            <!-- Canvas-hovered highlight overlay (#4718, #4719) -->
+                            <Border Grid.ColumnSpan="5" IsVisible="{Binding IsCanvasHovered}"
+                                    Background="#253B82F6" BorderBrush="{DynamicResource PsAccentBrush}"
+                                    BorderThickness="1" CornerRadius="2" IsHitTestVisible="False" />
+                            <Grid.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Blending Options..."
+                                              Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).OpenLayerStyleDialogCommand}" />
+                                    <Separator />
+                                    <MenuItem Header="New Group from Layers..." InputGesture="Ctrl+G"
+                                              Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).CreateNewGroupCommand}" />
+                                    <MenuItem Header="Ungroup Layers" InputGesture="Ctrl+Shift+G"
+                                              Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).UngroupSelectedCommand}" />
+                                    <Separator />
+                                    <MenuItem Header="Convert to Smart Object"
+                                              Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ConvertSelectedToSmartObjectCommand}"
+                                              CommandParameter="{Binding}" />
+                                    <MenuItem Header="Rasterize Layer"
+                                              Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).RasterizeLayerCommand}"
+                                              CommandParameter="{Binding}" />
+                                    <Separator />
+                                    <MenuItem Header="Duplicate Layer..."
+                                              Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).OpenDuplicateLayerDialogCommand}" />
+                                    <MenuItem Header="Quick Duplicate" InputGesture="Ctrl+J"
+                                              Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).DuplicateCommand}" />
+                                    <MenuItem Header="Delete Layer"
+                                              Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).DeleteSelectedElementCommand}" />
+                                    <MenuItem Header="Rename Layer..."
+                                              Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).OpenRenameLayerDialogCommand}"
+                                              CommandParameter="{Binding}" />
+                                    <Separator />
+                                    <MenuItem Header="Layer from Background..."
+                                              Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ConvertBackgroundToLayerCommand}"
+                                              CommandParameter="{Binding}" />
+                                    <MenuItem Header="Background from Layer"
+                                              Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ConvertLayerToBackgroundCommand}"
+                                              CommandParameter="{Binding}" />
+                                    <MenuItem Header="Lock Transparent Pixels" InputGesture="Divide"
+                                              Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleLockTransparencyCommand}"
+                                              CommandParameter="{Binding}" />
+                                    <MenuItem Header="Fit Layer on Screen"
+                                              Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).FitLayerToScreenCommand}"
+                                              CommandParameter="{Binding}" />
+                                    <Separator />
+                                    <MenuItem Header="Create Clipping Mask" InputGesture="Ctrl+Alt+G"
+                                              Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleClippingMaskCommand}"
+                                              CommandParameter="{Binding}" />
+                                    <MenuItem Header="Toggle Lock"
+                                              Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleLayerLockCommand}"
+                                              CommandParameter="{Binding}" />
+                                    <MenuItem Header="Toggle Visibility" InputGesture="Ctrl+OemComma"
+                                              Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleLayerVisibilityCommand}"
+                                              CommandParameter="{Binding}" />
+                                    <Separator />
+                                    <MenuItem Header="Color">
+                                        <MenuItem Header="None" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="None" />
+                                        <Separator />
+                                        <MenuItem Header="Red" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Red" />
+                                        <MenuItem Header="Orange" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Orange" />
+                                        <MenuItem Header="Yellow" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Yellow" />
+                                        <MenuItem Header="Green" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Green" />
+                                        <MenuItem Header="Blue" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Blue" />
+                                        <MenuItem Header="Violet" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Violet" />
+                                        <MenuItem Header="Gray" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Gray" />
+                                    </MenuItem>
+                                    <Separator />
+                                    <MenuItem Header="Warp Text..."
+                                              Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).OpenWarpTextDialogCommand}" />
+                                    <MenuItem Header="Export As..."
+                                              Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).OpenExportDialogCommand}" />
+                                    <MenuItem Header="Export Layers As Files..."
+                                              Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).OpenExportSelectedLayersDialogCommand}" />
+                                </ContextMenu>
+                            </Grid.ContextMenu>
+
+                            <!-- Left Label Color Strip -->
+                            <Border Grid.Column="0" Width="3" Height="20" Background="{Binding LabelColorBrush}"
+                                    CornerRadius="1" Margin="0,0,3,0" HorizontalAlignment="Left" />
+
+                            <!-- Eye Visibility Toggle Button (with Color choices on context menu) -->
+                            <Button Grid.Column="0" Classes="ps-tool-btn" Width="18" Height="18" Margin="4,0,0,0"
+                                    Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleLayerVisibilityCommand}"
+                                    CommandParameter="{Binding}"
+                                    ToolTip.Tip="Indicates layer visibility (right-click for color label)">
+                                <Button.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="None" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="None" />
+                                        <Separator />
+                                        <MenuItem Header="Red" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Red" />
+                                        <MenuItem Header="Orange" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Orange" />
+                                        <MenuItem Header="Yellow" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Yellow" />
+                                        <MenuItem Header="Green" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Green" />
+                                        <MenuItem Header="Blue" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Blue" />
+                                        <MenuItem Header="Violet" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Violet" />
+                                        <MenuItem Header="Gray" Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SetLayerLabelColorCommand}" CommandParameter="Gray" />
+                                    </ContextMenu>
+                                </Button.ContextMenu>
+                                <materialIcons:MaterialIcon Kind="{Binding IsVisible, Converter={StaticResource IsVisibleToIconConverter}}"
+                                                            Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
+                            </Button>
+
+                            <!-- Layer Thumbnail Frame with Tree Indentation & Group Controls -->
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2"
+                                        Margin="{Binding TreeIndentMargin}">
+                                <!-- Tree Guideline for nested children inside groups -->
+                                <Border Width="6" Height="20" BorderThickness="1,0,0,0" BorderBrush="#3F3F46"
+                                        IsVisible="{Binding HasTreeGuideline}" Margin="0,0,2,0" VerticalAlignment="Center" />
+
+                                <!-- Group Expand/Collapse Chevron -->
+                                <Button Classes="ps-tool-btn" Width="14" Height="14" Padding="0" Margin="0,0,2,0"
+                                        IsVisible="{Binding IsGroup}"
+                                        Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleGroupExpandedCommand}"
+                                        CommandParameter="{Binding}"
+                                        ToolTip.Tip="Expand / Collapse group">
+                                    <materialIcons:MaterialIcon Kind="{Binding ExpandIconKind}" Width="10" Height="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                                </Button>
+
+                                <!-- Group Folder Icon (Amber Tint) -->
+                                <Button Classes="ps-tool-btn" Width="22" Height="20" Padding="0"
+                                        IsVisible="{Binding IsGroup}"
+                                        Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleGroupExpandedCommand}"
+                                        CommandParameter="{Binding}"
+                                        ToolTip.Tip="Layer Group Folder">
+                                    <materialIcons:MaterialIcon Kind="{Binding FolderIconKind}" Width="16" Height="16" Foreground="#F59E0B" />
+                                </Button>
+
+                                <!-- Optional Clipping Mask Indent Arrow -->
+                                <materialIcons:MaterialIcon Kind="ArrowBottomLeft" Width="10" Height="10"
+                                                            Foreground="{DynamicResource PsAccentBrush}"
+                                                            IsVisible="{Binding IsClippingMask}"
+                                                            VerticalAlignment="Center" />
+
+                                <!-- Regular Layer Thumbnail -->
+                                <Button Classes="ps-tool-btn" Width="24" Height="22" Padding="0"
+                                        IsVisible="{Binding !IsGroup}"
+                                        Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).FitLayerToScreenCommand}"
+                                        CommandParameter="{Binding}"
+                                        ToolTip.Tip="Alt-click thumbnail to fit layer on screen">
+                                    <Grid Width="22" Height="20">
+                                        <Border Background="#242424"
+                                                BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1"
+                                                CornerRadius="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                            <materialIcons:MaterialIcon Kind="{Binding ElementType, Converter={StaticResource ElementTypeToIconConverter}}"
+                                                                        Width="12" Height="12" Foreground="{DynamicResource PsTextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <!-- Shape Layer Badge (#4584) -->
+                                        <Border IsVisible="{Binding IsVectorShape}" Width="8" Height="8"
+                                                Background="#222222" BorderBrush="#888888" BorderThickness="0.5" CornerRadius="1"
+                                                HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                                ToolTip.Tip="Vector Shape Layer">
+                                            <materialIcons:MaterialIcon Kind="VectorSquare" Width="6" Height="6" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                    </Grid>
+                                </Button>
+
+                                <!-- Layer Mask Thumbnail with Mask Menu (#4575) -->
+                                <Button Classes="ps-tool-btn" Width="24" Height="22" Padding="0" Margin="2,0,0,0"
+                                        IsVisible="{Binding HasMask}"
+                                        Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).TargetLayerMaskCommand}"
+                                        ToolTip.Tip="Layer Mask (Right-click for mask options)">
+                                    <Button.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="Disable Layer Mask"
+                                                      Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleLayerMaskEnabledCommand}"
+                                                      CommandParameter="{Binding}" />
+                                            <MenuItem Header="Delete Layer Mask"
+                                                      Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).DeleteLayerMaskCommand}"
+                                                      CommandParameter="{Binding}" />
+                                            <MenuItem Header="Apply Layer Mask"
+                                                      Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ApplyLayerMaskCommand}"
+                                                      CommandParameter="{Binding}" />
+                                            <Separator />
+                                            <MenuItem Header="Add Mask to Selection"
+                                                      Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).AddMaskToSelectionCommand}"
+                                                      CommandParameter="{Binding}" />
+                                            <MenuItem Header="Subtract Mask from Selection"
+                                                      Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SubtractMaskFromSelectionCommand}"
+                                                      CommandParameter="{Binding}" />
+                                            <MenuItem Header="Intersect Mask with Selection"
+                                                      Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).IntersectMaskWithSelectionCommand}"
+                                                      CommandParameter="{Binding}" />
+                                            <Separator />
+                                            <MenuItem Header="Select and Mask…"
+                                                      Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).OpenSelectAndMaskDialogCommand}" />
+                                        </ContextMenu>
+                                    </Button.ContextMenu>
+                                    <Border Width="22" Height="20" Background="#FFFFFF" BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1" CornerRadius="1">
+                                        <materialIcons:MaterialIcon Kind="ShieldHalfFull" Width="12" Height="12" Foreground="#333333" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                </Button>
+                            </StackPanel>
+
+                            <!-- Layer Name + Smart Object Badge -->
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" Margin="6,0,0,0">
+                                <TextBlock Text="{Binding DisplayName}"
+                                           FontSize="11" Foreground="{DynamicResource PsTextBrush}"
+                                           VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis" />
+                                <Border IsVisible="{Binding IsSmartObject}" Width="12" Height="12" Background="#1E3A8A" CornerRadius="2" ToolTip.Tip="Smart Object">
+                                    <materialIcons:MaterialIcon Kind="LayersTripleOutline" Width="10" Height="10" Foreground="#60A5FA" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                            </StackPanel>
+
+                            <!-- fx Layer Style Badge -->
+                            <Button Grid.Column="3" Classes="ps-opt-btn" Height="18" Padding="3,0"
+                                    Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).OpenLayerStyleDialogCommand}"
+                                    ToolTip.Tip="Layer Style Effects (fx)">
+                                <TextBlock Text="fx" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource PsAccentBrush}" />
+                            </Button>
+
+                            <!-- Lock Icon -->
+                            <Button Grid.Column="4" Classes="ps-tool-btn" Width="18" Height="18"
+                                    Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleLayerLockCommand}"
+                                    CommandParameter="{Binding}"
+                                    ToolTip.Tip="Toggle Layer Lock">
+                                <materialIcons:MaterialIcon Kind="{Binding IsLocked, Converter={StaticResource IsLockedToIconConverter}}"
+                                                            Width="11" Height="11" Foreground="{DynamicResource PsTextFaintBrush}" />
+                            </Button>
+                        </Grid>
+
+                        <!-- Smart Filters List (if any) -->
+                        <ItemsControl ItemsSource="{Binding SmartFilters}" Margin="42,2,4,4">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="models:SmartFilter">
+                                    <Border Background="{DynamicResource PsPanelHeaderBrush}" CornerRadius="2" Margin="0,1" Padding="2,1">
+                                        <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" Height="18">
+                                            <Button Grid.Column="0" Classes="ps-tool-btn" Width="16" Height="16"
+                                                    Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).ToggleSmartFilterVisibilityCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip.Tip="Toggle Smart Filter Visibility">
+                                                <materialIcons:MaterialIcon Kind="{Binding IsVisible, Converter={StaticResource IsVisibleToIconConverter}}" Width="10" Height="10" Foreground="{DynamicResource PsTextDimBrush}" />
+                                            </Button>
+                                            <Button Grid.Column="1" Classes="ps-opt-btn" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                                    Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).OpenSmartFilterEditorCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip.Tip="Click or double-click to edit Smart Filter parameters">
+                                                <TextBlock Text="{Binding Name}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="4,0" />
+                                            </Button>
+                                            <Button Grid.Column="2" Classes="ps-tool-btn" Width="14" Height="16"
+                                                    Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).MoveSmartFilterUpCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip.Tip="Move Smart Filter Up">
+                                                <materialIcons:MaterialIcon Kind="ChevronUp" Width="10" Height="10" Foreground="{DynamicResource PsTextFaintBrush}" />
+                                            </Button>
+                                            <Button Grid.Column="3" Classes="ps-tool-btn" Width="14" Height="16"
+                                                    Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).MoveSmartFilterDownCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip.Tip="Move Smart Filter Down">
+                                                <materialIcons:MaterialIcon Kind="ChevronDown" Width="10" Height="10" Foreground="{DynamicResource PsTextFaintBrush}" />
+                                            </Button>
+                                            <Button Grid.Column="4" Classes="ps-tool-btn" Width="16" Height="16"
+                                                    Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).DeleteSmartFilterCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip.Tip="Delete Smart Filter">
+                                                <materialIcons:MaterialIcon Kind="Close" Width="9" Height="9" Foreground="{DynamicResource PsTextFaintBrush}" />
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <!-- Bottom Layer Action Footer (Link, fx, Mask, Adjust, Group, New, Trash) -->
+        <Border Grid.Row="3" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="4,0">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="4" VerticalAlignment="Center">
+                <!-- Link Layers -->
+                <Button Classes="ps-footer-btn" ToolTip.Tip="Link Layers">
+                    <materialIcons:MaterialIcon Kind="LinkVariant" Width="12" Height="12" />
+                </Button>
+                <!-- Add Layer Style (fx) -->
+                <Button Classes="ps-footer-btn" Command="{Binding OpenLayerStyleDialogCommand}" ToolTip.Tip="Add a layer style">
+                    <TextBlock Text="fx" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource PsAccentBrush}" VerticalAlignment="Center" />
+                </Button>
+                <!-- Add Layer Mask (from path or selection) -->
+                <Button Classes="ps-footer-btn" Command="{Binding AddLayerMaskCommand}" ToolTip.Tip="Add layer mask (from active path or selection)">
+                    <materialIcons:MaterialIcon Kind="SelectCompare" Width="12" Height="12" />
+                </Button>
+                <!-- Create New Adjustment Layer -->
+                <Button Classes="ps-footer-btn" ToolTip.Tip="Create new fill or adjustment layer">
+                    <materialIcons:MaterialIcon Kind="CircleHalfFull" Width="12" Height="12" />
+                </Button>
+                <!-- Create New Group -->
+                <Button Classes="ps-footer-btn" Command="{Binding CreateNewGroupCommand}" ToolTip.Tip="Create a new group (Ctrl+G)">
+                    <Button.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="New Group..." Command="{Binding CreateNewGroupCommand}" />
+                            <MenuItem Header="Ungroup Layers" InputGesture="Ctrl+Shift+G" Command="{Binding UngroupSelectedCommand}" />
+                        </ContextMenu>
+                    </Button.ContextMenu>
+                    <materialIcons:MaterialIcon Kind="FolderOutline" Width="12" Height="12" />
+                </Button>
+                <!-- Create New Layer (+) -->
+                <Button Classes="ps-footer-btn"
+                        PointerPressed="OnNewLayerButtonPointerPressed"
+                        ToolTip.Tip="Create a new layer (Ctrl/Cmd-click to add below, right-click for dialog)">
+                    <Button.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="New Layer..." InputGesture="Ctrl+Shift+N" Command="{Binding OpenNewLayerDialogCommand}" />
+                        </ContextMenu>
+                    </Button.ContextMenu>
+                    <materialIcons:MaterialIcon Kind="Plus" Width="13" Height="13" />
+                </Button>
+                <!-- Delete Layer (Trash) -->
+                <Button Classes="ps-footer-btn" Command="{Binding DeleteSelectedElementCommand}" ToolTip.Tip="Delete layer">
+                    <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="12" Height="12" />
+                </Button>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

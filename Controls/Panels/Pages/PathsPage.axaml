@@ -1,0 +1,59 @@
+ <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:models="using:PdfEditorApp.Plugins.ImageEditor.Models"
+             xmlns:undo="using:PdfEditorApp.Plugins.ImageEditor.Models.Undo"
+             xmlns:codecs="using:PdfEditorApp.Plugins.ImageEditor.Core.Codecs"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Panels.Pages.PathsPage"
+             x:DataType="local:ImageEditorViewModel"
+             Background="{DynamicResource PsPanelBrush}">
+
+    <UserControl.Resources>
+        <local:ElementTypeToIconConverter x:Key="ElementTypeToIconConverter" />
+        <local:IsVisibleToIconConverter x:Key="IsVisibleToIconConverter" />
+        <local:IsLockedToIconConverter x:Key="IsLockedToIconConverter" />
+        <local:StringEqualsConverter x:Key="StringEqualsConverter" />
+    </UserControl.Resources>
+
+    <Grid RowDefinitions="*,26">
+        <ScrollViewer Grid.Row="0">
+            <StackPanel Margin="4,4" Spacing="2">
+                <!-- Work Path Item -->
+                <Border Background="{DynamicResource PsActiveTabBrush}" CornerRadius="2" Padding="4,3">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Border Grid.Column="0" Width="26" Height="20" Background="#262626" BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1" CornerRadius="1" Margin="4,0">
+                            <materialIcons:MaterialIcon Kind="VectorPolyline" Width="13" Height="13" Foreground="{DynamicResource PsAccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <TextBlock Grid.Column="1" Text="{Binding ActiveDocumentPath.Name, FallbackValue='Work Path'}" FontSize="11" Foreground="{DynamicResource PsTextBrush}" VerticalAlignment="Center" Margin="6,0,0,0" />
+                        <TextBlock Grid.Column="2" Text="Active" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    </Grid>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Paths Action Footer -->
+        <Border Grid.Row="1" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="4,0">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="4" VerticalAlignment="Center">
+                <Button Classes="ps-footer-btn" Command="{Binding FillActivePathCommand}" ToolTip.Tip="Fill path with foreground color">
+                    <materialIcons:MaterialIcon Kind="FormatColorFill" Width="12" Height="12" />
+                </Button>
+                <Button Classes="ps-footer-btn" Command="{Binding StrokeActivePathCommand}" ToolTip.Tip="Stroke path with brush">
+                    <materialIcons:MaterialIcon Kind="Brush" Width="12" Height="12" />
+                </Button>
+                <Button Classes="ps-footer-btn" Command="{Binding LoadPathAsSelectionCommand}" ToolTip.Tip="Load path as a selection">
+                    <materialIcons:MaterialIcon Kind="SelectCompare" Width="12" Height="12" />
+                </Button>
+                <Button Classes="ps-footer-btn" Command="{Binding MakeWorkPathFromSelectionCommand}" ToolTip.Tip="Make work path from selection">
+                    <materialIcons:MaterialIcon Kind="VectorPolygon" Width="12" Height="12" />
+                </Button>
+                <Button Classes="ps-footer-btn" Command="{Binding CreateNewPathCommand}" ToolTip.Tip="Create new path">
+                    <materialIcons:MaterialIcon Kind="Plus" Width="13" Height="13" />
+                </Button>
+                <Button Classes="ps-footer-btn" Command="{Binding DeleteActivePathCommand}" ToolTip.Tip="Delete current path">
+                    <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="12" Height="12" />
+                </Button>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

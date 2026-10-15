@@ -222,6 +222,9 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         {
             ActiveColorDockTab = tab;
         }
+
+        // Reveal the page wherever it is docked (or reopen it) even when the tab value didn't change.
+        ActivateDockPage(tab);
     }
 
     [ObservableProperty]

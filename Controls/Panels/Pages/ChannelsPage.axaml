@@ -1,0 +1,118 @@
+ <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:models="using:PdfEditorApp.Plugins.ImageEditor.Models"
+             xmlns:undo="using:PdfEditorApp.Plugins.ImageEditor.Models.Undo"
+             xmlns:codecs="using:PdfEditorApp.Plugins.ImageEditor.Core.Codecs"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Panels.Pages.ChannelsPage"
+             x:DataType="local:ImageEditorViewModel"
+             Background="{DynamicResource PsPanelBrush}">
+
+    <UserControl.Resources>
+        <local:ElementTypeToIconConverter x:Key="ElementTypeToIconConverter" />
+        <local:IsVisibleToIconConverter x:Key="IsVisibleToIconConverter" />
+        <local:IsLockedToIconConverter x:Key="IsLockedToIconConverter" />
+        <local:StringEqualsConverter x:Key="StringEqualsConverter" />
+    </UserControl.Resources>
+
+    <Grid RowDefinitions="*,26">
+        <ListBox Grid.Row="0" Classes="ps-layers"
+                 ItemsSource="{Binding DocumentChannels}"
+                 SelectedItem="{Binding SelectedChannel, Mode=TwoWay}"
+                 Background="Transparent"
+                 BorderThickness="0"
+                 Margin="2,2">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="models:DocumentChannelItem">
+                    <Grid ColumnDefinitions="Auto,Auto,*,Auto" Height="26" VerticalAlignment="Center">
+                        <Grid.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Select Channel"
+                                          Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SelectChannelCommand}"
+                                          CommandParameter="{Binding}" />
+                                <MenuItem Header="Load Channel as Selection"
+                                          Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).LoadChannelAsSelectionCommand}"
+                                          CommandParameter="{Binding}" />
+                                <MenuItem Header="Duplicate Channel"
+                                          Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SaveSelectionAsChannelCommand}"
+                                          CommandParameter="{Binding Name}" />
+                                <Separator />
+                                <MenuItem Header="Channel Options..."
+                                          IsEnabled="{Binding !IsComposite}"
+                                          Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).OpenChannelOptionsCommand}"
+                                          CommandParameter="{Binding}" />
+                                <MenuItem Header="New Spot Channel..."
+                                          Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).OpenNewSpotChannelDialogCommand}" />
+                                <MenuItem Header="Quick Mask Options..."
+                                          Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).OpenQuickMaskOptionsCommand}" />
+                                <Separator />
+                                <MenuItem Header="Delete Channel"
+                                          IsEnabled="{Binding !IsComposite}"
+                                          Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).DeleteChannelCommand}"
+                                          CommandParameter="{Binding}" />
+                            </ContextMenu>
+                        </Grid.ContextMenu>
+
+                        <!-- Eye Visibility Toggle Button -->
+                        <Button Grid.Column="0" Classes="ps-tool-btn" Width="18" Height="18" Margin="2,0"
+                                Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).SelectChannelCommand}"
+                                CommandParameter="{Binding}"
+                                ToolTip.Tip="Channel Visibility">
+                            <materialIcons:MaterialIcon Kind="EyeOutline" Width="11" Height="11"
+                                                        Foreground="{DynamicResource PsTextDimBrush}" />
+                        </Button>
+
+                        <!-- Channel Color Badge / Thumbnail (Double-click / click opens Channel Options for alpha & spot channels) -->
+                        <Button Grid.Column="1" Classes="ps-opt-btn" Padding="0" Margin="4,0"
+                                Command="{Binding $parent[UserControl].((local:ImageEditorViewModel)DataContext).OpenChannelOptionsCommand}"
+                                CommandParameter="{Binding}"
+                                ToolTip.Tip="Double-click thumbnail for Channel Options">
+                            <Border Width="26" Height="20"
+                                    Background="{Binding ColorBadgeBrush}"
+                                    BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1"
+                                    CornerRadius="1">
+                                <materialIcons:MaterialIcon Kind="Palette" Width="12" Height="12"
+                                                            Foreground="#FFFFFF"
+                                                            IsVisible="{Binding IsComposite}"
+                                                            HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                        </Button>
+
+                        <!-- Channel Name -->
+                        <TextBlock Grid.Column="2" Text="{Binding Name}" FontSize="11"
+                                   Foreground="{DynamicResource PsTextBrush}"
+                                   VerticalAlignment="Center" Margin="4,0,0,0"
+                                   TextTrimming="CharacterEllipsis" />
+
+                        <!-- Channel Shortcut badge -->
+                        <TextBlock Grid.Column="3" Text="{Binding Shortcut}" FontSize="10"
+                                   Foreground="{DynamicResource PsTextFaintBrush}"
+                                   VerticalAlignment="Center" Margin="0,0,6,0" />
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <!-- Channels Action Footer -->
+        <Border Grid.Row="1" Background="{DynamicResource PsPanelHeaderBrush}" BorderBrush="{DynamicResource PsBorderBrush}" BorderThickness="0,1,0,0" Padding="4,0">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="4" VerticalAlignment="Center">
+                <Button Classes="ps-footer-btn" Command="{Binding LoadChannelAsSelectionCommand}" CommandParameter="{Binding SelectedChannel}" ToolTip.Tip="Load channel as selection">
+                    <materialIcons:MaterialIcon Kind="SelectCompare" Width="12" Height="12" />
+                </Button>
+                <Button Classes="ps-footer-btn" Command="{Binding SaveSelectionAsChannelCommand}" ToolTip.Tip="Save selection as channel">
+                    <materialIcons:MaterialIcon Kind="SelectionDrag" Width="12" Height="12" />
+                </Button>
+                <Button Classes="ps-footer-btn" Command="{Binding OpenNewSpotChannelDialogCommand}" ToolTip.Tip="New Spot Channel...">
+                    <materialIcons:MaterialIcon Kind="PaletteOutline" Width="12" Height="12" />
+                </Button>
+                <Button Classes="ps-footer-btn" Command="{Binding SaveSelectionAsChannelCommand}" ToolTip.Tip="Create new channel">
+                    <materialIcons:MaterialIcon Kind="Plus" Width="13" Height="13" />
+                </Button>
+                <Button Classes="ps-footer-btn" Command="{Binding DeleteChannelCommand}" CommandParameter="{Binding SelectedChannel}" ToolTip.Tip="Delete channel">
+                    <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="12" Height="12" />
+                </Button>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

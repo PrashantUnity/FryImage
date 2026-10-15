@@ -1,0 +1,58 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PdfEditorApp.Plugins.ImageEditor"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             xmlns:colorPrimitives="clr-namespace:Avalonia.Controls.Primitives;assembly=Avalonia.Controls.ColorPicker"
+             x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Panels.Pages.SwatchesPage"
+             x:DataType="local:ImageEditorViewModel"
+             Background="{DynamicResource PsPanelBrush}">
+
+    <UserControl.Resources>
+        <local:ColorToBrushConverter x:Key="ColorToBrushConverter" />
+        <local:StringEqualsConverter x:Key="StringEqualsConverter" />
+    </UserControl.Resources>
+
+    <Grid Margin="8,6" RowDefinitions="Auto,*">
+        <Grid Grid.Row="0" Margin="0,0,0,6" ColumnDefinitions="*,Auto,Auto">
+            <TextBlock Text="Palette" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Text="{Binding SwatchesList.Count, StringFormat='{}{0} Swatches'}" FontSize="10" Foreground="{DynamicResource PsTextDimBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
+            <Button Grid.Column="2" Classes="ps-opt-btn" Width="18" Height="18" ToolTip.Tip="Swatch Palette Options">
+                <materialIcons:MaterialIcon Kind="DotsVertical" Width="12" Height="12" Foreground="{DynamicResource PsTextDimBrush}" />
+                <Button.Flyout>
+                    <MenuFlyout Placement="BottomEdgeAlignedRight">
+                        <MenuItem Header="Import Swatches (.aco, .ase)..." Command="{Binding ImportSwatchesCommand}" />
+                        <MenuItem Header="Export Swatches (.aco)..." Command="{Binding ExportSwatchesCommand}" />
+                        <Separator />
+                        <MenuItem Header="Reset Default Swatches" Command="{Binding ResetDefaultSwatchesCommand}" />
+                    </MenuFlyout>
+                </Button.Flyout>
+            </Button>
+        </Grid>
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" MaxHeight="140">
+            <ItemsControl ItemsSource="{Binding SwatchesList}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <UniformGrid Columns="6" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Button Width="28" Height="22" Margin="2" Padding="0"
+                                Background="{Binding Converter={StaticResource ColorToBrushConverter}}"
+                                BorderBrush="#404040" BorderThickness="1" CornerRadius="1"
+                                Command="{Binding ((local:ImageEditorViewModel)DataContext).PickSwatchColorCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                CommandParameter="{Binding}"
+                                ToolTip.Tip="{Binding}">
+                            <Button.Styles>
+                                <Style Selector="Button:pointerover">
+                                    <Setter Property="BorderBrush" Value="#FFFFFF" />
+                                    <Setter Property="BorderThickness" Value="1.5" />
+                                </Style>
+                            </Button.Styles>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

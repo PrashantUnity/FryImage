@@ -155,7 +155,11 @@ public partial class ImageEditorViewModel
     }
 
     [RelayCommand]
-    private void SelectColorDockTab(string tab) => ActiveColorDockTab = tab;
+    private void SelectColorDockTab(string tab)
+    {
+        ActiveColorDockTab = tab;
+        ActivateDockPage(tab);
+    }
 
     [RelayCommand]
     private void PickSwatchColor(object? parameter)

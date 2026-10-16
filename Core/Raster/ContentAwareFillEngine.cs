@@ -67,14 +67,23 @@ public static class ContentAwareFillEngine
         int searchMinY = Math.Max(0, minY - searchMargin);
         int searchMaxY = Math.Min(height - 1, maxY + searchMargin);
 
+        int holeWidth = maxX - minX + 1;
+        int holeHeight = maxY - minY + 1;
+        int maxDim = Math.Max(holeWidth, holeHeight);
+        int minDim = Math.Min(holeWidth, holeHeight);
+        // A hole at most 1/4 as thick as its bounds are long counts as thin (a wire, string, hair, stroke).
+        // Across a thin hole, sample source patches past the anti-aliased edge halo to avoid ghost edges (#cb8ed762, #1366)
+        bool isThinHole = minDim * 4 <= maxDim;
+        int cleanRadius = isThinHole ? PatchRadius + 2 : PatchRadius;
+
         // Collect valid source candidate sample patches (patches with 0 mask pixels)
         var sourceCandidates = new List<(int X, int Y)>();
         const int sampleStep = 2; // Step for speed
-        for (int sy = searchMinY + PatchRadius; sy <= searchMaxY - PatchRadius; sy += sampleStep)
+        for (int sy = searchMinY + cleanRadius; sy <= searchMaxY - cleanRadius; sy += sampleStep)
         {
-            for (int sx = searchMinX + PatchRadius; sx <= searchMaxX - PatchRadius; sx += sampleStep)
+            for (int sx = searchMinX + cleanRadius; sx <= searchMaxX - cleanRadius; sx += sampleStep)
             {
-                if (IsCleanSourcePatch(mask, width, sx, sy, PatchRadius))
+                if (IsCleanSourcePatch(mask, width, sx, sy, cleanRadius))
                 {
                     sourceCandidates.Add((sx, sy));
                 }
@@ -84,11 +93,11 @@ public static class ContentAwareFillEngine
         // Fallback: if no candidates in margin, search entire image
         if (sourceCandidates.Count == 0)
         {
-            for (int sy = PatchRadius; sy < height - PatchRadius; sy += 4)
+            for (int sy = cleanRadius; sy < height - cleanRadius; sy += 4)
             {
-                for (int sx = PatchRadius; sx < width - PatchRadius; sx += 4)
+                for (int sx = cleanRadius; sx < width - cleanRadius; sx += 4)
                 {
-                    if (IsCleanSourcePatch(mask, width, sx, sy, PatchRadius))
+                    if (IsCleanSourcePatch(mask, width, sx, sy, cleanRadius))
                     {
                         sourceCandidates.Add((sx, sy));
                     }

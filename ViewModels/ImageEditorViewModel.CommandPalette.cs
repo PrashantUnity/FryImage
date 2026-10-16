@@ -28,7 +28,10 @@ public partial class ImageEditorViewModel
 
         // ── 1. Tools ─────────────────────────────────────────
         AddCmd("tool.select", "Move / Selection Tool", "Tools", "V", "CursorDefault", () => SetTool("select"));
-        AddCmd("tool.marquee", "Marquee Selection Tool", "Tools", "M", "SelectionDrag", () => SetTool("marquee"));
+        AddCmd("tool.marquee", "Rectangular Marquee Selection Tool", "Tools", "M", "SelectionDrag", () => SetTool("marquee"));
+        AddCmd("tool.ellipsemarquee", "Elliptical Marquee (Ellipse) Selection Tool", "Tools", "M", "CircleOutline", () => SetTool("ellipsemarquee"));
+        AddCmd("tool.singlecolmarquee", "Single Column Marquee Selection Tool", "Tools", null, "ViewColumnOutline", () => SetTool("colmarquee"));
+        AddCmd("tool.singlerowmarquee", "Single Row Marquee Selection Tool", "Tools", null, "TableRows", () => SetTool("rowmarquee"));
         AddCmd("tool.lasso", "Lasso Selection Tool", "Tools", "L", "VectorPolyline", () => SetTool("lasso"));
         AddCmd("tool.wand", "Magic Wand Tool", "Tools", "W", "Wand", () => SetTool("wand"));
         AddCmd("tool.crop", "Crop Tool", "Tools", "C", "Crop", () => SetTool("crop"));
@@ -237,6 +240,7 @@ public partial class ImageEditorViewModel
             ? AllStudioCommands
             : AllStudioCommands.Where(c =>
                 c.Title.ToLowerInvariant().Contains(q) ||
+                c.Id.ToLowerInvariant().Contains(q) ||
                 c.Category.ToLowerInvariant().Contains(q) ||
                 (c.Shortcut != null && c.Shortcut.ToLowerInvariant().Contains(q)));
 

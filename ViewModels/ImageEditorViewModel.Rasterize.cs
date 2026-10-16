@@ -227,7 +227,20 @@ public partial class ImageEditorViewModel
         if (filter.FilterType.Equals("BrightnessContrast", StringComparison.OrdinalIgnoreCase) ||
             filter.FilterType.Equals("Levels", StringComparison.OrdinalIgnoreCase) ||
             filter.FilterType.Equals("Curves", StringComparison.OrdinalIgnoreCase) ||
-            filter.FilterType.Equals("HueSaturation", StringComparison.OrdinalIgnoreCase))
+            filter.FilterType.Equals("Exposure", StringComparison.OrdinalIgnoreCase) ||
+            filter.FilterType.Equals("Vibrance", StringComparison.OrdinalIgnoreCase) ||
+            filter.FilterType.Equals("HueSaturation", StringComparison.OrdinalIgnoreCase) ||
+            filter.FilterType.Equals("ColorBalance", StringComparison.OrdinalIgnoreCase) ||
+            filter.FilterType.Equals("BlackAndWhite", StringComparison.OrdinalIgnoreCase) ||
+            filter.FilterType.Equals("PhotoFilter", StringComparison.OrdinalIgnoreCase) ||
+            filter.FilterType.Equals("ChannelMixer", StringComparison.OrdinalIgnoreCase) ||
+            filter.FilterType.Equals("Invert", StringComparison.OrdinalIgnoreCase) ||
+            filter.FilterType.Equals("Posterize", StringComparison.OrdinalIgnoreCase) ||
+            filter.FilterType.Equals("Threshold", StringComparison.OrdinalIgnoreCase) ||
+            filter.FilterType.Equals("GradientMap", StringComparison.OrdinalIgnoreCase) ||
+            filter.FilterType.Equals("SelectiveColor", StringComparison.OrdinalIgnoreCase) ||
+            filter.FilterType.Equals("ShadowsHighlights", StringComparison.OrdinalIgnoreCase) ||
+            filter.FilterType.Equals("ColorLookup", StringComparison.OrdinalIgnoreCase))
         {
             OpenAdjustmentDialog(filter.FilterType);
         }

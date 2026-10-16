@@ -189,6 +189,7 @@ public partial class ImageEditorViewModel
         if (SelectedElement is TextElement textEl)
         {
             textEl.TextColor = PrimaryColor;
+            TextForegroundColorField = PrimaryColor;
             CanvasControl?.InvalidateVisual();
         }
         else if (SelectedElement is IHasFill fillable)
@@ -213,6 +214,7 @@ public partial class ImageEditorViewModel
         if (SelectedElement is TextElement textEl)
         {
             textEl.TextColor = PrimaryColor;
+            TextForegroundColorField = PrimaryColor;
             CanvasControl?.InvalidateVisual();
         }
         OnPropertyChanged(nameof(PrimaryColorHex));
@@ -301,7 +303,18 @@ public partial class ImageEditorViewModel
     [ObservableProperty]
     private bool _colorPickerOnlyWebColors;
 
-    public string ColorPickerHex => ColorConversions.ToHexRgb(ColorPickerWorkingColor);
+    public string ColorPickerHex
+    {
+        get => $"{ColorPickerWorkingColor.R:X2}{ColorPickerWorkingColor.G:X2}{ColorPickerWorkingColor.B:X2}";
+        set
+        {
+            if (string.IsNullOrWhiteSpace(value)) return;
+            if (ColorConversions.TryParseHex(value, out var parsed))
+            {
+                ColorPickerWorkingColor = ColorPickerOnlyWebColors ? ColorConversions.SnapToWebSafe(parsed) : parsed;
+            }
+        }
+    }
     public byte ColorPickerR => ColorPickerWorkingColor.R;
     public byte ColorPickerG => ColorPickerWorkingColor.G;
     public byte ColorPickerB => ColorPickerWorkingColor.B;

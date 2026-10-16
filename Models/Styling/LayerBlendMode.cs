@@ -6,6 +6,7 @@ namespace PdfEditorApp.Plugins.ImageEditor.Models;
 public enum LayerBlendMode
 {
     Normal,
+    PassThrough,
     Dissolve,
     Darken,
     Multiply,
@@ -39,6 +40,7 @@ public static class LayerBlendModeExtensions
     public static string ToDisplayName(this LayerBlendMode mode) => mode switch
     {
         LayerBlendMode.Normal => "Normal",
+        LayerBlendMode.PassThrough => "Pass Through",
         LayerBlendMode.Dissolve => "Dissolve",
         LayerBlendMode.Darken => "Darken",
         LayerBlendMode.Multiply => "Multiply",

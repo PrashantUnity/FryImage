@@ -66,19 +66,32 @@ public partial class ImageEditorViewModel
         }
 
         _transformTargetElement = target;
-        _origX = target.X;
-        _origY = target.Y;
-        _origW = Math.Max(target.Width, 1.0);
-        _origH = Math.Max(target.Height, 1.0);
-        _origRot = target.RotationDegrees;
-        _origSkewH = target.SkewH;
-        _origSkewV = target.SkewV;
+        if (CanvasControl?.ActiveSelectionBounds is { } sel && sel.Width > 0 && sel.Height > 0)
+        {
+            _origX = sel.X;
+            _origY = sel.Y;
+            _origW = Math.Max(sel.Width, 1.0);
+            _origH = Math.Max(sel.Height, 1.0);
+            _origRot = 0;
+            _origSkewH = 0;
+            _origSkewV = 0;
+        }
+        else
+        {
+            _origX = target.X;
+            _origY = target.Y;
+            _origW = Math.Max(target.Width, 1.0);
+            _origH = Math.Max(target.Height, 1.0);
+            _origRot = target.RotationDegrees;
+            _origSkewH = target.SkewH;
+            _origSkewV = target.SkewV;
+        }
 
         _isUpdatingTransformFields = true;
         try
         {
-            TransformX = Math.Round(target.X, 1);
-            TransformY = Math.Round(target.Y, 1);
+            TransformX = Math.Round(_origX, 1);
+            TransformY = Math.Round(_origY, 1);
             TransformWPercent = 100.0;
             TransformHPercent = 100.0;
             TransformAspectLocked = target.AspectLocked;
@@ -132,6 +145,14 @@ public partial class ImageEditorViewModel
         if (before != after && !_isApplyingHistory)
         {
             History.Push(new FreeTransformCommand(el, before, after));
+        }
+
+        // With a selection, the marching ants follow the box (Studio Parity 3ee78a36, #5297, #5337)
+        if (CanvasControl?.ActiveSelectionBounds != null)
+        {
+            double finalW = Math.Max(1.0, _origW * (TransformWPercent / 100.0));
+            double finalH = Math.Max(1.0, _origH * (TransformHPercent / 100.0));
+            CanvasControl.ActiveSelectionBounds = new Rect(TransformX, TransformY, finalW, finalH);
         }
 
         IsFreeTransformActive = false;

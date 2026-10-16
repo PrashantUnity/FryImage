@@ -214,6 +214,7 @@ public partial class ImageEditorView : UserControl
         // Inline double-click text editing: overlay a real TextBox positioned/sized to match
         // the element, live only while editing.
         CanvasControl.TextEditRequested += BeginInlineTextEdit;
+        vm.CommitInlineTextEditRequested += () => CommitInlineTextEdit(cancel: false);
         CanvasControl.ElementDoubleClicked += _ => vm.OpenLayerStyleDialogCommand.Execute(null);
 
         // Brush shortcuts and events

@@ -130,7 +130,7 @@
                             <!-- Row 3: Hex # & K -->
                             <TextBlock Grid.Row="3" Grid.Column="0" Text="#" Classes="ps-label" VerticalAlignment="Center" />
                             <TextBox Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="4" Classes="ps-input" Height="20" Padding="4,1"
-                                     Text="{Binding ColorPickerHex, Mode=OneWay}" />
+                                     Text="{Binding ColorPickerHex, Mode=TwoWay}" />
 
                             <TextBlock Grid.Row="3" Grid.Column="6" Text="K:" Classes="ps-label" VerticalAlignment="Center" />
                             <TextBox Grid.Row="3" Grid.Column="7" Classes="ps-input" Height="20" Padding="4,1"

@@ -485,6 +485,22 @@ public partial class ImageEditorViewModel
                 ColorRangeRange,
                 samplePoints);
 
+            // Studio Parity fe8fa3b9 (#5244): The eyedropper may sample anywhere on the image,
+            // but the resulting mask is scoped to the active selection bounds if one exists.
+            if (CanvasControl?.ActiveSelectionBounds is { } activeSel)
+            {
+                for (int y = 0; y < bmp.Height; y++)
+                {
+                    for (int x = 0; x < bmp.Width; x++)
+                    {
+                        if (!activeSel.Contains(new Avalonia.Point(x, y)))
+                        {
+                            mask[y * bmp.Width + x] = 0;
+                        }
+                    }
+                }
+            }
+
             if (CanvasControl != null)
             {
                 CanvasControl.QuickMaskBuffer = mask;

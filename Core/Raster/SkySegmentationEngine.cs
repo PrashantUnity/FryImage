@@ -6,7 +6,7 @@ using SkiaSharp;
 namespace PdfEditorApp.Plugins.ImageEditor.Core.Raster;
 
 /// <summary>
-/// Classical sky segmentation engine ported from photocraft-algo (Select › Sky).
+/// Classical sky segmentation engine for Studio Select › Sky.
 /// Implements colour prior (blue sky, overcast/clouds, sunset glow), gradient smoothness,
 /// 4-connected region growing from the top edge, and studio backdrop rejection (#4638).
 /// </summary>

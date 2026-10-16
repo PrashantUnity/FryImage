@@ -17,16 +17,18 @@ public static class CurvaturePenEngine
     {
         double dx = target.X - start.X;
         double dy = target.Y - start.Y;
-        double dist = Math.Sqrt(dx * dx + dy * dy);
-        if (dist < 1e-4) return target;
+        if (double.IsNaN(dx) || double.IsNaN(dy)) return target;
+        double distSq = dx * dx + dy * dy;
+        if (distSq < 1e-9) return start;
 
         double angle = Math.Atan2(dy, dx);
-        double step = Math.PI / 4.0; // 45 degrees
+        const double step = Math.PI / 4.0; // 45 degrees
         double snapped = Math.Round(angle / step) * step;
+        double dirX = Math.Cos(snapped);
+        double dirY = Math.Sin(snapped);
 
-        return new Point(
-            start.X + Math.Cos(snapped) * dist,
-            start.Y + Math.Sin(snapped) * dist);
+        double t = dx * dirX + dy * dirY;
+        return new Point(start.X + dirX * t, start.Y + dirY * t);
     }
 
     /// <summary>

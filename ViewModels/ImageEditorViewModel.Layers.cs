@@ -88,23 +88,68 @@ public partial class ImageEditorViewModel
         }
         else
         {
-            // Duplicate into a New Document
-            var newElements = targets.Select(e =>
+            // Duplicate into a New Document (Studio Parity ca5755f5, #4805)
+            string newTitle = !string.IsNullOrWhiteSpace(DuplicateLayerNewDocName)
+                ? DuplicateLayerNewDocName.Trim()
+                : $"Untitled-{++_documentCounter}";
+
+            var newDoc = new Models.Session.StudioDocument(newTitle, CanvasWidth, CanvasHeight, BackgroundColor)
             {
-                var c = e.Clone();
+                ColorMode = DocumentColorMode ?? "RGB",
+                BitsPerChannel = DocumentBitsPerChannel,
+                ZoomLevel = 1.0
+            };
+
+            foreach (var elem in targets)
+            {
+                var c = elem.Clone();
                 c.X = Math.Max(0, c.X);
                 c.Y = Math.Max(0, c.Y);
-                return c;
-            }).ToList();
-
-            if (newElements.Count == 1 && !string.IsNullOrWhiteSpace(DuplicateLayerAsName))
-            {
-                newElements[0].Name = DuplicateLayerAsName.Trim();
+                if (targets.Count == 1 && !string.IsNullOrWhiteSpace(DuplicateLayerAsName))
+                {
+                    c.Name = DuplicateLayerAsName.Trim();
+                }
+                newDoc.Elements.Add(c);
             }
 
-            ApplyCanvasState(CanvasWidth, CanvasHeight, BackgroundColor, newElements, $"Created new document '{DuplicateLayerNewDocName}' from duplicated layer(s).");
-            StatusMessage = $"Created document '{DuplicateLayerNewDocName}' with duplicated layer(s).";
+            if (Documents.Count == 0)
+            {
+                InitializeDocumentSession();
+            }
+
+            Documents.Add(newDoc);
+            SwitchDocument(newDoc);
+            StatusMessage = $"Created document '{newDoc.Title}' with duplicated layer(s).";
         }
+    }
+
+    /// <summary>
+    /// Sets layer properties with standard strict range validation (Studio Parity 7e28900d, #5242, #5291).
+    /// Refuses opacity and fill outside 0..1 without modifying layer.
+    /// </summary>
+    public bool TrySetLayerProps(CanvasElement element, double? opacity = null, double? fill = null, bool? visible = null, string? blend = null)
+    {
+        if (element == null) return false;
+
+        if (opacity.HasValue && (opacity.Value < 0.0 || opacity.Value > 1.0 || double.IsNaN(opacity.Value)))
+        {
+            StatusMessage = $"opacity must be a number in 0..1 (1 = 100 %), got {opacity.Value}";
+            return false;
+        }
+
+        if (fill.HasValue && (fill.Value < 0.0 || fill.Value > 1.0 || double.IsNaN(fill.Value)))
+        {
+            StatusMessage = $"fill must be a number in 0..1 (1 = 100 %), got {fill.Value}";
+            return false;
+        }
+
+        if (opacity.HasValue) element.Opacity = opacity.Value;
+        if (fill.HasValue) element.FillOpacity = fill.Value;
+        if (visible.HasValue) element.IsVisible = visible.Value;
+        if (!string.IsNullOrWhiteSpace(blend)) element.BlendMode = ParseBlendMode(blend);
+
+        RefreshCanvas();
+        return true;
     }
 
     // ── New Layer Modal (Studio Parity) ─────────────────
@@ -150,6 +195,12 @@ public partial class ImageEditorViewModel
     [RelayCommand]
     public void OpenNewLayerDialog()
     {
+        if (IsFreeTransformActive)
+        {
+            // Studio parity #5859: New Layer applies the open Free Transform first
+            CommitFreeTransform();
+        }
+
         int nextNum = Elements.Count + 1;
         NewLayerName = $"Layer {nextNum}";
         NewLayerIsClippingMask = false;
@@ -274,6 +325,15 @@ public partial class ImageEditorViewModel
             t.IsTransparencyLocked = newLock;
         }
 
+        if (!_isApplyingHistory)
+        {
+            var changes = targets.Select(t => (Target: t, OldValue: allLocked, NewValue: newLock)).ToList();
+            History.Push(new BatchPropertyCommand<CanvasElement, bool>(
+                changes,
+                (t, v) => { t.IsTransparencyLocked = v; RefreshCanvas(); OnPropertyChanged(nameof(LayersDescendingZ)); },
+                "Layer Properties"));
+        }
+
         RefreshCanvas();
         OnPropertyChanged(nameof(LayersDescendingZ));
         OnPropertyChanged(nameof(SelectedElement));
@@ -298,6 +358,15 @@ public partial class ImageEditorViewModel
         foreach (var t in targets)
         {
             t.IsPixelsLocked = newLock;
+        }
+
+        if (!_isApplyingHistory)
+        {
+            var changes = targets.Select(t => (Target: t, OldValue: allLocked, NewValue: newLock)).ToList();
+            History.Push(new BatchPropertyCommand<CanvasElement, bool>(
+                changes,
+                (t, v) => { t.IsPixelsLocked = v; RefreshCanvas(); OnPropertyChanged(nameof(LayersDescendingZ)); },
+                "Layer Properties"));
         }
 
         RefreshCanvas();
@@ -326,6 +395,15 @@ public partial class ImageEditorViewModel
             t.IsPositionLocked = newLock;
         }
 
+        if (!_isApplyingHistory)
+        {
+            var changes = targets.Select(t => (Target: t, OldValue: allLocked, NewValue: newLock)).ToList();
+            History.Push(new BatchPropertyCommand<CanvasElement, bool>(
+                changes,
+                (t, v) => { t.IsPositionLocked = v; RefreshCanvas(); OnPropertyChanged(nameof(LayersDescendingZ)); },
+                "Layer Properties"));
+        }
+
         RefreshCanvas();
         OnPropertyChanged(nameof(LayersDescendingZ));
         OnPropertyChanged(nameof(SelectedElement));
@@ -335,6 +413,12 @@ public partial class ImageEditorViewModel
     [RelayCommand]
     public void AddNewBlankLayer(bool below = false)
     {
+        if (IsFreeTransformActive)
+        {
+            // Studio parity #5859: New Layer applies the open Free Transform first
+            CommitFreeTransform();
+        }
+
         int nextNum = Elements.Count + 1;
         var el = new RectangleElement
         {
@@ -429,6 +513,34 @@ public partial class ImageEditorViewModel
             target.IsMaskEnabled = true;
             IsLayerMaskTargeted = true;
             IsVectorMaskTargeted = false;
+            // The selection became the mask: standard tools drop it (#7ad75b5d)
+            DeselectAll();
+            RefreshCanvas();
+            OnPropertyChanged(nameof(LayersDescendingZ));
+            StatusMessage = $"Added layer mask from selection onto '{target.DisplayName}'.";
+            return;
+        }
+        else if (CanvasControl?.ActiveSelectionBounds is Rect sel && sel.Width > 0 && sel.Height > 0)
+        {
+            int maskW = (int)Math.Max(1, CanvasWidth);
+            int maskH = (int)Math.Max(1, CanvasHeight);
+            var mask = new byte[maskW * maskH];
+            int x0 = (int)Math.Clamp(Math.Floor(sel.X), 0, maskW);
+            int y0 = (int)Math.Clamp(Math.Floor(sel.Y), 0, maskH);
+            int x1 = (int)Math.Clamp(Math.Ceiling(sel.Right), 0, maskW);
+            int y1 = (int)Math.Clamp(Math.Ceiling(sel.Bottom), 0, maskH);
+            for (int y = y0; y < y1; y++)
+            {
+                int row = y * maskW;
+                for (int x = x0; x < x1; x++) mask[row + x] = 255;
+            }
+            target.MaskData = mask;
+            target.MaskBounds = new Rect(0, 0, maskW, maskH);
+            target.IsMaskEnabled = true;
+            IsLayerMaskTargeted = true;
+            IsVectorMaskTargeted = false;
+            // The selection became the mask: standard tools drop it (#7ad75b5d)
+            DeselectAll();
             RefreshCanvas();
             OnPropertyChanged(nameof(LayersDescendingZ));
             StatusMessage = $"Added layer mask from selection onto '{target.DisplayName}'.";
@@ -655,18 +767,30 @@ public partial class ImageEditorViewModel
     {
         if (_renameLayerTargetElement != null)
         {
-            if (!string.IsNullOrWhiteSpace(RenameLayerName))
+            var target = _renameLayerTargetElement;
+            string oldName = target.Name ?? "";
+            var oldColor = target.LabelColor;
+
+            string newName = !string.IsNullOrWhiteSpace(RenameLayerName) ? RenameLayerName.Trim() : oldName;
+            var newColor = (RenameLayerColorIndex >= 0 && RenameLayerColorIndex <= 7) ? (LayerLabelColor)RenameLayerColorIndex : oldColor;
+
+            target.Name = newName;
+            target.LabelColor = newColor;
+
+            if (!_isApplyingHistory && (oldName != newName || oldColor != newColor))
             {
-                _renameLayerTargetElement.Name = RenameLayerName.Trim();
+                History.Push(new GenericPropertyCommand<CanvasElement, (string Name, LayerLabelColor Color)>(
+                    target,
+                    (t, v) => { t.Name = v.Name; t.LabelColor = v.Color; RefreshCanvas(); OnPropertyChanged(nameof(LayersDescendingZ)); },
+                    (oldName, oldColor),
+                    (newName, newColor),
+                    oldName != newName ? "Rename Layer" : "Layer Properties"));
             }
-            if (RenameLayerColorIndex >= 0 && RenameLayerColorIndex <= 7)
-            {
-                _renameLayerTargetElement.LabelColor = (LayerLabelColor)RenameLayerColorIndex;
-            }
+
             RefreshCanvas();
             OnPropertyChanged(nameof(LayersDescendingZ));
             OnPropertyChanged(nameof(SelectedElement));
-            StatusMessage = $"Renamed layer to '{_renameLayerTargetElement.DisplayName}'.";
+            StatusMessage = $"Renamed layer to '{target.DisplayName}'.";
         }
 
         IsRenameLayerDialogOpen = false;
@@ -843,7 +967,10 @@ public partial class ImageEditorViewModel
             NaturalPixelHeight = h,
             OriginalImageBytes = ms.ToArray(),
             IsVisible = true,
-            Opacity = 1.0
+            Opacity = 1.0,
+            IsClippingMask = target.IsClippingMask && lower.IsClippingMask,
+            LabelColor = lower.LabelColor,
+            GroupId = lower.GroupId
         };
 
         var oldList = Elements.ToList();
@@ -856,6 +983,90 @@ public partial class ImageEditorViewModel
         RefreshCanvas();
         OnPropertyChanged(nameof(LayersDescendingZ));
         StatusMessage = $"Merged '{target.DisplayName}' down into '{lower.DisplayName}'.";
+    }
+
+    [RelayCommand]
+    public void MergeLayers()
+    {
+        var selected = SelectedElements.Count > 1
+            ? SelectedElements.OrderBy(e => e.ZIndex).ToList()
+            : null;
+        if (selected == null || selected.Count < 2)
+        {
+            MergeDown();
+            return;
+        }
+
+        var top = selected[^1];
+        CanvasElement? BaseOf(CanvasElement el)
+        {
+            if (!el.IsClippingMask) return null;
+            var sorted = Elements.OrderBy(e => e.ZIndex).ToList();
+            int idx = sorted.IndexOf(el);
+            for (int i = idx - 1; i >= 0; i--)
+            {
+                if (!sorted[i].IsClippingMask) return sorted[i];
+            }
+            return null;
+        }
+
+        var topBase = BaseOf(top);
+        bool allClippedInSameChain = topBase != null && selected.All(l => l.IsClippingMask && BaseOf(l) == topBase);
+
+        double minX = selected.Min(e => e.X);
+        double minY = selected.Min(e => e.Y);
+        double maxX = selected.Max(e => e.X + e.Width);
+        double maxY = selected.Max(e => e.Y + e.Height);
+        int w = Math.Max(1, (int)Math.Ceiling(maxX - minX));
+        int h = Math.Max(1, (int)Math.Ceiling(maxY - minY));
+
+        var rtb = new RenderTargetBitmap(new PixelSize(w, h));
+        using (var dc = rtb.CreateDrawingContext())
+        {
+            using (dc.PushTransform(Matrix.CreateTranslation(-minX, -minY)))
+            {
+                foreach (var el in selected.Where(e => e.IsVisible))
+                {
+                    EditorCanvasControl.DrawElement(dc, el);
+                }
+            }
+        }
+
+        using var ms = new MemoryStream();
+        rtb.Save(ms, new PngBitmapEncoderOptions());
+        ms.Position = 0;
+        var mergedBmp = new Bitmap(ms);
+
+        var merged = new ImageElement
+        {
+            Name = top.Name,
+            Width = w,
+            Height = h,
+            X = minX,
+            Y = minY,
+            ZIndex = top.ZIndex,
+            Source = mergedBmp,
+            NaturalPixelWidth = w,
+            NaturalPixelHeight = h,
+            OriginalImageBytes = ms.ToArray(),
+            IsVisible = true,
+            Opacity = 1.0,
+            IsClippingMask = allClippedInSameChain,
+            LabelColor = top.LabelColor,
+            GroupId = top.GroupId
+        };
+
+        var oldList = Elements.ToList();
+        foreach (var el in selected) Elements.Remove(el);
+        Elements.Add(merged);
+        SelectedElement = merged;
+        SelectedElements.Clear();
+        SelectedElements.Add(merged);
+
+        History.Push(new RestoreSnapshotCommand(Elements, oldList, Elements.ToList(), "Merge Layers", () => RefreshCanvas()));
+        RefreshCanvas();
+        OnPropertyChanged(nameof(LayersDescendingZ));
+        StatusMessage = $"Merged {selected.Count} layers.";
     }
 
     [RelayCommand]
@@ -1345,4 +1556,156 @@ public partial class ImageEditorViewModel
         OnPropertyChanged(nameof(LayersDescendingZ));
         StatusMessage = $"Stamped '{target.DisplayName}' down into new layer.";
     }
+
+    [RelayCommand]
+    public void DeleteHiddenLayers()
+    {
+        var doomed = Elements.Where(e => !e.IsVisible).ToList();
+        if (doomed.Count == 0)
+        {
+            StatusMessage = "No hidden layers to delete.";
+            return;
+        }
+
+        if (doomed.Count >= Elements.Count)
+        {
+            StatusMessage = "A document must keep at least one layer.";
+            return;
+        }
+
+        var oldList = Elements.Select(e => e.Clone()).ToList();
+
+        // Any layers clipped to a deleted hidden base layer are released (#5868)
+        var sorted = Elements.OrderBy(e => e.ZIndex).ToList();
+        foreach (var doomedEl in doomed)
+        {
+            if (!doomedEl.IsClippingMask)
+            {
+                int idx = sorted.IndexOf(doomedEl);
+                for (int i = idx + 1; i < sorted.Count; i++)
+                {
+                    if (sorted[i].IsClippingMask)
+                    {
+                        sorted[i].IsClippingMask = false;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+
+        foreach (var el in doomed)
+        {
+            Elements.Remove(el);
+            if (SelectedElement == el) SelectedElement = null;
+            SelectedElements.Remove(el);
+        }
+
+        if (SelectedElement == null && Elements.Count > 0)
+        {
+            SelectedElement = Elements[^1];
+        }
+
+        History.Push(new RestoreSnapshotCommand(Elements, oldList, Elements.Select(e => e.Clone()).ToList(), "Delete Hidden Layers", () => RefreshCanvas()));
+        RefreshCanvas();
+        OnPropertyChanged(nameof(LayersDescendingZ));
+        StatusMessage = $"Deleted {doomed.Count} hidden layers.";
+    }
+
+    // ── Copy / Paste Layer Style (Studio Parity #5881) ──────────────────────
+    [ObservableProperty] private CopiedLayerStyle? _copiedLayerStyle;
+    public bool HasCopiedLayerStyle => CopiedLayerStyle != null;
+
+    [RelayCommand]
+    public void CopyLayerStyle(CanvasElement? element = null)
+    {
+        var target = element ?? SelectedElement;
+        if (target == null)
+        {
+            StatusMessage = "No layer selected to copy layer style.";
+            return;
+        }
+
+        CopiedLayerStyle = new CopiedLayerStyle
+        {
+            Effects = target.Effects.Clone(),
+            BlendMode = target.BlendMode,
+            FillOpacity = target.FillOpacity,
+            BlendIfThisMin = target.BlendIfThisMin,
+            BlendIfThisMax = target.BlendIfThisMax,
+            BlendIfUnderMin = target.BlendIfUnderMin,
+            BlendIfUnderMax = target.BlendIfUnderMax,
+            ExcludedChannels = target.ExcludedChannels
+        };
+        OnPropertyChanged(nameof(HasCopiedLayerStyle));
+        StatusMessage = $"Copied layer style from '{target.DisplayName}'.";
+    }
+
+    [RelayCommand]
+    public void PasteLayerStyle(CanvasElement? element = null)
+    {
+        if (CopiedLayerStyle == null)
+        {
+            StatusMessage = "No layer style has been copied.";
+            return;
+        }
+
+        var targets = element != null
+            ? [element]
+            : (SelectedElements.Count > 0 ? SelectedElements.Where(e => !e.IsBackground).ToList() : (SelectedElement != null && !SelectedElement.IsBackground ? [SelectedElement] : []));
+        if (targets.Count == 0) return;
+
+        var oldList = Elements.Select(e => e.Clone()).ToList();
+        foreach (var t in targets)
+        {
+            t.Effects = CopiedLayerStyle.Effects.Clone();
+            t.BlendMode = (CopiedLayerStyle.BlendMode == LayerBlendMode.PassThrough && t is not GroupElement)
+                ? LayerBlendMode.Normal
+                : CopiedLayerStyle.BlendMode;
+            t.FillOpacity = CopiedLayerStyle.FillOpacity;
+            t.BlendIfThisMin = CopiedLayerStyle.BlendIfThisMin;
+            t.BlendIfThisMax = CopiedLayerStyle.BlendIfThisMax;
+            t.BlendIfUnderMin = CopiedLayerStyle.BlendIfUnderMin;
+            t.BlendIfUnderMax = CopiedLayerStyle.BlendIfUnderMax;
+            t.ExcludedChannels = CopiedLayerStyle.ExcludedChannels;
+        }
+
+        History.Push(new RestoreSnapshotCommand(Elements, oldList, Elements.Select(e => e.Clone()).ToList(), "Paste Layer Style", () => RefreshCanvas()));
+        RefreshCanvas();
+        SyncStyleFieldsToSelection();
+        StatusMessage = targets.Count == 1 ? $"Pasted layer style to '{targets[0].DisplayName}'." : $"Pasted layer style to {targets.Count} layers.";
+    }
+
+    [RelayCommand]
+    public void ClearLayerStyle(CanvasElement? element = null)
+    {
+        var targets = element != null
+            ? [element]
+            : (SelectedElements.Count > 0 ? SelectedElements.ToList() : (SelectedElement != null ? [SelectedElement] : []));
+        if (targets.Count == 0) return;
+
+        var oldList = Elements.Select(e => e.Clone()).ToList();
+        foreach (var t in targets)
+        {
+            t.Effects = new LayerStyleEffects();
+        }
+
+        History.Push(new RestoreSnapshotCommand(Elements, oldList, Elements.Select(e => e.Clone()).ToList(), "Clear Layer Style", () => RefreshCanvas()));
+        RefreshCanvas();
+        StatusMessage = "Cleared layer style.";
+    }
+}
+
+public sealed class CopiedLayerStyle
+{
+    public LayerStyleEffects Effects { get; set; } = new();
+    public LayerBlendMode BlendMode { get; set; } = LayerBlendMode.Normal;
+    public double FillOpacity { get; set; } = 1.0;
+    public byte BlendIfThisMin { get; set; } = 0;
+    public byte BlendIfThisMax { get; set; } = 255;
+    public byte BlendIfUnderMin { get; set; } = 0;
+    public byte BlendIfUnderMax { get; set; } = 255;
+    public uint ExcludedChannels { get; set; } = 0;
 }

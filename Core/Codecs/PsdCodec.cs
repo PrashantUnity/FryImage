@@ -39,7 +39,7 @@ public static class PsdCodec
         public bool IsSmartObject { get; set; }
         public Guid? GroupId { get; set; }
         public int GroupIndentLevel { get; set; }
-        internal List<(short ChannelId, uint Length)> Channels { get; } = new();
+        internal List<(short ChannelId, long Length)> Channels { get; } = new();
     }
 
     public sealed class PsdDocument
@@ -48,12 +48,23 @@ public static class PsdCodec
         public int Height { get; set; }
         public int Channels { get; set; } = 3;
         public int BitsPerChannel { get; set; } = 8;
+        public bool IsPsb { get; set; }
+        public bool HasDamagedMergedComposite { get; set; }
+        public string? MergedCompositeWarning { get; set; }
         public List<PsdLayerInfo> Layers { get; set; } = new();
         public byte[]? CompositeBgraPixels { get; set; }
     }
 
+    private static readonly HashSet<string> PsbLongKeys = new(StringComparer.Ordinal)
+    {
+        "LMsk", "Lr16", "Lr32", "Layr", "Mt16", "Mt32", "Mtrn", "Alph", "FMsk", "lnk2", "FEid", "FXid", "PxSD",
+        "lnk3", "lnkE", "pths", "extd", "extn", "FELS", "cinf", "artd"
+    };
+
+    public static bool IsPsbLongKey(string key) => PsbLongKeys.Contains(key);
+
     /// <summary>
-    /// Reads a layered PSD document from a stream.
+    /// Reads a layered PSD/PSB document from a stream.
     /// </summary>
     public static PsdDocument Decode(Stream stream)
     {
@@ -65,8 +76,10 @@ public static class PsdCodec
             throw new InvalidDataException("Invalid PSD signature, expected '8BPS'.");
 
         ushort version = reader.ReadUInt16();
-        if (version != 1)
-            throw new InvalidDataException($"Unsupported PSD version: {version}.");
+        if (version != 1 && version != 2)
+            throw new InvalidDataException($"Unsupported PSD/PSB version: {version}.");
+
+        bool isPsb = version == 2;
 
         reader.ReadBytes(6); // 6 reserved bytes
         ushort channels = reader.ReadUInt16();
@@ -80,7 +93,8 @@ public static class PsdCodec
             Width = (int)width,
             Height = (int)height,
             Channels = channels,
-            BitsPerChannel = depth
+            BitsPerChannel = depth,
+            IsPsb = isPsb
         };
 
         // 2. Color Mode Data
@@ -92,11 +106,11 @@ public static class PsdCodec
         SkipBytes(stream, reader, imgResLen);
 
         // 4. Layer and Mask Information
-        uint layerSectionLen = reader.ReadUInt32();
+        long layerSectionLen = isPsb ? reader.ReadInt64() : reader.ReadUInt32();
         if (layerSectionLen > 0)
         {
             long layerSectionStart = stream.Position;
-            uint layerInfoLen = reader.ReadUInt32();
+            long layerInfoLen = isPsb ? reader.ReadInt64() : reader.ReadUInt32();
             if (layerInfoLen > 0)
             {
                 short layerCountRaw = reader.ReadInt16();
@@ -121,11 +135,11 @@ public static class PsdCodec
                         Right = right
                     };
 
-                    // Channel info records (6 bytes each: 2 byte id, 4 byte data length)
+                    // Channel info records: 2 byte id, 4 bytes length in PSD, 8 bytes in PSB
                     for (int c = 0; c < layerChannels; c++)
                     {
                         short chId = reader.ReadInt16();
-                        uint chLen = reader.ReadUInt32();
+                        long chLen = isPsb ? reader.ReadInt64() : reader.ReadUInt32();
                         layer.Channels.Add((chId, chLen));
                     }
 
@@ -175,7 +189,7 @@ public static class PsdCodec
 
                         byte[] tagKeyBytes = reader.ReadBytes(4);
                         string tagKey = Encoding.ASCII.GetString(tagKeyBytes);
-                        uint tagLen = reader.ReadUInt32();
+                        long tagLen = (isPsb && IsPsbLongKey(tagKey)) ? reader.ReadInt64() : reader.ReadUInt32();
                         long tagDataStart = stream.Position;
 
                         if ((tagKey == "lsct" || tagKey == "lsdk") && tagLen >= 4)
@@ -323,7 +337,7 @@ public static class PsdCodec
                     layer.BgraPixels = bgra;
                 }
 
-                // Reconstruct nested layer tree from section dividers (Studio & Photocraft tree.rs)
+                // Reconstruct nested layer tree from section dividers
                 var groupStack = new Stack<(Guid GroupId, int Depth, List<PsdLayerInfo> Children)>();
                 var structuredLayers = new List<PsdLayerInfo>();
 
@@ -416,17 +430,30 @@ public static class PsdCodec
 
                     if (comp == 0) // Raw
                     {
-                        reader.Read(cr, 0, totalP);
-                        if (doc.Channels > 1) reader.Read(cg, 0, totalP);
-                        if (doc.Channels > 2) reader.Read(cb, 0, totalP);
-                        if (doc.Channels > 3) reader.Read(ca, 0, totalP);
+                        int readR = reader.Read(cr, 0, totalP);
+                        if (readR < totalP) throw new EndOfStreamException("Truncated red channel in raw composite.");
+                        if (doc.Channels > 1)
+                        {
+                            int readG = reader.Read(cg, 0, totalP);
+                            if (readG < totalP) throw new EndOfStreamException("Truncated green channel in raw composite.");
+                        }
+                        if (doc.Channels > 2)
+                        {
+                            int readB = reader.Read(cb, 0, totalP);
+                            if (readB < totalP) throw new EndOfStreamException("Truncated blue channel in raw composite.");
+                        }
+                        if (doc.Channels > 3)
+                        {
+                            int readA = reader.Read(ca, 0, totalP);
+                            if (readA < totalP) throw new EndOfStreamException("Truncated alpha channel in raw composite.");
+                        }
                     }
                     else if (comp == 1) // RLE
                     {
                         int numScanlines = ch * doc.Channels;
-                        var rowLens = new ushort[numScanlines];
+                        var rowLens = new int[numScanlines];
                         for (int s = 0; s < numScanlines; s++)
-                            rowLens[s] = reader.ReadUInt16();
+                            rowLens[s] = (int)(isPsb ? reader.ReadUInt32() : reader.ReadUInt16());
 
                         int scanlineIdx = 0;
                         for (int c = 0; c < doc.Channels; c++)
@@ -444,12 +471,18 @@ public static class PsdCodec
                             {
                                 int rLen = rowLens[scanlineIdx++];
                                 byte[] compRow = reader.ReadBytes(rLen);
+                                if (compRow.Length < rLen)
+                                    throw new EndOfStreamException("Truncated scanline data in RLE composite.");
                                 if (target != null)
                                 {
                                     DecodePackBits(compRow, target, row * cw, cw);
                                 }
                             }
                         }
+                    }
+                    else
+                    {
+                        throw new InvalidDataException($"Unsupported composite compression mode: {comp}.");
                     }
 
                     byte[] compositeBgra = new byte[totalP * 4];
@@ -464,9 +497,18 @@ public static class PsdCodec
                     doc.CompositeBgraPixels = compositeBgra;
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Composite is optional if layer records were read
+                if (doc.Layers.Count > 0)
+                {
+                    // Studio recovery #6170: recover layered imports with damaged merged data
+                    doc.HasDamagedMergedComposite = true;
+                    doc.MergedCompositeWarning = $"Merged composite image could not be decoded ({ex.Message}); opened available layers instead.";
+                }
+                else
+                {
+                    throw;
+                }
             }
         }
 
@@ -527,15 +569,16 @@ public static class PsdCodec
     }
 
     /// <summary>
-    /// Writes a layered PSD document to a stream.
+    /// Writes a layered PSD/PSB document to a stream.
     /// </summary>
     public static void Encode(PsdDocument doc, Stream stream)
     {
         using var writer = new BigEndianBinaryWriter(stream, Encoding.UTF8, leaveOpen: true);
+        bool isPsb = doc.IsPsb || doc.Width > 30000 || doc.Height > 30000;
 
         // 1. Header
         writer.Write(Signature8Bps);
-        writer.Write((ushort)1); // Version 1
+        writer.Write((ushort)(isPsb ? 2 : 1)); // Version 1 (PSD) or 2 (PSB)
         writer.Write(new byte[6]); // Reserved
         writer.Write((ushort)3); // 3 channels (RGB)
         writer.Write((uint)doc.Height);
@@ -620,13 +663,13 @@ public static class PsdCodec
 
                 // Channel Info: 0=R, 1=G, 2=B, -1=A
                 layerWriter.Write((short)0);
-                layerWriter.Write((uint)rData.Length);
+                if (isPsb) layerWriter.Write((ulong)rData.Length); else layerWriter.Write((uint)rData.Length);
                 layerWriter.Write((short)1);
-                layerWriter.Write((uint)gData.Length);
+                if (isPsb) layerWriter.Write((ulong)gData.Length); else layerWriter.Write((uint)gData.Length);
                 layerWriter.Write((short)2);
-                layerWriter.Write((uint)bData.Length);
+                if (isPsb) layerWriter.Write((ulong)bData.Length); else layerWriter.Write((uint)bData.Length);
                 layerWriter.Write((short)-1); // Alpha
-                layerWriter.Write((uint)aData.Length);
+                if (isPsb) layerWriter.Write((ulong)aData.Length); else layerWriter.Write((uint)aData.Length);
 
                 channelPayloads.Add(rData);
                 channelPayloads.Add(gData);
@@ -689,8 +732,16 @@ public static class PsdCodec
 
             byte[] layerBytes = layerMs.ToArray();
             int sectionPad = (4 - (layerBytes.Length % 4)) % 4;
-            writer.Write((uint)(layerBytes.Length + 4 + sectionPad)); // Layer section len
-            writer.Write((uint)layerBytes.Length); // Layer info len (exact length excluding trailing pad)
+            if (isPsb)
+            {
+                writer.Write((ulong)(layerBytes.Length + 8 + sectionPad)); // Layer section len in PSB
+                writer.Write((ulong)layerBytes.Length); // Layer info len in PSB
+            }
+            else
+            {
+                writer.Write((uint)(layerBytes.Length + 4 + sectionPad)); // Layer section len in PSD
+                writer.Write((uint)layerBytes.Length); // Layer info len in PSD
+            }
             writer.Write(layerBytes);
             if (sectionPad > 0)
             {
@@ -874,6 +925,18 @@ public static class PsdCodec
             return (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3];
         }
 
+        public override ulong ReadUInt64()
+        {
+            byte[] b = ReadBytes(8);
+            return ((ulong)b[0] << 56) | ((ulong)b[1] << 48) | ((ulong)b[2] << 40) | ((ulong)b[3] << 32)
+                 | ((ulong)b[4] << 24) | ((ulong)b[5] << 16) | ((ulong)b[6] << 8) | b[7];
+        }
+
+        public override long ReadInt64()
+        {
+            return (long)ReadUInt64();
+        }
+
         public override float ReadSingle()
         {
             byte[] b = ReadBytes(4);
@@ -910,6 +973,23 @@ public static class PsdCodec
         public override void Write(int value)
         {
             Write((uint)value);
+        }
+
+        public override void Write(ulong value)
+        {
+            Write((byte)(value >> 56));
+            Write((byte)((value >> 48) & 0xFF));
+            Write((byte)((value >> 40) & 0xFF));
+            Write((byte)((value >> 32) & 0xFF));
+            Write((byte)((value >> 24) & 0xFF));
+            Write((byte)((value >> 16) & 0xFF));
+            Write((byte)((value >> 8) & 0xFF));
+            Write((byte)(value & 0xFF));
+        }
+
+        public override void Write(long value)
+        {
+            Write((ulong)value);
         }
     }
 

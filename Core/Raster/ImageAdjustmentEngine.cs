@@ -1622,4 +1622,84 @@ public static partial class ImageAdjustmentEngine
         r = (byte)Math.Clamp((int)Math.Round(src[idx00 + 2] * w00 + src[idx10 + 2] * w10 + src[idx01 + 2] * w01 + src[idx11 + 2] * w11), 0, 255);
         a = (byte)Math.Clamp((int)Math.Round(src[idx00 + 3] * w00 + src[idx10 + 3] * w10 + src[idx01 + 3] * w01 + src[idx11 + 3] * w11), 0, 255);
     }
+
+    /// <summary>
+    /// Applies Hue/Saturation to CMYK inks (0..1 per channel), working on C, M, Y as inverted RGB
+    /// and keeping the K (black ink) channel completely untouched (#a62ef68c).
+    /// </summary>
+    public static float[] ApplyCmykHueSaturation(float[] cmykInks, int hueShift, int satShift, int lightShift)
+    {
+        float[] result = (float[])cmykInks.Clone();
+        int pixelCount = cmykInks.Length / 4;
+        double mHue = hueShift;
+        double mSat = satShift / 100.0;
+        double mLight = lightShift / 100.0;
+
+        Parallel.For(0, pixelCount, p =>
+        {
+            int idx = p * 4;
+            float c = cmykInks[idx];
+            float m = cmykInks[idx + 1];
+            float y = cmykInks[idx + 2];
+            float k = cmykInks[idx + 3];
+
+            // Inverted RGB from CMY
+            double r = Math.Clamp(1.0 - c, 0.0, 1.0);
+            double g = Math.Clamp(1.0 - m, 0.0, 1.0);
+            double b = Math.Clamp(1.0 - y, 0.0, 1.0);
+
+            RgbToHsl((byte)Math.Round(r * 255), (byte)Math.Round(g * 255), (byte)Math.Round(b * 255), out double h0, out double s0, out double l0);
+            double l = mLight > 0 ? l0 + (1.0 - l0) * mLight : l0 * (1.0 + mLight);
+            double h = ((h0 + mHue) % 360.0 + 360.0) % 360.0;
+            double s = mSat > 0 ? s0 / Math.Max(1.0 - mSat, 1.0 / 512.0) : s0 * (1.0 + mSat);
+
+            s = Math.Clamp(s, 0.0, 1.0);
+            l = Math.Clamp(l, 0.0, 1.0);
+            HslToRgb(h, s, l, out byte outR, out byte outG, out byte outB);
+
+            result[idx] = (float)(1.0 - outR / 255.0);
+            result[idx + 1] = (float)(1.0 - outG / 255.0);
+            result[idx + 2] = (float)(1.0 - outB / 255.0);
+            result[idx + 3] = k; // Black ink untouched
+        });
+
+        return result;
+    }
+
+    /// <summary>
+    /// Applies Brightness/Contrast to CMYK inks curving each ink's stored value (1 - ink) independently (#92c79222).
+    /// </summary>
+    public static float[] ApplyCmykBrightnessContrast(float[] cmykInks, double brightness, double contrast)
+    {
+        float[] result = (float[])cmykInks.Clone();
+        int pixelCount = cmykInks.Length / 4;
+
+        // Build 256-level LUT for stored ink values (1 - ink)
+        byte[] lut = new byte[256];
+        double bFactor = brightness * 0.01;
+        double cFactor = contrast >= 0 ? Math.Pow((contrast + 100.0) / 100.0, 2.0) : (contrast + 100.0) / 100.0;
+
+        for (int i = 0; i < 256; i++)
+        {
+            double v = i / 255.0;
+            // Contrast pivot at 0.5
+            v = (v - 0.5) * cFactor + 0.5;
+            v += bFactor;
+            lut[i] = (byte)Math.Clamp((int)Math.Round(v * 255.0), 0, 255);
+        }
+
+        Parallel.For(0, pixelCount, p =>
+        {
+            int idx = p * 4;
+            for (int ch = 0; ch < 4; ch++)
+            {
+                float ink = cmykInks[idx + ch];
+                byte stored = (byte)Math.Clamp((int)Math.Round((1.0 - ink) * 255.0), 0, 255);
+                byte curved = lut[stored];
+                result[idx + ch] = (float)Math.Clamp(1.0 - curved / 255.0, 0.0, 1.0);
+            }
+        });
+
+        return result;
+    }
 }

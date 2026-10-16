@@ -142,6 +142,12 @@ public partial class ImageEditorViewModel
     [RelayCommand]
     public void OpenLayerStyleDialog()
     {
+        // An open Free Transform box is committed first, so the dialog previews on the transformed layer (#997406a5, #4821)
+        if (IsFreeTransformActive)
+        {
+            CommitFreeTransform();
+        }
+
         var el = SelectedElement ?? Elements.LastOrDefault();
         if (el == null)
         {
@@ -256,6 +262,7 @@ public partial class ImageEditorViewModel
         var oldEffects = el.Effects.Clone();
         var newEffects = new LayerStyleEffects
         {
+            AreEffectsVisible = el.Effects.AreEffectsVisible,
             DropShadow = new DropShadowStyle
             {
                 IsEnabled = FxDropShadowEnabled,
@@ -429,8 +436,9 @@ public partial class ImageEditorViewModel
     [ObservableProperty] private decimal _newDocHeight = 1500;
     [ObservableProperty] private decimal _newDocResolution = 300;
     [ObservableProperty] private string _newDocBackgroundMode = "White";
+    [ObservableProperty] private Color _newDocCustomBackgroundColor = Colors.White;
 
-    public IReadOnlyList<string> AvailableBackgroundModes { get; } = ["White", "Black", "Transparent"];
+    public IReadOnlyList<string> AvailableBackgroundModes { get; } = ["White", "Black", "Background Color", "Transparent", "Custom..."];
 
     [RelayCommand]
     public void OpenNewDocumentDialog()
@@ -493,6 +501,8 @@ public partial class ImageEditorViewModel
         {
             "Transparent" => Colors.Transparent,
             "Black" => Colors.Black,
+            "Background Color" => SecondaryColor,
+            "Custom..." => NewDocCustomBackgroundColor,
             _ => Colors.White
         };
 
@@ -1280,6 +1290,12 @@ public partial class ImageEditorViewModel
                 System.Diagnostics.Debug.WriteLine($"[ConfirmAdjustmentDialog] error: {ex}");
             }
         }
+        else if (ActiveAdjustmentMode == "Curves" && IsQuickMaskMode && CanvasControl?.QuickMaskBuffer is { } qmBuffer)
+        {
+            CanvasControl.QuickMaskBuffer = ExecuteCurvesAdjustmentOnMask(qmBuffer);
+            CanvasControl.InvalidateVisual();
+            StatusMessage = "Applied Curves to Quick Mask.";
+        }
         IsAdjustmentDialogOpen = false;
     }
 
@@ -1481,6 +1497,24 @@ public partial class ImageEditorViewModel
     [RelayCommand]
     public void ApplyInvert()
     {
+        if (IsQuickMaskMode && CanvasControl != null)
+        {
+            int w = (int)Math.Max(1, CanvasWidth);
+            int h = (int)Math.Max(1, CanvasHeight);
+            if (CanvasControl.QuickMaskBuffer == null || CanvasControl.QuickMaskBuffer.Length < w * h)
+            {
+                CanvasControl.QuickMaskBuffer = new byte[w * h];
+            }
+            byte[] buf = CanvasControl.QuickMaskBuffer;
+            for (int i = 0; i < w * h; i++)
+            {
+                buf[i] = (byte)(255 - buf[i]);
+            }
+            CanvasControl.InvalidateVisual();
+            StatusMessage = "Inverted Quick Mask.";
+            return;
+        }
+
         var target = SelectedElement as ImageElement ?? Elements.OfType<ImageElement>().LastOrDefault();
         if (target == null || target.OriginalImageBytes == null) return;
         try
@@ -2143,7 +2177,7 @@ public partial class ImageEditorViewModel
             "Diffuse" => ImageAdjustmentEngine.ApplyDiffuse(bgra, width, height, FilterDiffuseMode, FilterDiffuseRadius),
             "Extrude" => ImageAdjustmentEngine.ApplyExtrude(bgra, width, height, FilterExtrudeRandom ? 1 : 0, FilterExtrudeBlockSize, FilterExtrudeDepth),
             "Tiles" => ImageAdjustmentEngine.ApplyTiles(bgra, width, height, FilterTilesNumTiles, FilterTilesMaximumOffset, 0),
-            "Fibers" => ImageAdjustmentEngine.ApplyFibers(width, height, FilterFibersVariance, FilterFibersStrength, FilterRandomSeed),
+            "Fibers" => ImageAdjustmentEngine.ApplyFibers(width, height, PrimaryColor, SecondaryColor, FilterFibersVariance, FilterFibersStrength, FilterRandomSeed),
             "ZigZag" => ImageAdjustmentEngine.ApplyZigZag(bgra, width, height, (int)FilterZigZagAmount, FilterZigZagRidges, FilterZigZagStyle),
             "Shear" => ImageAdjustmentEngine.ApplyShear(bgra, width, height, FilterShearOffset),
             "Mezzotint" => ImageAdjustmentEngine.ApplyMezzotint(bgra, width, height, FilterMezzotintType),

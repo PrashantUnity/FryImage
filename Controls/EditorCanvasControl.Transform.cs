@@ -109,11 +109,13 @@ public partial class EditorCanvasControl
 
     /// <summary>
     /// Maps handle index (0..7: TL, T, TR, R, BR, B, BL, L) to appropriate corner/side cursor.
+    /// Turns with the box's rotation and the view's rotation (Studio Parity #852d2a1d, #5188).
     /// </summary>
-    private static Cursor GetCursorForHandleIndex(int handleIndex, double rotationDegrees)
+    private Cursor GetCursorForHandleIndex(int handleIndex, double rotationDegrees)
     {
-        // Adjust index based on rotation angle (45-degree increments)
-        int angleSteps = (int)Math.Round(((rotationDegrees % 360 + 360) % 360) / 45.0) % 8;
+        double totalAngle = rotationDegrees + _viewportRotationAngle;
+        // Adjust index based on total rotation angle (45-degree increments)
+        int angleSteps = (int)Math.Round(((totalAngle % 360 + 360) % 360) / 45.0) % 8;
         int effectiveIndex = (handleIndex + angleSteps) % 8;
 
         return effectiveIndex switch

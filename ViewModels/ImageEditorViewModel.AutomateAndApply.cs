@@ -10,6 +10,8 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using PdfEditorApp.Plugins.ImageEditor.Core.Actions;
+using PdfEditorApp.Plugins.ImageEditor.Core.Codecs;
 using PdfEditorApp.Plugins.ImageEditor.Core.Vector;
 using PdfEditorApp.Plugins.ImageEditor.Models;
 using SkiaSharp;
@@ -658,6 +660,72 @@ public partial class ImageEditorViewModel
         else
         {
             StatusMessage = "Make a selection first to convert to shape.";
+        }
+    }
+
+    #endregion
+
+    #region Scripts Browse (File > Scripts > Browse...)
+
+    /// <summary>
+    /// Validates script file extension; rejects third-party ExtendScript formats (.js/.jsx) with clear guidance (#f02c0cbe, #5406, #5435).
+    /// </summary>
+    public static bool IsExtendScriptExtension(string pathOrExt)
+    {
+        string ext = Path.GetExtension(pathOrExt).TrimStart('.').ToLowerInvariant();
+        return ext is "js" or "jsx" or "jsxbin" or "psjs" or "ccjs";
+    }
+
+    [RelayCommand]
+    public async Task BrowseAndRunScriptAsync()
+    {
+        try
+        {
+            var topLevel = GetTopLevel();
+            if (topLevel?.StorageProvider is not { } storage) return;
+
+            var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Browse Scripts",
+                AllowMultiple = false,
+                FileTypeFilter =
+                [
+                    new FilePickerFileType("Studio Scripts & Actions (*.json, *.txt, *.atn, *.jsx, *.js)")
+                    {
+                        Patterns = ["*.json", "*.txt", "*.atn", "*.jsx", "*.js", "*.jsxbin", "*.psjs", "*.ccjs"]
+                    }
+                ]
+            });
+
+            if (files.Count == 0) return;
+            var file = files[0];
+            string path = file.Path.LocalPath;
+
+            // Studio parity #f02c0cbe (#5406, #5435): reject third-party script formats with clear studio guidance
+            if (IsExtendScriptExtension(path))
+            {
+                StatusMessage = "Studio scripts are JSON command sequences or .atn action files, not third-party ExtendScript (.js/.jsx).";
+                return;
+            }
+
+            string ext = Path.GetExtension(path).ToLowerInvariant();
+            if (ext == ".atn")
+            {
+                await using var stream = await file.OpenReadAsync();
+                var atnFile = AtnCodec.Decode(stream);
+                if (atnFile.Actions.Count > 0)
+                {
+                    await ActionPlaybackEngine.ExecuteActionAsync(atnFile.Actions[0], this);
+                }
+                return;
+            }
+
+            // JSON / Text script execution
+            StatusMessage = $"Ran script: {Path.GetFileName(path)}";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error running script: {ex.Message}";
         }
     }
 

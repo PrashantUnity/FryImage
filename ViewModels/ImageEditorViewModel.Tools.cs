@@ -747,6 +747,13 @@ public partial class ImageEditorViewModel
 
     partial void OnActiveToolModeChanged(string value)
     {
+        if (IsFreeTransformActive)
+        {
+            // Studio parity #5859: switching tool applies the open Free Transform first (never silently cancel)
+            CommitFreeTransform();
+        }
+
+        PdfEditorApp.Plugins.ImageEditor.Core.Preferences.StudioPreferences.Instance.SelectedTool = value;
         InvalidateAllToolProperties();
 
         if (value != "remove" && PendingRemoveStrokes.Count > 0)

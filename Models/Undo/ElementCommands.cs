@@ -433,7 +433,7 @@ public sealed class RestoreSnapshotCommand : IUndoableCommand
         _onChanged = onChanged;
     }
 
-    public string Description => $"Restore '{_snapshotName}'";
+    public string Description => _snapshotName;
 
     public void Redo()
     {

@@ -231,6 +231,15 @@ public partial class EditorCanvasControl
         InvalidateVisual();
     }
 
+    public void CancelLasso()
+    {
+        _isLassoActive = false;
+        _lassoPoints.Clear();
+        _lassoKnots.Clear();
+        _magneticCostMap = null;
+        InvalidateVisual();
+    }
+
     private List<Point>? _lastCompletedLassoPolygon;
     public IReadOnlyList<Point>? GetActiveSelectionPolygon() => _lastCompletedLassoPolygon;
 

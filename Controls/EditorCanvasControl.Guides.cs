@@ -338,6 +338,63 @@ public partial class EditorCanvasControl
     }
 
     /// <summary>
+    /// Snaps a 2D point against active guides and grid (Studio Parity 28e58d20, #3928, #3632).
+    /// Distort corners snap to guides and their intersections.
+    /// Excludes guides if ShowUserGuides is false or ViewExtras is false.
+    /// </summary>
+    public Point SnapPointToGuidesAndGrid(Point pt, bool allowGuideSnapping = true)
+    {
+        if (!SnapEnabled) return pt;
+
+        double snapRadius = 8.0 / _zoom;
+        double x = pt.X;
+        double y = pt.Y;
+
+        if (allowGuideSnapping && ShowUserGuides && SnapToGuides && _userGuides.Count > 0)
+        {
+            double bestDistX = snapRadius;
+            double bestX = x;
+            double bestDistY = snapRadius;
+            double bestY = y;
+
+            foreach (var (isVert, pos, _) in _userGuides)
+            {
+                if (isVert)
+                {
+                    double d = Math.Abs(x - pos);
+                    if (d < bestDistX)
+                    {
+                        bestDistX = d;
+                        bestX = pos;
+                    }
+                }
+                else
+                {
+                    double d = Math.Abs(y - pos);
+                    if (d < bestDistY)
+                    {
+                        bestDistY = d;
+                        bestY = pos;
+                    }
+                }
+            }
+
+            x = bestX;
+            y = bestY;
+        }
+
+        if (SnapToGrid && ShowGrid && GridCellSize > 0)
+        {
+            double gridX = Math.Round(x / GridCellSize) * GridCellSize;
+            double gridY = Math.Round(y / GridCellSize) * GridCellSize;
+            if (Math.Abs(x - gridX) <= snapRadius) x = gridX;
+            if (Math.Abs(y - gridY) <= snapRadius) y = gridY;
+        }
+
+        return new Point(x, y);
+    }
+
+    /// <summary>
     /// Renders the active preview guide line in canvas space.
     /// </summary>
     public void DrawActiveDragGuideInCanvasSpace(DrawingContext dc)

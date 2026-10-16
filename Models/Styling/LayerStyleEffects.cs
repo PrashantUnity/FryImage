@@ -9,8 +9,12 @@ namespace PdfEditorApp.Plugins.ImageEditor.Models;
 /// </summary>
 public sealed class LayerStyleEffects
 {
+    /// <summary>Master switch for the entire effects list (Layers panel 'Effects' eye toggle) (#3648, #3799).</summary>
+    public bool AreEffectsVisible { get; set; } = true;
+
     public bool HasAnyActiveEffect =>
-        (DropShadow != null && DropShadow.IsEnabled) ||
+        AreEffectsVisible &&
+        ((DropShadow != null && DropShadow.IsEnabled) ||
         (OuterGlow != null && OuterGlow.IsEnabled) ||
         (InnerShadow != null && InnerShadow.IsEnabled) ||
         (InnerGlow != null && InnerGlow.IsEnabled) ||
@@ -19,7 +23,7 @@ public sealed class LayerStyleEffects
         (ColorOverlay != null && ColorOverlay.IsEnabled) ||
         (GradientOverlay != null && GradientOverlay.IsEnabled) ||
         (PatternOverlay != null && PatternOverlay.IsEnabled) ||
-        (Stroke != null && Stroke.IsEnabled);
+        (Stroke != null && Stroke.IsEnabled));
 
     public DropShadowStyle DropShadow { get; set; } = new() { IsEnabled = false };
     public OuterGlowStyle OuterGlow { get; set; } = new() { IsEnabled = false };
@@ -34,6 +38,7 @@ public sealed class LayerStyleEffects
 
     public LayerStyleEffects Clone() => new()
     {
+        AreEffectsVisible = AreEffectsVisible,
         DropShadow = DropShadow.Clone(),
         OuterGlow = OuterGlow.Clone(),
         InnerShadow = InnerShadow.Clone(),

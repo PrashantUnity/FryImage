@@ -149,7 +149,8 @@
                 <DataTemplate x:DataType="models:CanvasElement">
                     <StackPanel>
                         <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" Height="26" VerticalAlignment="Center"
-                              PointerEntered="OnLayerRowPointerEntered" PointerExited="OnLayerRowPointerExited">
+                              PointerEntered="OnLayerRowPointerEntered" PointerExited="OnLayerRowPointerExited"
+                              PointerPressed="OnLayerRowPointerPressed">
                             <!-- Canvas-hovered highlight overlay (#4718, #4719) -->
                             <Border Grid.ColumnSpan="5" IsVisible="{Binding IsCanvasHovered}"
                                     Background="#253B82F6" BorderBrush="{DynamicResource PsAccentBrush}"

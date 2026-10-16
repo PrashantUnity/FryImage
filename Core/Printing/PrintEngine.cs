@@ -26,7 +26,7 @@ public record PrintLayout(
     string ScaleAndDimensionsLabel);
 
 /// <summary>
-/// Cross-platform Print Layout & Spooling Engine matching Studio and Photocraft (#4748 parity).
+/// Cross-platform Print Layout & Spooling Engine for Studio print workflows (#4748).
 /// </summary>
 public static class PrintEngine
 {

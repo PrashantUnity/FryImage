@@ -49,10 +49,57 @@ public partial class ImageEditorViewModel
         }
     }
 
+    [ObservableProperty]
+    private double _layersScrollOffset;
+
     [RelayCommand]
     public void SwitchDocument(StudioDocument? doc)
     {
         if (doc == null || doc == ActiveDocument) return;
+
+        if (IsInlineEditingText)
+        {
+            RequestCommitInlineTextEdit();
+        }
+
+        if (IsCropping)
+        {
+            CancelCrop();
+        }
+
+        // Drop open distort, transform, and filter sessions on departing document (Studio Parity 94fdd279, #5092, #5123)
+        if (IsLiquifyDialogOpen)
+        {
+            CancelLiquifyDialog();
+        }
+
+        if (IsFreeTransformActive)
+        {
+            CommitFreeTransform();
+        }
+
+        if (IsContentAwareScaleDialogOpen)
+        {
+            CancelContentAwareScaleDialog();
+        }
+
+        if (IsFilterDialogOpen)
+        {
+            CancelFilterDialog();
+        }
+
+        if (IsAdjustmentDialogOpen)
+        {
+            CancelAdjustmentDialog();
+        }
+
+        if (IsLayerStyleDialogOpen)
+        {
+            CloseLayerStyleDialog();
+        }
+
+        // Cancel stale polygon / lasso operations from previous document (#cd35577c, #5536)
+        CanvasControl?.CancelLasso();
 
         // Persist current canvas state into departing active document
         if (ActiveDocument != null)
@@ -67,6 +114,10 @@ public partial class ImageEditorViewModel
             ActiveDocument.Elements = Elements;
             ActiveDocument.History = History;
             ActiveDocument.History.HistoryChanged -= OnDocumentHistoryChanged;
+            ActiveDocument.LayersScrollOffset = LayersScrollOffset;
+            ActiveDocument.ActiveVectorPath = CanvasControl?.ActiveDocumentPath?.Clone();
+            ActiveDocument.ActiveSelectionBounds = CanvasControl?.ActiveSelectionBounds;
+            ActiveDocument.SelectedElement = SelectedElement;
         }
 
         // Activate new document
@@ -80,6 +131,7 @@ public partial class ImageEditorViewModel
         DocumentColorMode = doc.ColorMode;
         DocumentBitsPerChannel = doc.BitsPerChannel;
         ZoomLevel = doc.ZoomLevel;
+        LayersScrollOffset = doc.LayersScrollOffset;
         History = doc.History;
         History.HistoryChanged += OnDocumentHistoryChanged;
 
@@ -88,6 +140,12 @@ public partial class ImageEditorViewModel
         CanvasControl?.SetLogicalCanvasSize(doc.CanvasWidth, doc.CanvasHeight);
         CanvasControl?.SetBackgroundColor(doc.BackgroundColor);
         CanvasControl?.SetZoom(doc.ZoomLevel);
+        if (CanvasControl != null)
+        {
+            CanvasControl.ActiveDocumentPath = doc.ActiveVectorPath?.Clone();
+            CanvasControl.ActiveSelectionBounds = doc.ActiveSelectionBounds;
+        }
+        SelectedElement = doc.SelectedElement;
 
         OnPropertyChanged(nameof(LayersDescendingZ));
         UndoCommand.NotifyCanExecuteChanged();
@@ -113,6 +171,13 @@ public partial class ImageEditorViewModel
     [RelayCommand]
     public void CreateNewDocumentTab()
     {
+        // An unfinished Pen path belongs to the current document, finish/commit before creating new doc (#9b59a8ca, #5460)
+        if (CanvasControl?.ActiveDocumentPath != null && !CanvasControl.ActiveDocumentPath.IsEmpty)
+        {
+            ActiveDocument?.DocumentPaths.Add(CanvasControl.ActiveDocumentPath.Clone());
+            CanvasControl.ActiveDocumentPath = null;
+        }
+
         _documentCounter++;
         string title = $"Untitled-{_documentCounter}";
         var newDoc = new StudioDocument(title, 1920, 1080, Colors.White)

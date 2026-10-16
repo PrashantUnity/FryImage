@@ -1621,7 +1621,8 @@ public static partial class ImageAdjustmentEngine
             byte g = bgraPixels[idx + 1];
             byte r = bgraPixels[idx + 2];
 
-            int lum = (int)Math.Round(0.2126 * r + 0.7152 * g + 0.0722 * b);
+            // Gradient Map is driven by standard W3C luminosity (0.30 R + 0.59 G + 0.11 B) (#93a16218)
+            int lum = (int)Math.Round(0.30 * r + 0.59 * g + 0.11 * b);
             lum = Math.Clamp(lum, 0, 255);
 
             var mapColor = lut[lum];
@@ -2190,7 +2191,16 @@ public static partial class ImageAdjustmentEngine
     /// <summary>
     /// Applies Studio-comparable Fibers filter (procedural organic directional texture generator).
     /// </summary>
-    public static byte[] ApplyFibers(int width, int height, int variance = 16, int strength = 4, uint seed = 12345)
+    /// <summary>
+    /// Applies Studio-comparable Fibers filter (procedural organic directional texture generator).
+    /// </summary>
+    public static byte[] ApplyFibers(int width, int height, int variance = 16, int strength = 4, uint seed = 12345) =>
+        ApplyFibers(width, height, Colors.Black, Colors.White, variance, strength, seed);
+
+    /// <summary>
+    /// Applies Fibers filter blending foreground and background colors, filling empty or existing layers opaquely (#4bbcede5, #5241).
+    /// </summary>
+    public static byte[] ApplyFibers(int width, int height, Color foreground, Color background, int variance = 16, int strength = 4, uint seed = 12345)
     {
         byte[] result = new byte[width * height * 4];
         double varFactor = Math.Clamp(variance, 1, 64) * 0.15;
@@ -2203,12 +2213,16 @@ public static partial class ImageAdjustmentEngine
             {
                 // Directional 1D turbulence with high vertical stretch
                 double noise = FractalTurbulence(x * 0.05 * varFactor, y * 0.003 * strFactor, 4, seed);
-                byte val = (byte)Math.Clamp(Math.Round(noise * 255.0), 0, 255);
+                double t = Math.Clamp(noise, 0.0, 1.0);
+
+                byte b = (byte)Math.Clamp(Math.Round(background.B + (foreground.B - background.B) * t), 0, 255);
+                byte g = (byte)Math.Clamp(Math.Round(background.G + (foreground.G - background.G) * t), 0, 255);
+                byte r = (byte)Math.Clamp(Math.Round(background.R + (foreground.R - background.R) * t), 0, 255);
 
                 int idx = row + x * 4;
-                result[idx] = val;
-                result[idx + 1] = val;
-                result[idx + 2] = val;
+                result[idx] = b;
+                result[idx + 1] = g;
+                result[idx + 2] = r;
                 result[idx + 3] = 255;
             }
         });

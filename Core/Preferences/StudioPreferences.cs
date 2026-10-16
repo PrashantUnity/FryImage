@@ -40,6 +40,23 @@ public sealed class StudioPreferences
     /// <summary>Saved dock layout tree (tab groups, splits, sizes); null means the Essentials workspace.</summary>
     public string? DockLayoutJson { get; set; }
 
+    /// <summary>Preferences › Performance › Low-Latency Drawing (vsync off / opt-in) (#1343, #5274).</summary>
+    public bool LowLatencyDrawing { get; set; } = false;
+
+    /// <summary>Preferences › Tools › Snap Vector Tools and Transforms to Pixel Grid (#5751, #5841).</summary>
+    public bool SnapVectorToolsAndTransformsToPixelGrid { get; set; } = true;
+
+    /// <summary>Preferences › Tools › Zoom with Scroll Wheel (Studio Parity #3695).</summary>
+    public bool ZoomWithScrollWheel { get; set; } = false;
+
+    /// <summary>Preferences › Units & Rulers › Point/Pica Size: points per inch (PostScript = 72.0, Traditional = 72.27) (#82261398, #5756, #5757).</summary>
+    public double PointsPerInch { get; set; } = 72.0;
+
+    public static double PointsToPixels(double pt, double dpi, double ppi = 72.0) => pt / Math.Max(0.001, ppi) * dpi;
+    public static double PixelsToPoints(double px, double dpi, double ppi = 72.0) => px / Math.Max(1.0, dpi) * ppi;
+    public static double PicasToPixels(double pica, double dpi, double ppi = 72.0) => pica / Math.Max(0.001, ppi) * 12.0 * dpi;
+    public static double PixelsToPicas(double px, double dpi, double ppi = 72.0) => px / Math.Max(1.0, dpi) * ppi / 12.0;
+
     private static StudioPreferences? _instance;
     public static StudioPreferences Instance => _instance ??= Load();
 

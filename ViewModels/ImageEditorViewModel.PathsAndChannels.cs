@@ -291,6 +291,49 @@ public partial class ImageEditorViewModel
             _ => ActiveChannelMode
         };
 
+        // When the active layer mask is targeted for painting while underlying view remains Composite, load layer mask (#e4708671, #5562)
+        if ((IsLayerMaskTargeted || string.Equals(channel, "mask", StringComparison.OrdinalIgnoreCase)) &&
+            SelectedElement?.MaskData is { Length: > 0 } layerMaskData)
+        {
+            if (CanvasControl != null)
+            {
+                byte[] mask = new byte[docW * docH];
+                int originX = (int)Math.Round(SelectedElement.X);
+                int originY = (int)Math.Round(SelectedElement.Y);
+                int maskW = (int)Math.Max(1, Math.Round(SelectedElement.Width));
+                int maskH = (int)Math.Max(1, Math.Round(SelectedElement.Height));
+
+                if (layerMaskData.Length == docW * docH)
+                {
+                    Array.Copy(layerMaskData, mask, mask.Length);
+                }
+                else
+                {
+                    for (int my = 0; my < maskH; my++)
+                    {
+                        int cy = originY + my;
+                        if (cy < 0 || cy >= docH) continue;
+                        for (int mx = 0; mx < maskW; mx++)
+                        {
+                            int cx = originX + mx;
+                            if (cx < 0 || cx >= docW) continue;
+                            int srcIdx = my * maskW + mx;
+                            if (srcIdx < layerMaskData.Length)
+                            {
+                                mask[cy * docW + cx] = layerMaskData[srcIdx];
+                            }
+                        }
+                    }
+                }
+                CanvasControl.QuickMaskBuffer = mask;
+                CanvasControl.IsQuickMaskMode = true;
+                CanvasControl.ActiveSelectionBounds = new Rect(originX, originY, maskW, maskH);
+                CanvasControl.InvalidateVisual();
+            }
+            StatusMessage = $"Loaded layer mask on '{SelectedElement.DisplayName}' as selection.";
+            return;
+        }
+
         var target = SelectedElement as ImageElement ?? Elements.OfType<ImageElement>().LastOrDefault();
         if (target != null && target.OriginalImageBytes != null)
         {

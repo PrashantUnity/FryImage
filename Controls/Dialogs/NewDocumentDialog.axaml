@@ -5,6 +5,10 @@
              x:Class="PdfEditorApp.Plugins.ImageEditor.Controls.Dialogs.NewDocumentDialog"
              x:DataType="local:ImageEditorViewModel">
 
+    <UserControl.Resources>
+        <local:ColorToBrushConverter x:Key="ColorToBrushConverter" />
+    </UserControl.Resources>
+
     <!-- Modal Backdrop -->
     <Border Background="#90000000" IsVisible="{Binding IsNewDocumentDialogOpen}">
         <Border Width="780" Height="520"
@@ -234,8 +238,14 @@
                                 <!-- Background Contents -->
                                 <StackPanel Spacing="3" Margin="0,2">
                                     <TextBlock Text="Background Contents" Classes="ps-label" />
-                                    <ComboBox Classes="ps-combo" SelectedItem="{Binding NewDocBackgroundMode, Mode=TwoWay}"
-                                              ItemsSource="{Binding AvailableBackgroundModes}" />
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <ComboBox Grid.Column="0" Classes="ps-combo" SelectedItem="{Binding NewDocBackgroundMode, Mode=TwoWay}"
+                                                  ItemsSource="{Binding AvailableBackgroundModes}" />
+                                        <Border Grid.Column="1" Width="22" Height="22" Margin="6,0,0,0"
+                                                BorderBrush="{DynamicResource PsBorderLightBrush}" BorderThickness="1" CornerRadius="2"
+                                                Background="{Binding NewDocCustomBackgroundColor, Converter={StaticResource ColorToBrushConverter}}"
+                                                ToolTip.Tip="Custom background color" />
+                                    </Grid>
                                 </StackPanel>
                             </StackPanel>
                         </ScrollViewer>

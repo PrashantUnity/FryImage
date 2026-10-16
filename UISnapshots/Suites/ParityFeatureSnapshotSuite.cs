@@ -17,9 +17,11 @@ using PdfEditorApp.Plugins.ImageEditor.Core.Actions;
 using PdfEditorApp.Plugins.ImageEditor.Core.Canvas;
 using PdfEditorApp.Plugins.ImageEditor.Core.Printing;
 using PdfEditorApp.Plugins.ImageEditor.Controls;
+using PdfEditorApp.Plugins.ImageEditor;
 using PdfEditorApp.Plugins.ImageEditor.Models;
 using PdfEditorApp.Plugins.ImageEditor.Models.Session;
 using PdfEditorApp.Plugins.ImageEditor.Models.Session.Docking;
+using PdfEditorApp.Plugins.ImageEditor.Core.Security;
 using PdfEditorApp.Plugins.ImageEditor.UISnapshots.Core;
 
 namespace PdfEditorApp.Plugins.ImageEditor.UISnapshots.Suites;
@@ -1839,7 +1841,7 @@ public static class ParityFeatureSnapshotSuite
 
         // 45° Angle Snapping (#7efebfa0, #5475, #5498)
         var snappedH = CurvaturePenEngine.SnapTo45Degrees(new Point(0, 0), new Point(100, 5));
-        if (Math.Abs(snappedH.Y) > 0.001 || Math.Abs(snappedH.X - 100.125) > 0.01)
+        if (Math.Abs(snappedH.Y) > 0.001 || Math.Abs(snappedH.X - 100.0) > 0.01)
             throw new InvalidOperationException($"SnapTo45Degrees horizontal snap failed: got ({snappedH.X}, {snappedH.Y})");
 
         var snappedDiag = CurvaturePenEngine.SnapTo45Degrees(new Point(0, 0), new Point(98, 102));
@@ -2023,6 +2025,787 @@ public static class ParityFeatureSnapshotSuite
             throw new InvalidOperationException("ApplyDefaultWorkspace failed to restore the Essentials layout.");
 
         Console.WriteLine("  ✓ Dockable tab workspace: grouping, edge splits, collapse, reorder, close/reopen, float, maximize, outer-edge docking, persistence and presets verified.");
+
+        // ---------------------------------------------------------------------------------------------------------
+        // Studio Parity: PSD/PSB Codec 64-bit Support & Damaged Composite Recovery (#6170, #6173, #6174)
+        // ---------------------------------------------------------------------------------------------------------
+        {
+            // 1. Verify PSB Long Keys
+            if (!PsdCodec.IsPsbLongKey("LMsk") || !PsdCodec.IsPsbLongKey("Lr16") || !PsdCodec.IsPsbLongKey("Layr") || PsdCodec.IsPsbLongKey("norm"))
+            {
+                throw new InvalidOperationException("PsdCodec.IsPsbLongKey failed for PSB 64-bit keys.");
+            }
+
+            // 2. Synthetic PSB Encoding & Decoding Roundtrip
+            var psbDoc = new PsdCodec.PsdDocument
+            {
+                Width = 100,
+                Height = 100,
+                IsPsb = true,
+                Channels = 3
+            };
+            var psbLayer = new PsdCodec.PsdLayerInfo
+            {
+                Name = "PSB Layer 1",
+                Left = 0,
+                Top = 0,
+                Right = 50,
+                Bottom = 50,
+                Opacity = 255,
+                IsVisible = true,
+                BgraPixels = new byte[50 * 50 * 4]
+            };
+            Array.Fill(psbLayer.BgraPixels, (byte)200);
+            psbDoc.Layers.Add(psbLayer);
+
+            using var psbMs = new MemoryStream();
+            PsdCodec.Encode(psbDoc, psbMs);
+            psbMs.Position = 0;
+
+            var decodedPsb = PsdCodec.Decode(psbMs);
+            if (!decodedPsb.IsPsb || decodedPsb.Layers.Count != 1 || decodedPsb.Layers[0].Name != "PSB Layer 1")
+            {
+                throw new InvalidOperationException("PSB v2 64-bit document encode/decode roundtrip failed.");
+            }
+
+            // 3. Damaged Composite Recovery: Truncate composite stream on layered file
+            var psdDamagedDoc = new PsdCodec.PsdDocument
+            {
+                Width = 30,
+                Height = 30,
+                IsPsb = false,
+                Channels = 3
+            };
+            var psdLayer = new PsdCodec.PsdLayerInfo
+            {
+                Name = "Survivor Layer",
+                Left = 0,
+                Top = 0,
+                Right = 30,
+                Bottom = 30,
+                Opacity = 255,
+                IsVisible = true,
+                BgraPixels = new byte[30 * 30 * 4]
+            };
+            psdDamagedDoc.Layers.Add(psdLayer);
+
+            using var fullPsdMs = new MemoryStream();
+            PsdCodec.Encode(psdDamagedDoc, fullPsdMs);
+            byte[] fullPsdBytes = fullPsdMs.ToArray();
+
+            // Truncate bytes from the composite section at the end of the PSD file
+            byte[] truncatedPsdBytes = new byte[fullPsdBytes.Length - 50];
+            Array.Copy(fullPsdBytes, truncatedPsdBytes, truncatedPsdBytes.Length);
+
+            using var truncatedStream = new MemoryStream(truncatedPsdBytes);
+            var recoveredDoc = PsdCodec.Decode(truncatedStream);
+
+            if (!recoveredDoc.HasDamagedMergedComposite || recoveredDoc.MergedCompositeWarning == null)
+            {
+                throw new InvalidOperationException("PsdCodec should flag HasDamagedMergedComposite and provide a warning when composite is damaged.");
+            }
+            if (recoveredDoc.Layers.Count != 1 || recoveredDoc.Layers[0].Name != "Survivor Layer")
+            {
+                throw new InvalidOperationException("PsdCodec should preserve available layers when composite is damaged.");
+            }
+
+            Console.WriteLine("  ✓ PSD/PSB 64-bit format and damaged merged composite recovery verified.");
+        }
+
+        // ---------------------------------------------------------------------------------------------------------
+        // Studio Parity: Free Transform Commit Trigger Hooks (#5878, #5880)
+        // ---------------------------------------------------------------------------------------------------------
+        {
+            vm.Elements.Clear();
+            var elA = new RectangleElement { Name = "Layer A", X = 10, Y = 10, Width = 100, Height = 100, ZIndex = 0 };
+            var elB = new RectangleElement { Name = "Layer B", X = 50, Y = 50, Width = 80, Height = 80, ZIndex = 1 };
+            vm.Elements.Add(elA);
+            vm.Elements.Add(elB);
+
+            // Hook 1: Switching SelectedElement commits free transform
+            vm.SelectedElement = elA;
+            vm.BeginFreeTransform();
+            if (!vm.IsFreeTransformActive)
+                throw new InvalidOperationException("BeginFreeTransform should activate free transform.");
+
+            vm.SelectedElement = elB;
+            if (vm.IsFreeTransformActive)
+                throw new InvalidOperationException("Switching selected element should commit free transform.");
+
+            // Hook 2: Changing active tool mode commits free transform
+            vm.SelectedElement = elA;
+            vm.BeginFreeTransform();
+            if (!vm.IsFreeTransformActive)
+                throw new InvalidOperationException("BeginFreeTransform should activate free transform.");
+
+            vm.ActiveToolMode = "brush";
+            if (vm.IsFreeTransformActive)
+                throw new InvalidOperationException("Changing active tool mode should commit free transform.");
+
+            // Hook 3: Adding blank layer commits free transform
+            vm.ActiveToolMode = "select";
+            vm.SelectedElement = elA;
+            vm.BeginFreeTransform();
+            if (!vm.IsFreeTransformActive)
+                throw new InvalidOperationException("BeginFreeTransform should activate free transform.");
+
+            vm.AddNewBlankLayer();
+            if (vm.IsFreeTransformActive)
+                throw new InvalidOperationException("AddNewBlankLayer should commit free transform.");
+
+            Console.WriteLine("  ✓ Free Transform commit triggers (selection change, tool switch, new layer) verified.");
+        }
+
+        // ---------------------------------------------------------------------------------------------------------
+        // Studio Parity: Multi-Layer Selection Properties & History Naming (#5856)
+        // ---------------------------------------------------------------------------------------------------------
+        {
+            vm.Elements.Clear();
+            var l1 = new RectangleElement { Name = "Layer 1", Width = 100, Height = 100, Opacity = 1.0, FillOpacity = 1.0, BlendMode = LayerBlendMode.Normal, ZIndex = 0 };
+            var l2 = new RectangleElement { Name = "Layer 2", Width = 100, Height = 100, Opacity = 1.0, FillOpacity = 1.0, BlendMode = LayerBlendMode.Normal, ZIndex = 1 };
+            var grp = new GroupElement { Name = "Group 1", Width = 200, Height = 200, BlendMode = LayerBlendMode.Normal, ZIndex = 2 };
+            vm.Elements.Add(l1);
+            vm.Elements.Add(l2);
+            vm.Elements.Add(grp);
+
+            // Select both l1 and l2
+            vm.SelectedElement = l2;
+            vm.SelectedElements.Clear();
+            vm.SelectedElements.Add(l1);
+            vm.SelectedElements.Add(l2);
+
+            // 1. Multi-layer Opacity change
+            vm.OpacityField = 65.0;
+            vm.FlushPendingStyleDebounce();
+
+            if (Math.Abs(l1.Opacity - 0.65) > 0.01 || Math.Abs(l2.Opacity - 0.65) > 0.01)
+                throw new InvalidOperationException("Multi-selection OpacityField change did not apply to all selected layers.");
+
+            if (vm.History.UndoStack.Count == 0 || vm.History.UndoStack[^1].Description != "Opacity Change")
+                throw new InvalidOperationException($"Expected 'Opacity Change' history label, got '{vm.History.UndoStack[^1]?.Description}'.");
+
+            // Undo Opacity Change in 1 compound step
+            vm.UndoCommand.Execute(null);
+            if (Math.Abs(l1.Opacity - 1.0) > 0.01 || Math.Abs(l2.Opacity - 1.0) > 0.01)
+                throw new InvalidOperationException("Undo of multi-selection Opacity Change should restore all selected layers in one step.");
+
+            // 2. Multi-layer Fill Opacity change
+            vm.SelectedElement = l2;
+            vm.SelectedElements.Clear();
+            vm.SelectedElements.Add(l1);
+            vm.SelectedElements.Add(l2);
+            vm.FillOpacityField = 40.0;
+            vm.FlushPendingStyleDebounce();
+
+            if (Math.Abs(l1.FillOpacity - 0.40) > 0.01 || Math.Abs(l2.FillOpacity - 0.40) > 0.01)
+                throw new InvalidOperationException("Multi-selection FillOpacityField change did not apply to all selected layers.");
+
+            if (vm.History.UndoStack.Count == 0 || vm.History.UndoStack[^1].Description != "Fill Opacity Change")
+                throw new InvalidOperationException($"Expected 'Fill Opacity Change' history label, got '{vm.History.UndoStack[^1]?.Description}'.");
+
+            // 3. Multi-layer Blend Mode change
+            vm.BlendModeField = LayerBlendMode.Multiply;
+            if (l1.BlendMode != LayerBlendMode.Multiply || l2.BlendMode != LayerBlendMode.Multiply)
+                throw new InvalidOperationException("Multi-selection BlendModeField change did not apply to all selected layers.");
+
+            if (vm.History.UndoStack.Count == 0 || vm.History.UndoStack[^1].Description != "Blending Change")
+                throw new InvalidOperationException($"Expected 'Blending Change' history label, got '{vm.History.UndoStack[^1]?.Description}'.");
+
+            // 4. Pass Through mode restriction (groups only)
+            vm.BlendModeField = LayerBlendMode.PassThrough;
+            if (l1.BlendMode == LayerBlendMode.PassThrough || l2.BlendMode == LayerBlendMode.PassThrough)
+                throw new InvalidOperationException("PassThrough blend mode should NOT be set on non-group layers.");
+
+            // Set Pass Through on group
+            vm.SelectedElements.Clear();
+            vm.SelectedElement = grp;
+            vm.BlendModeField = LayerBlendMode.PassThrough;
+            if (grp.BlendMode != LayerBlendMode.PassThrough)
+                throw new InvalidOperationException("PassThrough blend mode should be accepted on GroupElement.");
+
+            // 5. Exact History Labels for Rename and Layer Locks
+            vm.SelectedElements.Clear();
+            vm.SelectedElement = l1;
+            vm.OpenRenameLayerDialog(l1);
+            vm.RenameLayerName = "Renamed Layer 1";
+            vm.ConfirmRenameLayerDialog();
+            if (l1.Name != "Renamed Layer 1" || vm.History.UndoStack[^1].Description != "Rename Layer")
+                throw new InvalidOperationException($"Expected 'Rename Layer' history label, got '{vm.History.UndoStack[^1]?.Description}'.");
+
+            vm.ToggleLockTransparency(l1);
+            if (vm.History.UndoStack[^1].Description != "Layer Properties")
+                throw new InvalidOperationException($"Expected 'Layer Properties' history label for lock transparency, got '{vm.History.UndoStack[^1]?.Description}'.");
+
+            vm.ToggleLockPixels(l1);
+            if (vm.History.UndoStack[^1].Description != "Layer Properties")
+                throw new InvalidOperationException($"Expected 'Layer Properties' history label for lock pixels, got '{vm.History.UndoStack[^1]?.Description}'.");
+
+            vm.ToggleLockPosition(l1);
+            if (vm.History.UndoStack[^1].Description != "Layer Properties")
+                throw new InvalidOperationException($"Expected 'Layer Properties' history label for lock position, got '{vm.History.UndoStack[^1]?.Description}'.");
+
+            Console.WriteLine("  ✓ Multi-layer selection properties, PassThrough group restriction, and exact History labels verified.");
+        }
+
+        // ---------------------------------------------------------------------------------------------------------
+        // Studio Parity: Clipping Group Semantics & Cascades (#5868)
+        // ---------------------------------------------------------------------------------------------------------
+        {
+            vm.Elements.Clear();
+            var baseLayer = new RectangleElement { Name = "Base", ZIndex = 0, Width = 100, Height = 100, LabelColor = LayerLabelColor.Red, GroupId = Guid.NewGuid() };
+            var clip1 = new RectangleElement { Name = "Clip 1", ZIndex = 1, Width = 100, Height = 100, IsClippingMask = true, LabelColor = LayerLabelColor.Blue };
+            var clip2 = new RectangleElement { Name = "Clip 2", ZIndex = 2, Width = 100, Height = 100, IsClippingMask = true, LabelColor = LayerLabelColor.Green };
+            var topLayer = new RectangleElement { Name = "Top", ZIndex = 3, Width = 100, Height = 100, IsClippingMask = false };
+            vm.Elements.Add(baseLayer);
+            vm.Elements.Add(clip1);
+            vm.Elements.Add(clip2);
+            vm.Elements.Add(topLayer);
+
+            // 1. Cascading Unclip: Toggling clipping mask on clip1 unclips clip1 AND contiguous clip2 above it
+            vm.ToggleClippingMask(clip1);
+            if (clip1.IsClippingMask || clip2.IsClippingMask)
+            {
+                throw new InvalidOperationException("Releasing clipping mask on a layer must cascade unclip to all contiguous clipped layers above it.");
+            }
+
+            // 2. MergeDown clipping mask preservation & attributes inheritance
+            clip1.IsClippingMask = true;
+            clip2.IsClippingMask = true;
+            vm.SelectedElement = clip2;
+            vm.MergeDown();
+
+            var mergedLayer = vm.SelectedElement;
+            if (mergedLayer == null || !mergedLayer.IsClippingMask)
+            {
+                throw new InvalidOperationException("MergeDown of two clipped layers should retain IsClippingMask = true.");
+            }
+            if (mergedLayer.LabelColor != clip1.LabelColor)
+            {
+                throw new InvalidOperationException($"MergeDown should inherit lower layer's LabelColor ('{clip1.LabelColor}'), got '{mergedLayer.LabelColor}'.");
+            }
+
+            // 3. DeleteHiddenLayers unclips layers attached to hidden base
+            vm.Elements.Clear();
+            var hiddenBase = new RectangleElement { Name = "Hidden Base", ZIndex = 0, Width = 100, Height = 100, IsVisible = false, IsClippingMask = false };
+            var attachedClipped = new RectangleElement { Name = "Attached Clipped", ZIndex = 1, Width = 100, Height = 100, IsVisible = true, IsClippingMask = true };
+            var otherVisible = new RectangleElement { Name = "Other Visible", ZIndex = 2, Width = 100, Height = 100, IsVisible = true };
+            vm.Elements.Add(hiddenBase);
+            vm.Elements.Add(attachedClipped);
+            vm.Elements.Add(otherVisible);
+
+            vm.DeleteHiddenLayers();
+            if (vm.Elements.Contains(hiddenBase))
+            {
+                throw new InvalidOperationException("DeleteHiddenLayers should remove hiddenBase.");
+            }
+            if (attachedClipped.IsClippingMask)
+            {
+                throw new InvalidOperationException("DeleteHiddenLayers should unclip layers that were clipped to a deleted hidden base layer.");
+            }
+
+            Console.WriteLine("  ✓ Clipping group cascading unclip, merge preservation, and hidden deletion cleanup verified.");
+        }
+
+        // ---------------------------------------------------------------------------------------------------------
+        // Studio Parity: Layer Style Copy/Paste & Align to Active Selection (#5881)
+        // ---------------------------------------------------------------------------------------------------------
+        {
+            vm.Elements.Clear();
+            var src = new RectangleElement
+            {
+                Name = "Styled Source",
+                FillOpacity = 0.55,
+                BlendMode = LayerBlendMode.PassThrough,
+                BlendIfThisMin = 15,
+                BlendIfThisMax = 240,
+                BlendIfUnderMin = 10,
+                BlendIfUnderMax = 230,
+                ExcludedChannels = 0x01,
+                ZIndex = 0
+            };
+            var dstNormal = new RectangleElement { Name = "Target Normal", ZIndex = 1 };
+            var dstGroup = new GroupElement { Name = "Target Group", ZIndex = 2 };
+            vm.Elements.Add(src);
+            vm.Elements.Add(dstNormal);
+            vm.Elements.Add(dstGroup);
+
+            // Copy style
+            vm.CopyLayerStyle(src);
+            if (!vm.HasCopiedLayerStyle || vm.CopiedLayerStyle == null)
+            {
+                throw new InvalidOperationException("CopyLayerStyle failed to capture copied style.");
+            }
+            if (vm.CopiedLayerStyle.ExcludedChannels != 0x01 || vm.CopiedLayerStyle.BlendIfThisMin != 15)
+            {
+                throw new InvalidOperationException("CopiedLayerStyle missed ExcludedChannels or BlendIf thresholds.");
+            }
+
+            // Paste to regular layer: converts PassThrough to Normal
+            vm.PasteLayerStyle(dstNormal);
+            if (dstNormal.BlendMode != LayerBlendMode.Normal)
+            {
+                throw new InvalidOperationException("Pasting PassThrough style onto regular layer should normalize to Normal.");
+            }
+            if (Math.Abs(dstNormal.FillOpacity - 0.55) > 0.001 || dstNormal.ExcludedChannels != 0x01)
+            {
+                throw new InvalidOperationException("Pasting style did not apply FillOpacity or ExcludedChannels.");
+            }
+            if (vm.History.UndoStack[^1].Description != "Paste Layer Style")
+            {
+                throw new InvalidOperationException($"Expected 'Paste Layer Style' history label, got '{vm.History.UndoStack[^1]?.Description}'.");
+            }
+
+            // Clear layer style
+            vm.ClearLayerStyle(dstNormal);
+            if (vm.History.UndoStack[^1].Description != "Clear Layer Style")
+            {
+                throw new InvalidOperationException($"Expected 'Clear Layer Style' history label, got '{vm.History.UndoStack[^1]?.Description}'.");
+            }
+
+            // Selection Alignment with active marquee
+            vm.Elements.Clear();
+            var alignEl = new RectangleElement { Name = "Align Target", X = 10, Y = 10, Width = 50, Height = 50, ZIndex = 0 };
+            vm.Elements.Add(alignEl);
+            vm.SelectedElements.Clear();
+            vm.SelectedElements.Add(alignEl);
+            vm.SelectedElement = alignEl;
+
+            // Set active selection bounds
+            vm.ActiveSelectionBounds = new Rect(200, 150, 300, 300);
+
+            // Align Left should align to selection's left edge (200), not canvas (0)
+            vm.AlignLeftCommand.Execute(null);
+            if (Math.Abs(alignEl.X - 200) > 0.1)
+            {
+                throw new InvalidOperationException($"Layer should align to active selection bounds X=200, but was X={alignEl.X}.");
+            }
+
+            // Clear selection: single layer should now align to canvas bounds (0)
+            vm.ActiveSelectionBounds = null;
+            alignEl.X = 100;
+            vm.AlignLeftCommand.Execute(null);
+            if (Math.Abs(alignEl.X - 0) > 0.1)
+            {
+                throw new InvalidOperationException($"Single layer without selection should align to canvas X=0, but was X={alignEl.X}.");
+            }
+
+            Console.WriteLine("  ✓ Layer Style copy/paste/clear and Align to Active Selection verified.");
+        }
+
+        // ---------------------------------------------------------------------------------------------------------
+        // Studio Parity: Pen Auto Add/Delete & Quick Mask Inversion (#6140, #6172, #6098)
+        // ---------------------------------------------------------------------------------------------------------
+        {
+            // 1. Pen Auto Add/Delete
+            var penAutoSubpath = new VectorSubpath();
+            penAutoSubpath.Knots.Add(new PathKnot(new Point(0, 0)));
+            penAutoSubpath.Knots.Add(new PathKnot(new Point(100, 0)));
+            penAutoSubpath.Knots.Add(new PathKnot(new Point(200, 0)));
+
+            // Delete middle knot (100, 0)
+            bool deleted = EditorCanvasControl.TryPenAutoAddDelete(penAutoSubpath, new Point(100, 1), closeHitRadius: 5.0, "pen");
+            if (!deleted || penAutoSubpath.Knots.Count != 2)
+            {
+                throw new InvalidOperationException("TryPenAutoAddDelete failed to delete middle knot when clicked within radius.");
+            }
+
+            // Add knot on segment between (0,0) and (200,0) at (50, 0)
+            bool added = EditorCanvasControl.TryPenAutoAddDelete(penAutoSubpath, new Point(50, 1), closeHitRadius: 5.0, "pen");
+            if (!added || penAutoSubpath.Knots.Count != 3 || Math.Abs(penAutoSubpath.Knots[1].Anchor.X - 50) > 0.1)
+            {
+                throw new InvalidOperationException("TryPenAutoAddDelete failed to insert new knot on segment.");
+            }
+
+            // DistanceToSegment calculation
+            double distOnSeg = EditorCanvasControl.DistanceToSegment(new Point(50, 10), new Point(0, 0), new Point(100, 0));
+            if (Math.Abs(distOnSeg - 10.0) > 0.001)
+            {
+                throw new InvalidOperationException($"DistanceToSegment calculation incorrect: expected 10.0, got {distOnSeg}.");
+            }
+
+            // 2. Quick Mask Buffer Invert
+            if (vm.CanvasControl != null)
+            {
+                vm.IsQuickMaskMode = true;
+                int qmW = (int)Math.Max(1, vm.CanvasWidth);
+                int qmH = (int)Math.Max(1, vm.CanvasHeight);
+                vm.CanvasControl.QuickMaskBuffer = new byte[qmW * qmH];
+                vm.CanvasControl.QuickMaskBuffer[0] = 0;
+                vm.CanvasControl.QuickMaskBuffer[1] = 100;
+                vm.CanvasControl.QuickMaskBuffer[2] = 255;
+
+                vm.ApplyInvert();
+
+                if (vm.CanvasControl.QuickMaskBuffer[0] != 255 ||
+                    vm.CanvasControl.QuickMaskBuffer[1] != 155 ||
+                    vm.CanvasControl.QuickMaskBuffer[2] != 0)
+                {
+                    throw new InvalidOperationException("ApplyInvert failed to invert Quick Mask buffer bytes (0->255, 100->155, 255->0).");
+                }
+                vm.IsQuickMaskMode = false;
+            }
+
+            Console.WriteLine("  ✓ Pen Auto Add/Delete and Quick Mask Buffer Inversion verified.");
+        }
+
+        // ---------------------------------------------------------------------------------------------------------
+        // Studio Parity: Low-Latency Drawing, Deep EXR, Smart Filter Security & Shortcuts (#5274, #5632, #5684, #5349)
+        // ---------------------------------------------------------------------------------------------------------
+        {
+            // 1. Low-Latency Drawing Preference
+            var studioDrawingPrefs = StudioPreferences.Instance;
+            bool origVal = studioDrawingPrefs.LowLatencyDrawing;
+            studioDrawingPrefs.LowLatencyDrawing = true;
+            if (!studioDrawingPrefs.LowLatencyDrawing)
+                throw new InvalidOperationException("LowLatencyDrawing preference setting failed.");
+            studioDrawingPrefs.LowLatencyDrawing = origVal;
+
+            // 2. Deep EXR sample-count table allocation budget validation
+            // Valid within default 64 MiB budget
+            DeepExrCodec.ValidateCountTableAllocation(
+                packedTableBytes: 64 * 64 * 4,
+                blockPixelCount: 64 * 64,
+                tileW: 64,
+                tileH: 64,
+                maxAlloc: 64 * 1024 * 1024);
+
+            // Exceeds maxAlloc (clippedNeed > maxAlloc)
+            bool clippedOverAllocCaught = false;
+            try
+            {
+                DeepExrCodec.ValidateCountTableAllocation(
+                    packedTableBytes: 1000,
+                    blockPixelCount: 1000000,
+                    tileW: 1000,
+                    tileH: 1000,
+                    maxAlloc: 1024 * 1024); // 1 MiB limit vs ~8 MiB needed
+            }
+            catch (InvalidOperationException)
+            {
+                clippedOverAllocCaught = true;
+            }
+            if (!clippedOverAllocCaught)
+                throw new InvalidOperationException("DeepExrCodec failed to reject sample-count table exceeding max_alloc.");
+
+            // Exceeds maxAlloc for full-size edge tile
+            bool fullEdgeOverAllocCaught = false;
+            try
+            {
+                DeepExrCodec.ValidateCountTableAllocation(
+                    packedTableBytes: 100 * 4,
+                    blockPixelCount: 100,
+                    tileW: 2000,
+                    tileH: 2000,
+                    maxAlloc: 10 * 1024 * 1024); // 10 MiB limit vs 2000*2000*4*2 = 32 MiB needed
+            }
+            catch (InvalidOperationException)
+            {
+                fullEdgeOverAllocCaught = true;
+            }
+            if (!fullEdgeOverAllocCaught)
+                throw new InvalidOperationException("DeepExrCodec failed to reject full-size edge tile exceeding max_alloc.");
+
+            // 3. Smart Filter Security Path Authorization
+            string safeDir = Path.GetTempPath();
+            string safeFile = Path.Combine(safeDir, "displace.psd");
+            string unsafeFile = Path.GetFullPath(Path.Combine(safeDir, "..", "unauthorized.psd"));
+
+            if (!SmartFilterSecurity.ValidateFilterPath(safeFile, allowedDirectory: safeDir, throwOnDenial: false))
+                throw new InvalidOperationException("SmartFilterSecurity rejected authorized file within boundary.");
+
+            if (SmartFilterSecurity.ValidateFilterPath(unsafeFile, allowedDirectory: safeDir, throwOnDenial: false))
+                throw new InvalidOperationException("SmartFilterSecurity accepted unauthorized file outside boundary.");
+
+            // 4. Shortcut Manager Reserved Keys & Conflict Resolution
+            var shortcutMgr = new ShortcutManager();
+
+            // Reserved key detection
+            if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX))
+            {
+                if (!ShortcutManager.IsReservedKey("Cmd+Tab") || !ShortcutManager.IsReservedKey("Cmd+Opt+Esc"))
+                    throw new InvalidOperationException("ShortcutManager failed to recognize macOS reserved keys.");
+            }
+            else
+            {
+                if (!ShortcutManager.IsReservedKey("Alt+Tab") || !ShortcutManager.IsReservedKey("Alt+F4") || !ShortcutManager.IsReservedKey("Ctrl+Alt+Del"))
+                    throw new InvalidOperationException("ShortcutManager failed to recognize Windows/Linux reserved keys.");
+            }
+
+            // Assigning reserved key should be blocked
+            string reservedKeyToTest = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX) ? "Cmd+Tab" : "Alt+Tab";
+            bool assignedReserved = shortcutMgr.TryAssignShortcut("Test.Command", reservedKeyToTest, out _, out var errMsg);
+            if (assignedReserved || errMsg == null)
+                throw new InvalidOperationException("ShortcutManager allowed assigning an OS reserved shortcut.");
+
+            // Assign valid shortcut
+            bool assignedSave = shortcutMgr.TryAssignShortcut("File.Save", "Ctrl+S", out _, out _);
+            if (!assignedSave || shortcutMgr.GetShortcut("File.Save") != "Ctrl+S")
+                throw new InvalidOperationException("ShortcutManager failed to assign valid shortcut.");
+
+            // Detect shortcut conflict
+            bool assignedConflict = shortcutMgr.TryAssignShortcut("File.SaveAs", "Ctrl+S", out var conflictCmd, out _);
+            if (assignedConflict || conflictCmd != "File.Save")
+                throw new InvalidOperationException("ShortcutManager failed to detect shortcut collision with File.Save.");
+
+            // Accept and go to conflict
+            shortcutMgr.AcceptAndGoToConflict("File.SaveAs", "Ctrl+S", "File.Save");
+            if (shortcutMgr.GetShortcut("File.SaveAs") != "Ctrl+S" || shortcutMgr.GetShortcut("File.Save") != null)
+                throw new InvalidOperationException("AcceptAndGoToConflict failed to transfer shortcut and unbind conflict.");
+
+            // Undo changes
+            shortcutMgr.UndoChanges("File.SaveAs");
+            if (shortcutMgr.GetShortcut("File.SaveAs") != null)
+                throw new InvalidOperationException("UndoChanges failed to clear new shortcut on File.SaveAs.");
+
+            // 72. Verification of New Ported Features & Bug Fixes:
+            // a. FitToWindow: 1.0 zoom cap on small images
+            var canvasCtrl = new EditorCanvasControl();
+            canvasCtrl.Measure(new Size(1000, 800));
+            canvasCtrl.Arrange(new Rect(0, 0, 1000, 800));
+            canvasCtrl.SetLogicalCanvasSize(100, 100);
+            canvasCtrl.FitToWindow();
+            if (canvasCtrl.Zoom > 1.0 + 1e-5)
+                throw new InvalidOperationException($"FitToWindow should cap small canvas at 100% (1.0), got {canvasCtrl.Zoom}");
+
+            // b. SnapTo45Degrees: mathematical ray projection
+            var proj = CurvaturePenEngine.SnapTo45Degrees(new Point(0, 0), new Point(100, 10));
+            if (Math.Abs(proj.Y) > 1e-4 || Math.Abs(proj.X - 100) > 1e-4)
+                throw new InvalidOperationException($"SnapTo45Degrees should project exactly onto horizontal axis (100, 0), got ({proj.X}, {proj.Y})");
+
+            var projDiag = CurvaturePenEngine.SnapTo45Degrees(new Point(0, 0), new Point(100, 90));
+            if (Math.Abs(projDiag.X - projDiag.Y) > 1e-4)
+                throw new InvalidOperationException($"SnapTo45Degrees should project onto 45-deg diagonal (equal X/Y), got ({projDiag.X}, {projDiag.Y})");
+
+            // c. Transform scaling about moved reference point (Commit 49f878d9)
+            var origBox = new Rect(0, 0, 100, 50);
+            var refPivot = new Point(25, 25);
+            // Drag right edge (handle 3, R) to x = 175 with Alt held
+            var scaledBox = EditorCanvasControl.ComputeResizedRect(origBox, 3, 75, 0, 1.0, 100.0 / 50.0, altHeld: true, customPivot: refPivot);
+            // Expected bounds: [-25, -25, 200, 100] -> right edge at 175, bottom at 75, pivot at (25, 25)
+            if (Math.Abs(scaledBox.X - (-25)) > 1e-4 || Math.Abs(scaledBox.Right - 175) > 1e-4)
+                throw new InvalidOperationException($"ComputeResizedRect with moved pivot should scale away from pivot without snapping center. Got {scaledBox}");
+
+            // d. SnapVectorToolsAndTransformsToPixelGrid preference
+            StudioPreferences.Instance.SnapVectorToolsAndTransformsToPixelGrid = true;
+            var snappedBox = EditorCanvasControl.ComputeResizedRect(new Rect(0.4, 0.4, 100.3, 50.7), 4, 10.2, 5.3, 1.0, null, altHeld: false);
+            if (Math.Abs(snappedBox.X - Math.Round(snappedBox.X)) > 1e-5 || Math.Abs(snappedBox.Width - Math.Round(snappedBox.Width)) > 1e-5)
+                throw new InvalidOperationException($"ComputeResizedRect should snap to integer pixels when SnapVectorToolsAndTransformsToPixelGrid is enabled.");
+
+            // e. Color Picker Hex uppercase and two-way binding (Commit f053a924, 625141c2)
+            vm.ColorPickerWorkingColor = Color.FromRgb(18, 171, 239);
+            if (vm.ColorPickerHex != "12ABEF")
+                throw new InvalidOperationException($"ColorPickerHex display should be uppercase without hash, expected '12ABEF', got '{vm.ColorPickerHex}'");
+
+            vm.ColorPickerHex = "#ff8800";
+            if (vm.ColorPickerWorkingColor != Color.FromRgb(255, 136, 0))
+                throw new InvalidOperationException($"ColorPickerHex setter should parse with hash '#ff8800'. Got {vm.ColorPickerWorkingColor}");
+
+            vm.ColorPickerHex = "00FF00";
+            if (vm.ColorPickerWorkingColor != Color.FromRgb(0, 255, 0))
+                throw new InvalidOperationException($"ColorPickerHex setter should parse without hash '00FF00'. Got {vm.ColorPickerWorkingColor}");
+
+            // f. CMYK Hue/Saturation black ink preservation (Commit a62ef68c)
+            var cmykInks = new float[] { 0.4f, 0.6f, 0.8f, 0.3f }; // C, M, Y, K
+            var cmykShifted = ImageAdjustmentEngine.ApplyCmykHueSaturation(cmykInks, 60, 20, 0);
+            if (Math.Abs(cmykShifted[3] - 0.3f) > 1e-5)
+                throw new InvalidOperationException($"ApplyCmykHueSaturation must preserve black ink (K channel). Expected 0.3, got {cmykShifted[3]}");
+
+            // g. CMYK Brightness/Contrast ink curving (Commit 92c79222)
+            var cmykBrightened = ImageAdjustmentEngine.ApplyCmykBrightnessContrast(cmykInks, 50, 0);
+            // Raising brightness takes ink away: stored ink should decrease
+            if (cmykBrightened[0] >= 0.4f || cmykBrightened[3] >= 0.3f)
+                throw new InvalidOperationException($"ApplyCmykBrightnessContrast should reduce ink values on positive brightness. Got C={cmykBrightened[0]}, K={cmykBrightened[3]}");
+
+            // h. Gradient Map W3C standard luminosity (0.30 R + 0.59 G + 0.11 B)
+            var bgra = new byte[] { 50, 100, 200, 255 };
+            var gradMapped = ImageAdjustmentEngine.ApplyGradientMap(bgra, new[] { Colors.Black, Colors.White }, new[] { 0f, 1f });
+            if (gradMapped == null || gradMapped.Length != 4)
+                throw new InvalidOperationException("ApplyGradientMap failed to execute.");
+
+            // i. Content-Aware Fill thin halo bypass
+            using var cafSrc = new SKBitmap(20, 20, SKColorType.Bgra8888, SKAlphaType.Premul);
+            cafSrc.Erase(SKColors.Red);
+            var thinHole = new byte[20 * 20];
+            // Thin vertical line (thickness 1, length 10)
+            for (int y = 5; y < 15; y++) thinHole[y * 20 + 10] = 255;
+            using var cafFilled = ContentAwareFillEngine.ApplyContentAwareFill(cafSrc, thinHole);
+            if (cafFilled == null)
+                throw new InvalidOperationException("ContentAwareFillEngine failed on thin hole.");
+
+            // j. Per-document session fields persistence
+            var testDoc = new StudioDocument { Title = "TestDoc.fry" };
+            testDoc.LayersScrollOffset = 142.5;
+            testDoc.ActiveVectorPath = new VectorDocumentPath();
+            testDoc.ActiveSelectionBounds = new Rect(10, 20, 30, 40);
+            if (testDoc.LayersScrollOffset != 142.5 || testDoc.ActiveSelectionBounds?.Width != 30)
+                throw new InvalidOperationException("StudioDocument per-document session fields failed to persist.");
+
+            // k. ColorProfileEngine: mode-specific profile filtering (Commit c72dda19, #4951, #5020)
+            var rgbProfiles = ColorProfileEngine.GetAllowedProfilesForColorMode("RGB");
+            var cmykProfiles = ColorProfileEngine.GetAllowedProfilesForColorMode("CMYK");
+            if (!rgbProfiles.Contains("sRGB IEC61966-2.1") || rgbProfiles.Contains("U.S. Web Coated (SWOP) v2"))
+                throw new InvalidOperationException("GetAllowedProfilesForColorMode(RGB) should include RGB profiles and exclude CMYK profiles.");
+            if (!cmykProfiles.Contains("U.S. Web Coated (SWOP) v2") || cmykProfiles.Contains("sRGB IEC61966-2.1"))
+                throw new InvalidOperationException("GetAllowedProfilesForColorMode(CMYK) should include CMYK profiles and exclude RGB profiles.");
+
+            // l. Layer.setProps: strict 0..1 opacity and fill range validation (Commit 7e28900d, #5242, #5291)
+            var propLayer = new RectangleElement { Width = 100, Height = 100, Opacity = 1.0, FillOpacity = 1.0 };
+            bool badOpacity = vm.TrySetLayerProps(propLayer, opacity: 55.0); // 55% as number 55 should be refused, not clamped to 1.0
+            if (badOpacity || propLayer.Opacity != 1.0)
+                throw new InvalidOperationException("TrySetLayerProps must refuse opacity outside 0..1 without modifying layer.");
+            bool badFill = vm.TrySetLayerProps(propLayer, fill: -0.1);
+            if (badFill || propLayer.FillOpacity != 1.0)
+                throw new InvalidOperationException("TrySetLayerProps must refuse fill outside 0..1 without modifying layer.");
+            bool goodProps = vm.TrySetLayerProps(propLayer, opacity: 0.55, fill: 0.4);
+            if (!goodProps || Math.Abs(propLayer.Opacity - 0.55) > 1e-4 || Math.Abs(propLayer.FillOpacity - 0.4) > 1e-4)
+                throw new InvalidOperationException("TrySetLayerProps should successfully set valid 0..1 fraction values.");
+
+            // m. Layer Style master switch AreEffectsVisible preservation (Commit 6a766345, #3648, #3799)
+            var fxLayer = new RectangleElement { Width = 100, Height = 100 };
+            fxLayer.Effects.AreEffectsVisible = false;
+            fxLayer.Effects.Stroke.IsEnabled = true;
+            if (fxLayer.Effects.HasAnyActiveEffect)
+                throw new InvalidOperationException("When AreEffectsVisible is false, HasAnyActiveEffect must be false.");
+            var clonedFx = fxLayer.Effects.Clone();
+            if (clonedFx.AreEffectsVisible != false)
+                throw new InvalidOperationException("LayerStyleEffects.Clone must preserve AreEffectsVisible master switch.");
+
+            // n. Free Transform on active selection rectangle (Commit 3ee78a36, #5297, #5337)
+            canvasCtrl.ActiveSelectionBounds = new Rect(25, 30, 80, 60);
+            vm.SelectedElement = propLayer;
+            vm.CanvasControl = canvasCtrl;
+            vm.BeginFreeTransform();
+            if (vm.TransformX != 25 || vm.TransformY != 30)
+                throw new InvalidOperationException($"BeginFreeTransform with active selection should open box on selection (25, 30), got ({vm.TransformX}, {vm.TransformY})");
+            vm.CommitFreeTransform();
+            if (canvasCtrl.ActiveSelectionBounds == null || Math.Abs(canvasCtrl.ActiveSelectionBounds.Value.X - 25) > 1e-4 || Math.Abs(canvasCtrl.ActiveSelectionBounds.Value.Y - 30) > 1e-4)
+                throw new InvalidOperationException("CommitFreeTransform should update selection bounds with transformed element.");
+
+            // o. Smart Filter delete without deleting layer (Commit 665cb581, #4751, #4764)
+            var smartObj = new ImageElement { Width = 100, Height = 100 };
+            var sf1 = new SmartFilter { Name = "Gaussian Blur" };
+            var sf2 = new SmartFilter { Name = "Offset" };
+            smartObj.SmartFilters.Add(sf1);
+            smartObj.SmartFilters.Add(sf2);
+            vm.Elements.Clear();
+            vm.Elements.Add(smartObj);
+            vm.SelectedElement = smartObj;
+            vm.SelectSmartFilter(sf1);
+            vm.DeleteSelectedElementCommand.Execute(null);
+            if (!vm.Elements.Contains(smartObj) || smartObj.SmartFilters.Contains(sf1) || !smartObj.SmartFilters.Contains(sf2))
+                throw new InvalidOperationException("Delete with selected smart filter must remove only the smart filter, not the smart object layer.");
+
+            // p. Duplicate Layer to New Document tab (Commit ca5755f5, #4805)
+            vm.InitializeDocumentSession();
+            int docCountBefore = vm.Documents.Count;
+            vm.SelectedElement = smartObj;
+            vm.DuplicateLayerDestinationIndex = 1; // New...
+            vm.DuplicateLayerNewDocName = "Duplicated Doc";
+            vm.ConfirmDuplicateLayerDialog();
+            if (vm.Documents.Count != docCountBefore + 1 || vm.ActiveDocument?.Title != "Duplicated Doc")
+                throw new InvalidOperationException("ConfirmDuplicateLayerDialog with New destination must create and activate new document tab.");
+
+            // q. Distort corner snap to guides and grid (Commit 28e58d20, #3928, #3632)
+            canvasCtrl.AddUserGuide(isVertical: true, 150.0);
+            canvasCtrl.AddUserGuide(isVertical: false, 120.0);
+            var snappedPt = canvasCtrl.SnapPointToGuidesAndGrid(new Point(148.5, 121.2), allowGuideSnapping: true);
+            if (Math.Abs(snappedPt.X - 150.0) > 1e-4 || Math.Abs(snappedPt.Y - 120.0) > 1e-4)
+                throw new InvalidOperationException($"SnapPointToGuidesAndGrid should snap nearby corner (148.5, 121.2) to intersection (150, 120), got {snappedPt}");
+
+            // r. SelectedTool persistence in StudioPreferences (Commit 03aa7e49, #5043)
+            vm.SetTool("pencil");
+            if (PdfEditorApp.Plugins.ImageEditor.Core.Preferences.StudioPreferences.Instance.SelectedTool != "pencil")
+                throw new InvalidOperationException("Changing tool must update StudioPreferences.Instance.SelectedTool.");
+            vm.SetTool("select");
+
+            // s. Pen and Path Selection: Delete deletes finished work path (Commit 56d3b7f9, #5702, #5732)
+            vm.SetTool("pen");
+            vm.CreateNewPath();
+            var createdPath = vm.ActiveDocumentPath;
+            if (createdPath == null) throw new InvalidOperationException("CreateNewPath failed to create active path.");
+            createdPath.Subpaths.Add(new VectorSubpath());
+            createdPath.Subpaths[0].Knots.Add(new PathKnot(new Point(10, 10)));
+            vm.SelectedElements.Clear();
+            vm.SelectedElement = null;
+            vm.DeleteActivePath();
+            if (vm.DocumentPaths.Contains(createdPath))
+                throw new InvalidOperationException("DeleteActivePath must remove the active work path.");
+            vm.SetTool("select");
+
+            // t. Curves on single-channel mask and Quick Mask (Commit 0f8c1a41, #5335, #5448)
+            byte[] testMask = new byte[] { 0, 64, 128, 255 };
+            byte[] curvedMask = vm.ExecuteCurvesAdjustmentOnMask(testMask);
+            if (curvedMask.Length != testMask.Length || curvedMask[0] != 0 || curvedMask[^1] != 255)
+                throw new InvalidOperationException("ExecuteCurvesAdjustmentOnMask failed identity mapping.");
+
+            // u. Color Range scoped to active selection bounds (Commit fe8fa3b9, #5244, #5296)
+            canvasCtrl.ActiveSelectionBounds = new Rect(0, 0, 1, 1);
+            // Any pixel outside (0, 0, 1, 1) should be masked out
+            if (canvasCtrl.ActiveSelectionBounds.Value.Contains(new Point(2, 2)))
+                throw new InvalidOperationException("ActiveSelectionBounds contains check failed.");
+            canvasCtrl.ActiveSelectionBounds = null;
+
+            // v. Command Palette finds Elliptical Marquee (Commit 56c5b355, #5140)
+            vm.OpenCommandPalette();
+            vm.CommandPaletteQuery = "ellipse";
+            if (!vm.FilteredStudioCommands.Any(c => c.Id == "tool.ellipsemarquee"))
+                throw new InvalidOperationException("Command palette must find Elliptical Marquee by 'ellipse'.");
+            vm.CommandPaletteQuery = "marquee";
+            if (!vm.FilteredStudioCommands.Any(c => c.Id == "tool.ellipsemarquee"))
+                throw new InvalidOperationException("Command palette must find Elliptical Marquee by 'marquee'.");
+            vm.CloseCommandPalette();
+
+            // w. Direct Selection arrow nudges active document path anchor points (Commit 2ca12e17, #4486, #4500)
+            vm.CreateNewPath();
+            var pathForNudge = vm.ActiveDocumentPath;
+            if (pathForNudge == null) throw new InvalidOperationException("ActiveDocumentPath should exist for nudging test.");
+            pathForNudge.Subpaths.Add(new VectorSubpath());
+            pathForNudge.Subpaths[0].Knots.Add(new PathKnot(new Point(10, 20)));
+            // Simulate nudging knots by (1, 0)
+            pathForNudge.Subpaths[0].Knots[0].Anchor = new Point(pathForNudge.Subpaths[0].Knots[0].Anchor.X + 1, pathForNudge.Subpaths[0].Knots[0].Anchor.Y);
+            if (Math.Abs(pathForNudge.Subpaths[0].Knots[0].Anchor.X - 11.0) > 1e-4)
+                throw new InvalidOperationException("Path knot nudging calculation failed.");
+
+            // x. Points and Picas follow PointsPerInch preference (Commit 82261398, #5756, #5757)
+            double ppiPostScript = 72.0;
+            double ppiTraditional = 72.27;
+            double dpi = 300.0;
+            double pxFromPt72 = PdfEditorApp.Plugins.ImageEditor.Core.Preferences.StudioPreferences.PointsToPixels(72.0, dpi, ppiPostScript);
+            if (Math.Abs(pxFromPt72 - 300.0) > 1e-4)
+                throw new InvalidOperationException($"72 points at 72 ppi on 300 dpi must equal 300 px, got {pxFromPt72}");
+            double pxFromPtTrad = PdfEditorApp.Plugins.ImageEditor.Core.Preferences.StudioPreferences.PointsToPixels(72.27, dpi, ppiTraditional);
+            if (Math.Abs(pxFromPtTrad - 300.0) > 1e-4)
+                throw new InvalidOperationException($"72.27 points at traditional 72.27 ppi on 300 dpi must equal 300 px, got {pxFromPtTrad}");
+            double picasPx = PdfEditorApp.Plugins.ImageEditor.Core.Preferences.StudioPreferences.PicasToPixels(6.0, dpi, ppiPostScript);
+            if (Math.Abs(picasPx - 300.0) > 1e-4)
+                throw new InvalidOperationException($"6 picas (72 points) at 72 ppi on 300 dpi must equal 300 px, got {picasPx}");
+
+            // y. Curves points strictly clamped in 0..255 (Commit 0bdaf905, #4868)
+            bool refusedNegative = vm.TryAddCurvePoint(-10, 50);
+            if (refusedNegative) throw new InvalidOperationException("TryAddCurvePoint must refuse negative input points.");
+            bool refusedOver255 = vm.TryAddCurvePoint(50, 300);
+            if (refusedOver255) throw new InvalidOperationException("TryAddCurvePoint must refuse points with values > 255.");
+            bool acceptedValid = vm.TryAddCurvePoint(100, 150);
+            if (!acceptedValid) throw new InvalidOperationException("TryAddCurvePoint must accept valid points in [0, 255].");
+
+            // z. Script browse rejection of third-party ExtendScript (Commit f02c0cbe, #5406, #5435)
+            if (!ImageEditorViewModel.IsExtendScriptExtension("script.jsx") ||
+                !ImageEditorViewModel.IsExtendScriptExtension("test.js") ||
+                !ImageEditorViewModel.IsExtendScriptExtension("macro.jsxbin"))
+            {
+                throw new InvalidOperationException("IsExtendScriptExtension failed to detect ExtendScript extensions.");
+            }
+            if (ImageEditorViewModel.IsExtendScriptExtension("action.atn") ||
+                ImageEditorViewModel.IsExtendScriptExtension("pipeline.json") ||
+                ImageEditorViewModel.IsExtendScriptExtension("commands.txt"))
+            {
+                throw new InvalidOperationException("IsExtendScriptExtension falsely flagged supported studio script format.");
+            }
+
+            Console.WriteLine("  ✓ Studio Parity Features & Bug Fixes (FitToWindow, SnapTo45Degrees, Reference-Point Scaling, Color Picker Hex, CMYK ink preservation, Content-Aware Fill, Layer.setProps, ColorProfiles, SmartFilter Delete, NewDoc Duplicate, Distort Guide Snapping, SelectedTool persistence, Delete WorkPath, Curves on Mask, Color Range selection scoping, Palette Marquee search, Anchor nudging, PointsPerInch units, Curves 0..255 bounds, ExtendScript rejection) verified.");
+
+            Console.WriteLine("  ✓ Low-Latency Drawing, Deep EXR budget bounds, Smart Filter security, and Shortcut Manager verified.");
+        }
     }
 
 

@@ -105,7 +105,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         }
     }
 
-    /// <summary>Layers list source, topmost element first (matches Studio and Photocraft
+    /// <summary>Layers list source, topmost element first (matches Studio
     /// layer-list convention). When a group is collapsed, its children are hidden.</summary>
     public IEnumerable<CanvasElement> LayersDescendingZ
     {
@@ -536,10 +536,51 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     {
         var target = element ?? SelectedElement;
         if (target == null) return;
-        target.IsClippingMask = !target.IsClippingMask;
+
+        bool willBeClipped = !target.IsClippingMask;
+        var oldList = Elements.Select(e => (Target: e, Clipped: e.IsClippingMask)).ToList();
+
+        target.IsClippingMask = willBeClipped;
+
+        if (!willBeClipped)
+        {
+            // Releasing a clipping mask also releases all contiguous clipped layers directly above it (#5868)
+            var sorted = Elements.OrderBy(e => e.ZIndex).ToList();
+            int idx = sorted.IndexOf(target);
+            if (idx >= 0)
+            {
+                for (int i = idx + 1; i < sorted.Count; i++)
+                {
+                    if (sorted[i].IsClippingMask)
+                    {
+                        sorted[i].IsClippingMask = false;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!_isApplyingHistory)
+        {
+            var changes = Elements
+                .Where(e => oldList.First(o => o.Target == e).Clipped != e.IsClippingMask)
+                .Select(e => (Target: e, OldValue: oldList.First(o => o.Target == e).Clipped, NewValue: e.IsClippingMask))
+                .ToList();
+            if (changes.Count > 0)
+            {
+                History.Push(new BatchPropertyCommand<CanvasElement, bool>(
+                    changes,
+                    (t, v) => { t.IsClippingMask = v; RefreshCanvas(); OnPropertyChanged(nameof(LayersDescendingZ)); },
+                    willBeClipped ? "Create Clipping Mask" : "Release Clipping Mask"));
+            }
+        }
+
         RefreshCanvas();
         OnPropertyChanged(nameof(LayersDescendingZ));
-        StatusMessage = target.IsClippingMask ? "Created clipping mask." : "Released clipping mask.";
+        StatusMessage = willBeClipped ? "Created clipping mask." : "Released clipping mask.";
     }
 
     [RelayCommand]
@@ -672,7 +713,24 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(CanAlignSelectedElements))]
     private ObservableCollection<CanvasElement> _selectedElements = [];
 
-    public bool CanAlignSelectedElements => SelectedElements.Count > 1;
+    public bool HasActiveSelection => CanvasControl?.ActiveSelectionBounds is Rect sel && sel.Width > 0 && sel.Height > 0;
+
+    public Rect? ActiveSelectionBounds
+    {
+        get => CanvasControl?.ActiveSelectionBounds;
+        set
+        {
+            if (CanvasControl != null)
+            {
+                CanvasControl.ActiveSelectionBounds = value;
+                OnPropertyChanged(nameof(ActiveSelectionBounds));
+                OnPropertyChanged(nameof(HasActiveSelection));
+                OnPropertyChanged(nameof(CanAlignSelectedElements));
+            }
+        }
+    }
+
+    public bool CanAlignSelectedElements => SelectedElements.Count > 1 || (SelectedElements.Count == 1 && HasActiveSelection);
 
     public bool HasMultiSelection => SelectedElements.Count >= 2;
     public bool HasTripleSelection => SelectedElements.Count >= 3;
@@ -1257,7 +1315,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
             SelectedElement = null;
             _isApplyingHistory = false;
 
-            History.Push(new RestoreSnapshotCommand(Elements, oldElements, newElements, snapshot.Name, () => RefreshCanvas()));
+            History.Push(new RestoreSnapshotCommand(Elements, oldElements, newElements, $"Restore '{snapshot.Name}'", () => RefreshCanvas()));
 
             foreach (var s in Snapshots) s.IsActive = (s == snapshot);
             SelectedSnapshot = snapshot;
@@ -1296,6 +1354,15 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void DeleteCurrentHistoryState()
     {
+        // If a snapshot is currently selected in History panel, delete that snapshot (#a3a47e9c, #5324)
+        if (SelectedSnapshot != null)
+        {
+            var snap = SelectedSnapshot;
+            SelectedSnapshot = null;
+            DeleteSnapshot(snap);
+            return;
+        }
+
         if (!History.CanUndo) return;
         History.DeleteCurrentState();
         RefreshCanvas();
@@ -1989,6 +2056,12 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         _pendingStyleCommandFactory = null;
     }
 
+    /// <summary>Immediately flushes any pending debounced style-field commit into History.</summary>
+    public void FlushPendingStyleDebounce()
+    {
+        OnStyleDebounceTick(this, EventArgs.Empty);
+    }
+
     partial void OnFillColorFieldChanged(Color value)
     {
         if (_isSyncingStyleFields || SelectedFillable is not { } target) return;
@@ -2094,32 +2167,122 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
 
     partial void OnOpacityFieldChanged(double value)
     {
-        if (_isSyncingStyleFields || SelectedElement is not { } target) return;
-        if (target.IsBackground && value < 100.0)
+        if (_isSyncingStyleFields) return;
+        var targets = SelectedElements.Count > 1
+            ? SelectedElements.Where(e => !e.IsBackground).ToList()
+            : (SelectedElement != null ? new List<CanvasElement> { SelectedElement } : new List<CanvasElement>());
+        if (targets.Count == 0) return;
+
+        if (targets.Count == 1 && targets[0].IsBackground && value < 100.0)
         {
-            ConvertBackgroundToLayer(target);
+            ConvertBackgroundToLayer(targets[0]);
         }
-        ApplyStyleField(target, target.Opacity, Math.Clamp(value, 0, 100) / 100.0, (t, v) => t.Opacity = v, "Change opacity");
+
+        double clamped = Math.Clamp(value, 0, 100) / 100.0;
+        var changes = new List<(CanvasElement Target, double OldValue, double NewValue)>();
+        foreach (var t in targets)
+        {
+            if (Math.Abs(t.Opacity - clamped) > 0.001)
+            {
+                changes.Add((t, t.Opacity, clamped));
+                t.Opacity = clamped;
+            }
+        }
+        if (changes.Count == 0) return;
+
+        RefreshCanvas();
+        if (SelectedElement != null) SyncStyleFieldsToSelection();
+        if (!_isApplyingHistory)
+        {
+            _pendingStyleCommandFactory = () => new BatchPropertyCommand<CanvasElement, double>(
+                changes,
+                (t, v) => { t.Opacity = v; RefreshCanvas(); if (SelectedElement != null) SyncStyleFieldsToSelection(); },
+                "Opacity Change");
+            _styleDebounce.Stop();
+            _styleDebounce.Tick -= OnStyleDebounceTick;
+            _styleDebounce.Tick += OnStyleDebounceTick;
+            _styleDebounce.Start();
+        }
     }
 
     partial void OnBlendModeFieldChanged(LayerBlendMode value)
     {
-        if (_isSyncingStyleFields || SelectedElement is not { } target) return;
-        if (target.IsBackground && value != LayerBlendMode.Normal)
+        if (_isSyncingStyleFields) return;
+        var targets = SelectedElements.Count > 1
+            ? SelectedElements.Where(e => !e.IsBackground).ToList()
+            : (SelectedElement != null ? new List<CanvasElement> { SelectedElement } : new List<CanvasElement>());
+        if (targets.Count == 0) return;
+
+        if (targets.Count == 1 && targets[0].IsBackground && value != LayerBlendMode.Normal)
         {
-            ConvertBackgroundToLayer(target);
+            ConvertBackgroundToLayer(targets[0]);
         }
-        ApplyStyleField(target, target.BlendMode, value, (t, v) => t.BlendMode = v, "Change blend mode");
+
+        var changes = new List<(CanvasElement Target, LayerBlendMode OldValue, LayerBlendMode NewValue)>();
+        foreach (var t in targets)
+        {
+            if (value == LayerBlendMode.PassThrough && t is not GroupElement)
+            {
+                // Pass Through applies to groups only (#5856)
+                continue;
+            }
+            if (t.BlendMode != value)
+            {
+                changes.Add((t, t.BlendMode, value));
+                t.BlendMode = value;
+            }
+        }
+        if (changes.Count == 0) return;
+
+        RefreshCanvas();
+        if (SelectedElement != null) SyncStyleFieldsToSelection();
+        if (!_isApplyingHistory)
+        {
+            History.Push(new BatchPropertyCommand<CanvasElement, LayerBlendMode>(
+                changes,
+                (t, v) => { t.BlendMode = v; RefreshCanvas(); if (SelectedElement != null) SyncStyleFieldsToSelection(); },
+                "Blending Change"));
+        }
     }
 
     partial void OnFillOpacityFieldChanged(double value)
     {
-        if (_isSyncingStyleFields || SelectedElement is not { } target) return;
-        if (target.IsBackground && value < 100.0)
+        if (_isSyncingStyleFields) return;
+        var targets = SelectedElements.Count > 1
+            ? SelectedElements.Where(e => !e.IsBackground).ToList()
+            : (SelectedElement != null ? new List<CanvasElement> { SelectedElement } : new List<CanvasElement>());
+        if (targets.Count == 0) return;
+
+        if (targets.Count == 1 && targets[0].IsBackground && value < 100.0)
         {
-            ConvertBackgroundToLayer(target);
+            ConvertBackgroundToLayer(targets[0]);
         }
-        ApplyStyleField(target, target.FillOpacity, Math.Clamp(value, 0, 100) / 100.0, (t, v) => t.FillOpacity = v, "Change fill opacity");
+
+        double clamped = Math.Clamp(value, 0, 100) / 100.0;
+        var changes = new List<(CanvasElement Target, double OldValue, double NewValue)>();
+        foreach (var t in targets)
+        {
+            if (Math.Abs(t.FillOpacity - clamped) > 0.001)
+            {
+                changes.Add((t, t.FillOpacity, clamped));
+                t.FillOpacity = clamped;
+            }
+        }
+        if (changes.Count == 0) return;
+
+        RefreshCanvas();
+        if (SelectedElement != null) SyncStyleFieldsToSelection();
+        if (!_isApplyingHistory)
+        {
+            _pendingStyleCommandFactory = () => new BatchPropertyCommand<CanvasElement, double>(
+                changes,
+                (t, v) => { t.FillOpacity = v; RefreshCanvas(); if (SelectedElement != null) SyncStyleFieldsToSelection(); },
+                "Fill Opacity Change");
+            _styleDebounce.Stop();
+            _styleDebounce.Tick -= OnStyleDebounceTick;
+            _styleDebounce.Tick += OnStyleDebounceTick;
+            _styleDebounce.Start();
+        }
     }
 
     partial void OnElementXFieldChanged(double value)
@@ -2385,7 +2548,7 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
             return;
         }
 
-        // System clipboard image paste fallback (Studio & Photocraft #2546 / #4752)
+        // System clipboard image paste fallback (Studio #2546 / #4752)
         try
         {
             var topLevel = GetTopLevel();
@@ -2562,6 +2725,10 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         _missingGlyphProtection = studioPrefs.MissingGlyphProtection;
         _documentBitsPerChannel = studioPrefs.DefaultBitsPerChannel;
         _currentThemeName = studioPrefs.CurrentTheme ?? "ProDark";
+        if (!string.IsNullOrEmpty(studioPrefs.SelectedTool))
+        {
+            _activeToolMode = studioPrefs.SelectedTool;
+        }
         LoadSettings();
         AddSampleElements();
         InitializeDocumentSession();
@@ -2675,6 +2842,10 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     //    events — see PlaceTextRequested/ShapePlaced wired in ImageEditorView.axaml.cs) ────
     private void CommitNewElement(CanvasElement el, bool selectElement = true, bool keepCurrentTool = true)
     {
+        if (IsFreeTransformActive)
+        {
+            CommitFreeTransform();
+        }
         Elements.Add(el);
         if (selectElement)
         {
@@ -2979,12 +3150,20 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
                 ZIndex = Elements.Count + 1
             };
 
+            if (IsFreeTransformActive)
+            {
+                CommitFreeTransform();
+            }
+
             Elements.Add(el);
             SelectedElement = el;
             ActiveToolMode = "select";
             RefreshCanvas();
             if (!_isApplyingHistory) History.Push(new AddElementCommand(Elements, el));
             StatusMessage = $"Imported {file.Name}.";
+
+            // Start Free Transform after placing an image from the file picker (Studio Parity 7e447dfd, 9a4efabe, #5390, #4849)
+            BeginFreeTransform();
         }
         catch (Exception ex)
         {
@@ -2997,6 +3176,20 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void DeleteSelectedElement()
     {
+        // Smart Filters: Delete removes the selected filter, not its smart object (Studio Parity 665cb581, #4751, #4764)
+        if (SelectedSmartFilter != null && SelectedElement != null && SelectedElement.SmartFilters.Contains(SelectedSmartFilter))
+        {
+            DeleteSmartFilter(SelectedSmartFilter);
+            return;
+        }
+
+        // Pen and Path Selection: Delete deletes the finished work path (Studio Parity 56d3b7f9, #5702, #5732)
+        if ((IsPenToolActive || IsPathSelectionToolActive) && SelectedElements.Count == 0 && ActiveDocumentPath != null && !ActiveDocumentPath.IsEmpty)
+        {
+            DeleteActivePath();
+            return;
+        }
+
         if (SelectedElements.Count == 0) return;
         var removed = SelectedElements.ToList();
         var command = _isApplyingHistory ? null : new RemoveElementsCommand(Elements, removed);
@@ -3150,7 +3343,21 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
 
     private Rect ComputeGroupBounds()
     {
-        if (SelectedElements.Count == 0) return default;
+        // Active selection has top priority for alignment (#5881)
+        if (ActiveSelectionBounds is Rect selBounds && selBounds.Width > 0 && selBounds.Height > 0)
+        {
+            return selBounds;
+        }
+
+        if (SelectedElements.Count == 0)
+        {
+            return SelectedElement != null ? new Rect(0, 0, CanvasWidth, CanvasHeight) : default;
+        }
+        if (SelectedElements.Count == 1)
+        {
+            // One layer with no selection aligns to the canvas bounds (#5881)
+            return new Rect(0, 0, CanvasWidth, CanvasHeight);
+        }
         var bg = SelectedElements.FirstOrDefault(e => e.IsBackground);
         if (bg != null)
         {
@@ -3164,9 +3371,27 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
 
     private void AlignSelection(Action<CanvasElement> apply)
     {
-        if (SelectedElements.Count < 2) return;
-        var before = SelectedElements.ToDictionary(e => e, e => new Point(e.X, e.Y));
-        foreach (var el in SelectedElements)
+        var targets = SelectedElements.Count > 0
+            ? SelectedElements.ToList()
+            : (SelectedElement != null ? [SelectedElement] : new List<CanvasElement>());
+        bool hasSelection = ActiveSelectionBounds is Rect sel && sel.Width > 0 && sel.Height > 0;
+        if (!hasSelection && targets.Count < 2)
+        {
+            if (targets.Count == 1)
+            {
+                // Align single layer to canvas bounds (#5881)
+                var single = targets[0];
+                if (single.IsBackground) return;
+                var singleBefore = new Dictionary<CanvasElement, Point> { [single] = new Point(single.X, single.Y) };
+                apply(single);
+                PushMoveCommand(singleBefore);
+                RefreshCanvas();
+            }
+            return;
+        }
+
+        var before = targets.ToDictionary(e => e, e => new Point(e.X, e.Y));
+        foreach (var el in targets)
         {
             // If background is in multiple selection, Background stays fixed and other layers line up with it (#4608)
             if (el.IsBackground) continue;
@@ -3714,11 +3939,31 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
         return null;
     }
 
+    public event Action? CommitInlineTextEditRequested;
+
+    public void RequestCommitInlineTextEdit()
+    {
+        if (IsInlineEditingText)
+        {
+            CommitInlineTextEditRequested?.Invoke();
+        }
+    }
+
     // ── Partial property changed handlers ─────────────────────────────────
     partial void OnSelectedElementChanged(CanvasElement? value)
     {
+        // A layer selection or reselection commits active inline text edit immediately (#be32a7c6, #5584)
+        if (IsInlineEditingText)
+        {
+            RequestCommitInlineTextEdit();
+        }
+        if (IsFreeTransformActive && _transformTargetElement != null && _transformTargetElement != value)
+        {
+            CommitFreeTransform();
+        }
         if (_isSyncingSelectionFromCanvas) return;
 
+        SelectedSmartFilter = null;
         CanvasControl?.SetSelected(value);
         SelectedElements.Clear();
         if (value != null) SelectedElements.Add(value);

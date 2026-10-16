@@ -106,6 +106,9 @@ public abstract class CanvasElement : INotifyPropertyChanged
     public byte BlendIfUnderMin { get; set; } = 0;
     public byte BlendIfUnderMax { get; set; } = 255;
 
+    /// <summary>Bitmask of excluded channels for Advanced Blending (0 = none excluded).</summary>
+    public uint ExcludedChannels { get; set; } = 0;
+
     /// <summary>8-bit raster mask alpha buffer (0..255).</summary>
     public byte[]? MaskData { get; set; }
 
@@ -285,6 +288,7 @@ public abstract class CanvasElement : INotifyPropertyChanged
         target.BlendIfThisMax = BlendIfThisMax;
         target.BlendIfUnderMin = BlendIfUnderMin;
         target.BlendIfUnderMax = BlendIfUnderMax;
+        target.ExcludedChannels = ExcludedChannels;
         target.MaskData = MaskData != null ? (byte[])MaskData.Clone() : null;
         target.IsMaskEnabled = IsMaskEnabled;
         target.MaskBounds = MaskBounds;

@@ -64,6 +64,15 @@ public partial class LayersPage : UserControl
         }
     }
 
+    private void OnLayerRowPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        // A row click commits even when it selects the layer already being edited (#be32a7c6, #5584)
+        if (DataContext is ImageEditorViewModel vm && vm.IsInlineEditingText)
+        {
+            vm.RequestCommitInlineTextEdit();
+        }
+    }
+
     private void OnNewLayerButtonPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (DataContext is ImageEditorViewModel vm)

@@ -31,6 +31,10 @@ public partial class StudioDocument : ObservableObject
     [ObservableProperty] private int _bitsPerChannel = 8;
     [ObservableProperty] private bool _isFloating;
     [ObservableProperty] private bool _isSplitView;
+    [ObservableProperty] private double _layersScrollOffset;
+    [ObservableProperty] private VectorDocumentPath? _activeVectorPath;
+    [ObservableProperty] private Rect? _activeSelectionBounds;
+    [ObservableProperty] private CanvasElement? _selectedElement;
 
     public ObservableCollection<CanvasElement> Elements { get; set; } = [];
     public IEditHistory History { get; set; } = new EditHistory();

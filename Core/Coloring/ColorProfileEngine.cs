@@ -8,7 +8,7 @@ namespace PdfEditorApp.Plugins.ImageEditor.Core.Coloring;
 /// </summary>
 public static class ColorProfileEngine
 {
-    public const string DefaultWorkingGray = "Dot Gain 20%-compatible (gamma 1.732, Photocraft)";
+    public const string DefaultWorkingGray = "Dot Gain 20%-compatible (gamma 1.732, D50)";
 
     /// <summary>
     /// Converts an 8-bit sRGB color component to linear light (0.0 .. 1.0).
@@ -36,5 +36,21 @@ public static class ColorProfileEngine
         // Encode with gamma 1.732 (Dot Gain 20% curve)
         double gray = Math.Pow(Math.Clamp(yD50, 0.0, 1.0), 1.0 / 1.732);
         return (byte)Math.Clamp(Math.Round(gray * 255.0), 0, 255);
+    }
+
+    /// <summary>
+    /// Lists only profiles compatible with the document's color mode (Studio Parity c72dda19, #4951, #5020).
+    /// Prevents cross-space profile mismatches (e.g. assigning CMYK profile to RGB document).
+    /// </summary>
+    public static string[] GetAllowedProfilesForColorMode(string? colorMode)
+    {
+        string norm = (colorMode ?? "RGB").Trim().ToUpperInvariant();
+        return norm switch
+        {
+            "CMYK" => ["working", "U.S. Web Coated (SWOP) v2", "Coated FOGRA39", "Japan Color 2001 Coated", "Generic CMYK", "none"],
+            "GRAYSCALE" or "GRAY" => ["working", "Dot Gain 20%", "Gray Gamma 2.2", "Gray Gamma 1.8", "none"],
+            "LAB" => ["working", "CIELAB D50", "none"],
+            _ => ["working", "sRGB IEC61966-2.1", "Display P3", "Wide Gamut RGB (1998)", "ProPhoto RGB", "Apple RGB", "none"]
+        };
     }
 }

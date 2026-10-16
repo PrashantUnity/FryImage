@@ -49,6 +49,48 @@ public partial class ImageEditorViewModel
         ApplyCurvesPreset(value);
     }
 
+    partial void OnAdjCurvesSelectedInChanged(double value)
+    {
+        if (AdjCurvesSelectedPointIndex >= 0 && AdjCurvesSelectedPointIndex < ActiveCurvesPoints.Count)
+        {
+            var clamped = Math.Clamp(Math.Round(value), 0, 255);
+            var current = ActiveCurvesPoints[AdjCurvesSelectedPointIndex];
+            ActiveCurvesPoints[AdjCurvesSelectedPointIndex] = new CurvePoint(clamped, current.Out);
+            ApplyAdjustmentPreview();
+        }
+    }
+
+    partial void OnAdjCurvesSelectedOutChanged(double value)
+    {
+        if (AdjCurvesSelectedPointIndex >= 0 && AdjCurvesSelectedPointIndex < ActiveCurvesPoints.Count)
+        {
+            var clamped = Math.Clamp(Math.Round(value), 0, 255);
+            var current = ActiveCurvesPoints[AdjCurvesSelectedPointIndex];
+            ActiveCurvesPoints[AdjCurvesSelectedPointIndex] = new CurvePoint(current.In, clamped);
+            ApplyAdjustmentPreview();
+        }
+    }
+
+    /// <summary>
+    /// Validates and adds a curve point strictly within [0, 255] range (#0bdaf905, #4868).
+    /// Points outside 0..255 are refused.
+    /// </summary>
+    public bool TryAddCurvePoint(double input, double output)
+    {
+        if (input < 0.0 || input > 255.0 || output < 0.0 || output > 255.0 || double.IsNaN(input) || double.IsNaN(output))
+        {
+            return false;
+        }
+        var pts = ActiveCurvesPoints;
+        var newPt = new CurvePoint(Math.Round(input), Math.Round(output));
+        pts.Add(newPt);
+        var sorted = pts.OrderBy(p => p.In).ToList();
+        pts.Clear();
+        foreach (var p in sorted) pts.Add(p);
+        ApplyAdjustmentPreview();
+        return true;
+    }
+
     [RelayCommand]
     public void SelectCurvesPoint(CurvePoint pt)
     {
@@ -159,5 +201,20 @@ public partial class ImageEditorViewModel
         }
 
         return ImageAdjustmentEngine.ApplyCurves(bgra, finalLutR, finalLutG, finalLutB);
+    }
+
+    /// <summary>
+    /// Applies Curves adjustment to single-channel mask, alpha channel, or Quick Mask (#0f8c1a41, #5335, #5448).
+    /// </summary>
+    public byte[] ExecuteCurvesAdjustmentOnMask(byte[] mask)
+    {
+        if (mask == null || mask.Length == 0) return [];
+        byte[] lutRgb = CurveSplineEngine.BuildLut(AdjCurvesPointsRgb);
+        byte[] result = new byte[mask.Length];
+        for (int i = 0; i < mask.Length; i++)
+        {
+            result[i] = lutRgb[mask[i]];
+        }
+        return result;
     }
 }

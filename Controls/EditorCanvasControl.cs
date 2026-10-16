@@ -50,6 +50,7 @@ public partial class EditorCanvasControl : Control
     // Marquee selection
     private bool _isMarqueeSelecting;
     private Point _marqueeStart, _marqueeEnd;
+    public Rect? ActiveSelectionBounds { get; set; }
 
     // Tool-placement state machine
     private bool _isPlacingShape;
@@ -116,7 +117,7 @@ public partial class EditorCanvasControl : Control
     private bool _isDraggingLayerStyleShadow;
     private Point _layerStyleShadowDragStart;
 
-    // Studio Zoom Ladder Levels (Studio / PhotoCraft parity #3695)
+    // Studio Zoom Ladder Levels (#3695)
     private static readonly double[] s_zoomLadder =
     [
         0.001, 0.002, 0.003, 0.004, 0.005, 0.007, 0.01, 0.015, 0.02, 0.03, 0.04, 0.05,
@@ -181,9 +182,15 @@ public partial class EditorCanvasControl : Control
     private double _cropOrigX, _cropOrigY, _cropOrigW, _cropOrigH;
     private double? _cropLockedAspectRatio;
 
-    // Free-angle rotation (single or multi-selection, pivot = own center for N=1)
+    // Free-angle rotation and custom transform reference point (pivot)
     private bool _isRotating;
     private Point _rotationPivot;
+    private Point? _customPivot;
+    public Point? CustomPivot
+    {
+        get => _customPivot;
+        set { _customPivot = value; InvalidateVisual(); }
+    }
     private double _rotationStartAngle;
     private Dictionary<CanvasElement, (double X, double Y, double Rotation)>? _rotationOrigins;
 
@@ -205,6 +212,8 @@ public partial class EditorCanvasControl : Control
     public bool SnapToGrid { get; set; } = true;
     public bool SnapToLayers { get; set; } = true;
     public bool SnapToDocumentBounds { get; set; } = true;
+    public bool ShowGrid { get; set; } = true;
+    public double GridCellSize { get; set; } = 10.0;
 
     public void AddUserGuide(bool isVertical, double position, Color? color = null)
     {
@@ -685,6 +694,8 @@ public partial class EditorCanvasControl : Control
         double availableW = Math.Max(Bounds.Width - padding * 2, 10);
         double availableH = Math.Max(Bounds.Height - padding * 2, 10);
         double fitZoom = Math.Min(availableW / _logicalWidth, availableH / _logicalHeight);
+        // Fit never magnifies small images past 100% (one image pixel per physical pixel, #13047650, #5089)
+        fitZoom = Math.Min(1.0, fitZoom);
 
         _zoom = Math.Clamp(Math.Round(fitZoom, 3), MinZoom, MaxZoom);
         _panOffset = default;
@@ -823,27 +834,45 @@ public partial class EditorCanvasControl : Control
             // Pixel grid overlay at >= 500% zoom (Studio standard)
             DrawPixelGrid(dc);
 
+            // Guides draw over the Free Transform preview / moving pixels, but under its box and handles (#4dec65f4, #5086, #5214)
+            if (ShowUserGuides && _userGuides.Count > 0)
+            {
+                DrawUserGuides(dc, _userGuides, _zoom);
+            }
+
+            DrawActiveDragGuideInCanvasSpace(dc);
+
+            if (_activeGuides.Count > 0)
+            {
+                DrawAlignmentGuides(dc, _activeGuides, _zoom);
+            }
+
             // 4. Selection / marquee / shape-preview / crop overlay
             if (_isCropModeActive && _selection.Count == 1 && _selection[0] is ImageElement cropImg)
             {
                 DrawCropOverlay(dc, cropImg, _zoom);
             }
-            else if (_selection.Count == 1)
+            else
             {
-                if (ShowTransformControls && ActiveToolMode == "select")
+                var transformLayers = _selection.Where(e => !e.IsBackground).ToList();
+                if (transformLayers.Count == 1)
                 {
-                    DrawSelectionHandles(dc, _selection[0], _zoom);
-                    DrawRotationHandle(dc, _selection[0].Bounds, _selection[0].RotationDegrees, _zoom);
+                    if (ShowTransformControls && ActiveToolMode == "select")
+                    {
+                        DrawSelectionHandles(dc, transformLayers[0], _zoom);
+                        DrawRotationHandle(dc, transformLayers[0].Bounds, transformLayers[0].RotationDegrees, _zoom);
+                    }
                 }
-            }
-            else if (_selection.Count > 1)
-            {
-                if (ShowTransformControls && ActiveToolMode == "select")
+                else if (transformLayers.Count > 1)
                 {
-                    DrawMultiSelectionOutline(dc, _selection, _zoom);
-                    var groupBounds = ComputeGroupBounds(_selection);
-                    DrawResizeHandles(dc, groupBounds, _zoom);
-                    DrawRotationHandle(dc, groupBounds, 0, _zoom);
+                    if (ShowTransformControls && ActiveToolMode == "select")
+                    {
+                        DrawMultiSelectionOutline(dc, transformLayers, _zoom);
+                        var groupBounds = ComputeGroupBounds(transformLayers);
+                        // Several layers selected: Show Transform Controls frames them all, but Free Transform works on one layer so the frame has no handles (#38b96f27)
+                        var framePen = new Pen(new SolidColorBrush(Color.FromArgb(230, 0, 120, 212)), 1.5 / _zoom);
+                        dc.DrawRectangle(null, framePen, groupBounds);
+                    }
                 }
             }
 
@@ -1035,18 +1064,6 @@ public partial class EditorCanvasControl : Control
             else if (ActiveToolMode == "clonestamp" && CloneSourcePoint.HasValue && !_isDrawingRetouch)
             {
                 DrawSourceMarker(dc, CloneSourcePoint.Value, _zoom);
-            }
-
-            if (ShowUserGuides && _userGuides.Count > 0)
-            {
-                DrawUserGuides(dc, _userGuides, _zoom);
-            }
-
-            DrawActiveDragGuideInCanvasSpace(dc);
-
-            if (_activeGuides.Count > 0)
-            {
-                DrawAlignmentGuides(dc, _activeGuides, _zoom);
             }
 
             if (ActiveToolMode == "ruler" && (_isRulerMeasuring || _rulerStart != _rulerEnd))
@@ -1474,7 +1491,7 @@ public partial class EditorCanvasControl : Control
         }
     }
 
-    private static void DrawSelectionHandles(DrawingContext dc, CanvasElement el, double zoom)
+    private void DrawSelectionHandles(DrawingContext dc, CanvasElement el, double zoom)
     {
         var bounds = el.Bounds;
         IDisposable? rotScope = null;
@@ -1502,7 +1519,7 @@ public partial class EditorCanvasControl : Control
 
     /// <summary>8 resize handles around a bounds rect — shared by single-element selection
     /// and (with a group's bounding box) group-resize.</summary>
-    private static void DrawResizeHandles(DrawingContext dc, Rect bounds, double zoom)
+    private void DrawResizeHandles(DrawingContext dc, Rect bounds, double zoom)
     {
         double handleSize = HandleSize / zoom;
         double halfHandle = handleSize / 2;
@@ -1516,6 +1533,23 @@ public partial class EditorCanvasControl : Control
                 new Rect(pt.X - halfHandle, pt.Y - halfHandle, handleSize, handleSize),
                 2 / zoom, 2 / zoom);
         }
+
+        if (_customPivot.HasValue)
+        {
+            DrawPivotMarker(dc, _customPivot.Value, zoom);
+        }
+    }
+
+    private static void DrawPivotMarker(DrawingContext dc, Point pivot, double zoom)
+    {
+        double r = 4.0 / zoom;
+        double s = 7.0 / zoom;
+        double sw = 1.0 / zoom;
+        var pen = new Pen(new SolidColorBrush(Color.FromArgb(220, 0, 120, 212)), sw);
+        var fill = new SolidColorBrush(Color.FromArgb(100, 255, 255, 255));
+        dc.DrawEllipse(fill, pen, pivot, r, r);
+        dc.DrawLine(pen, new Point(pivot.X - s, pivot.Y), new Point(pivot.X + s, pivot.Y));
+        dc.DrawLine(pen, new Point(pivot.X, pivot.Y - s), new Point(pivot.X, pivot.Y + s));
     }
 
     private static void DrawMultiSelectionOutline(DrawingContext dc, IReadOnlyList<CanvasElement> selection, double zoom)
@@ -1524,12 +1558,17 @@ public partial class EditorCanvasControl : Control
             new DashStyle(new double[] { 4, 3 }, 0));
         foreach (var el in selection)
         {
+            if (el.IsBackground) continue;
             dc.DrawRectangle(null, memberPen, el.GetRotatedBounds().Inflate(1 / zoom));
         }
 
         var groupPen = new Pen(new SolidColorBrush(Color.FromArgb(230, 0, 120, 212)), 1.5 / zoom,
             new DashStyle(new double[] { 6, 3 }, 0));
-        dc.DrawRectangle(null, groupPen, ComputeGroupBounds(selection).Inflate(4 / zoom));
+        var groupBounds = ComputeGroupBounds(selection);
+        if (groupBounds.Width > 0 && groupBounds.Height > 0)
+        {
+            dc.DrawRectangle(null, groupPen, groupBounds.Inflate(4 / zoom));
+        }
     }
 
     /// <summary>Rotation handle sits a fixed screen-space distance above the (rotated, for a
@@ -1587,10 +1626,12 @@ public partial class EditorCanvasControl : Control
 
     private static Rect ComputeGroupBounds(IReadOnlyList<CanvasElement> selection)
     {
-        var result = selection[0].GetRotatedBounds();
-        for (int i = 1; i < selection.Count; i++)
+        var nonBg = selection.Where(e => !e.IsBackground).ToList();
+        if (nonBg.Count == 0) return selection.Count > 0 ? selection[0].GetRotatedBounds() : default(Rect);
+        var result = nonBg[0].GetRotatedBounds();
+        for (int i = 1; i < nonBg.Count; i++)
         {
-            result = result.Union(selection[i].GetRotatedBounds());
+            result = result.Union(nonBg[i].GetRotatedBounds());
         }
         return result;
     }
@@ -1840,9 +1881,49 @@ public partial class EditorCanvasControl : Control
             return;
         }
 
-        // Zoom tool
+        // Zoom tool yields to an open Free Transform box and handles (#78dea7c6, #4799, #4808)
         if (ActiveToolMode == "zoom")
         {
+            if (DataContext is ImageEditorViewModel vm && vm.IsFreeTransformActive && _selection.Count == 1 && !_selection[0].IsLocked)
+            {
+                var single = _selection[0];
+                double handleSize = HandleSize / _zoom;
+                double halfHandle = handleSize / 2;
+                double pad = 4 / _zoom;
+
+                Point localPt = canvasPt;
+                if (single.RotationDegrees != 0)
+                {
+                    localPt = canvasPt.Transform(Matrix.CreateRotation(-single.RotationDegrees * Math.PI / 180.0, single.Bounds.Center));
+                }
+
+                var handles = GetHandlePoints(single.Bounds);
+                for (int i = 0; i < handles.Length; i++)
+                {
+                    var hr = new Rect(handles[i].X - halfHandle - pad, handles[i].Y - halfHandle - pad,
+                                      handleSize + pad * 2, handleSize + pad * 2);
+                    if (hr.Contains(localPt))
+                    {
+                        _isResizing = true;
+                        _resizeHandle = i;
+                        _origX = single.X;
+                        _origY = single.Y;
+                        _origW = single.Width;
+                        _origH = single.Height;
+                        e.Pointer.Capture(this);
+                        e.Handled = true;
+                        return;
+                    }
+                }
+
+                if (single.Bounds.Contains(localPt))
+                {
+                    // Click inside the box during Free Transform: box owns pointer, doesn't zoom
+                    e.Handled = true;
+                    return;
+                }
+            }
+
             var screenPos = e.GetPosition(this);
             bool zoomOut = e.KeyModifiers.HasFlag(KeyModifiers.Alt) || props.IsRightButtonPressed;
             double factor = zoomOut ? (1.0 / 1.35) : 1.35;
@@ -1997,7 +2078,25 @@ public partial class EditorCanvasControl : Control
             }
             if (ActiveToolMode is "pen" or "curvaturepen")
             {
-                ActiveDocumentPath ??= new VectorDocumentPath("Work Path");
+                if (ActiveDocumentPath == null)
+                {
+                    if (DataContext is ImageEditorViewModel vm && vm.ActiveDocumentPath != null)
+                    {
+                        ActiveDocumentPath = vm.ActiveDocumentPath;
+                    }
+                    else
+                    {
+                        ActiveDocumentPath = new VectorDocumentPath("Work Path");
+                        if (DataContext is ImageEditorViewModel vm2)
+                        {
+                            vm2.ActiveDocumentPath = ActiveDocumentPath;
+                            if (!vm2.DocumentPaths.Contains(ActiveDocumentPath))
+                                vm2.DocumentPaths.Add(ActiveDocumentPath);
+                        }
+                    }
+                }
+
+                // A new path joins the selected path instead of replacing the Work Path (#1168a9dd, #4721, #4730)
                 if (ActiveDocumentPath.Subpaths.Count == 0 || ActiveDocumentPath.Subpaths[^1].IsClosed)
                 {
                     ActiveDocumentPath.Subpaths.Add(new VectorSubpath());
@@ -2058,6 +2157,14 @@ public partial class EditorCanvasControl : Control
                     _penActiveKnot = null;
                     _isPenOverFirstKnot = false;
                     UpdateCursorForTool();
+                }
+                else if (currentSub.Knots.Count >= 2 && !isCtrlOrCmd && !e.KeyModifiers.HasFlag(KeyModifiers.Shift) && TryPenAutoAddDelete(currentSub, knotPt, closeHitRadius, ActiveToolMode))
+                {
+                    _isDraggingPenHandle = false;
+                    _penActiveKnot = null;
+                    InvalidateVisual();
+                    e.Handled = true;
+                    return;
                 }
                 else
                 {
@@ -2192,7 +2299,7 @@ public partial class EditorCanvasControl : Control
                     if (DataContext is ImageEditorViewModel vm && vm.CurrentTransformMode == StudioTransformMode.Rotate)
                     {
                         _isRotating = true;
-                        _rotationPivot = single.Bounds.Center;
+                        _rotationPivot = _customPivot ?? single.Bounds.Center;
                         _rotationStartAngle = Math.Atan2(canvasPt.Y - _rotationPivot.Y, canvasPt.X - _rotationPivot.X);
                         _rotationOrigins = _selection.ToDictionary(el => el, el => (el.X, el.Y, el.RotationDegrees));
                         e.Pointer.Capture(this);
@@ -2223,10 +2330,20 @@ public partial class EditorCanvasControl : Control
                     return;
                 }
             }
+
+            // Alt-click inside selection bounds moves the reference point (pivot) without moving the box (#49f878d9)
+            if (e.KeyModifiers.HasFlag(KeyModifiers.Alt) && single.Bounds.Inflate(20 / _zoom).Contains(localPt))
+            {
+                _customPivot = canvasPt;
+                _rotationPivot = canvasPt;
+                InvalidateVisual();
+                e.Handled = true;
+                return;
+            }
         }
 
         // 5. Group-resize handle (2+ selected, all unlocked).
-        if (_selection.Count > 1 && _selection.All(s => !s.IsLocked))
+        if (_selection.Count > 1 && !ShowTransformControls && _selection.All(s => !s.IsLocked))
         {
             var groupBounds = ComputeGroupBounds(_selection);
             double handleSize = HandleSize / _zoom;
@@ -2248,10 +2365,20 @@ public partial class EditorCanvasControl : Control
                     return;
                 }
             }
+
+            // Alt-click inside multi-selection bounds moves the reference point (pivot) without moving elements (#49f878d9)
+            if (e.KeyModifiers.HasFlag(KeyModifiers.Alt) && groupBounds.Inflate(20 / _zoom).Contains(canvasPt))
+            {
+                _customPivot = canvasPt;
+                _rotationPivot = canvasPt;
+                InvalidateVisual();
+                e.Handled = true;
+                return;
+            }
         }
 
         // 6. Rotation handle (single or multi selection, all unlocked).
-        if (_selection.Count >= 1 && _selection.All(s => !s.IsLocked))
+        if ((_selection.Count == 1 || (_selection.Count > 1 && !ShowTransformControls)) && _selection.All(s => !s.IsLocked))
         {
             Rect axisBounds; double currentRotation;
             if (_selection.Count == 1) { axisBounds = _selection[0].Bounds; currentRotation = _selection[0].RotationDegrees; }
@@ -2272,7 +2399,7 @@ public partial class EditorCanvasControl : Control
             if (Point.Distance(handlePt, canvasPt) <= hitRadius || inRotationBand)
             {
                 _isRotating = true;
-                _rotationPivot = axisBounds.Center;
+                _rotationPivot = _customPivot ?? axisBounds.Center;
                 _rotationStartAngle = Math.Atan2(canvasPt.Y - _rotationPivot.Y, canvasPt.X - _rotationPivot.X);
                 _rotationOrigins = _selection.ToDictionary(el => el, el => (el.X, el.Y, el.RotationDegrees));
                 e.Pointer.Capture(this);
@@ -2308,7 +2435,7 @@ public partial class EditorCanvasControl : Control
             }
             else
             {
-                // Double-click empty workspace (Studio / Photocraft parity #051959ea)
+                // Double-click empty workspace (#051959ea)
                 EmptyWorkspaceDoubleClicked?.Invoke();
                 e.Handled = true;
                 return;
@@ -2778,13 +2905,13 @@ public partial class EditorCanvasControl : Control
         }
         else if (_isResizing && _selection.Count == 1)
         {
-            ApplyResize(dx, dy, e.KeyModifiers.HasFlag(KeyModifiers.Shift));
+            ApplyResize(dx, dy, e.KeyModifiers.HasFlag(KeyModifiers.Shift), e.KeyModifiers.HasFlag(KeyModifiers.Alt));
             CanvasChanged?.Invoke();
             InvalidateVisual();
         }
         else if (_isGroupResizing && _groupResizeOrigins != null)
         {
-            ApplyGroupResize(dx, dy, e.KeyModifiers.HasFlag(KeyModifiers.Shift));
+            ApplyGroupResize(dx, dy, e.KeyModifiers.HasFlag(KeyModifiers.Shift), e.KeyModifiers.HasFlag(KeyModifiers.Alt));
             CanvasChanged?.Invoke();
             InvalidateVisual();
         }
@@ -2880,7 +3007,7 @@ public partial class EditorCanvasControl : Control
     /// <summary>Proportionally resizes every selected element together — each element's new
     /// position/size is derived from its fractional offset within the old vs. new group
     /// bounding box, so the same formula works anchor-agnostically for all 8 handles.</summary>
-    private void ApplyGroupResize(double dx, double dy, bool shiftHeld)
+    private void ApplyGroupResize(double dx, double dy, bool shiftHeld, bool altHeld = false)
     {
         if (_groupResizeOrigins == null) return;
 
@@ -2890,7 +3017,7 @@ public partial class EditorCanvasControl : Control
             ? _groupResizeOrigBounds.Width / _groupResizeOrigBounds.Height
             : null;
 
-        var newBounds = ComputeResizedRect(_groupResizeOrigBounds, _groupResizeHandle, dx, dy, 20, lockedRatio);
+        var newBounds = ComputeResizedRect(_groupResizeOrigBounds, _groupResizeHandle, dx, dy, 20, lockedRatio, altHeld, _customPivot);
         double sx = _groupResizeOrigBounds.Width > 0 ? newBounds.Width / _groupResizeOrigBounds.Width : 1;
         double sy = _groupResizeOrigBounds.Height > 0 ? newBounds.Height / _groupResizeOrigBounds.Height : 1;
 
@@ -3141,6 +3268,7 @@ public partial class EditorCanvasControl : Control
         {
             if (!_selection.Contains(el)) _selection.Add(el);
         }
+        ActiveSelectionBounds = marqueeRect.Width > 0 && marqueeRect.Height > 0 ? marqueeRect : null;
         NotifySelectionChanged();
     }
 
@@ -3201,7 +3329,12 @@ public partial class EditorCanvasControl : Control
     {
         base.OnPointerWheelChanged(e);
 
-        if (e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+        bool isZoomModifier = e.KeyModifiers.HasFlag(KeyModifiers.Control) ||
+                              e.KeyModifiers.HasFlag(KeyModifiers.Meta) ||
+                              e.KeyModifiers.HasFlag(KeyModifiers.Alt) ||
+                              PdfEditorApp.Plugins.ImageEditor.Core.Preferences.StudioPreferences.Instance.ZoomWithScrollWheel;
+
+        if (isZoomModifier)
         {
             // Zoom to cursor: keep the canvas point under the pointer fixed on screen.
             var screenPos = e.GetPosition(this);
@@ -3485,23 +3618,45 @@ public partial class EditorCanvasControl : Control
         }
 
         if (e.Key is Key.Left or Key.Right or Key.Up or Key.Down
-            && _selection.Count > 0 && !_isCropModeActive && !_isPlacingShape)
+            && !_isCropModeActive && !_isPlacingShape)
         {
             double step = e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? 10 : 1;
             double dx = e.Key switch { Key.Left => -step, Key.Right => step, _ => 0 };
             double dy = e.Key switch { Key.Up => -step, Key.Down => step, _ => 0 };
 
-            var nudgeable = _selection.Where(el => !el.IsLocked).ToList();
-            if (nudgeable.Count == 0) return;
+            if (_selection.Count > 0)
+            {
+                var nudgeable = _selection.Where(el => !el.IsLocked).ToList();
+                if (nudgeable.Count > 0)
+                {
+                    _nudgeOrigins ??= nudgeable.ToDictionary(el => el, el => new Point(el.X, el.Y));
+                    foreach (var el in nudgeable) { el.X += dx; el.Y += dy; }
+                    CanvasChanged?.Invoke();
+                    InvalidateVisual();
 
-            _nudgeOrigins ??= nudgeable.ToDictionary(el => el, el => new Point(el.X, el.Y));
-            foreach (var el in nudgeable) { el.X += dx; el.Y += dy; }
-            CanvasChanged?.Invoke();
-            InvalidateVisual();
-
-            _nudgeCommitTimer.Stop();
-            _nudgeCommitTimer.Start();
-            e.Handled = true;
+                    _nudgeCommitTimer.Stop();
+                    _nudgeCommitTimer.Start();
+                    e.Handled = true;
+                    return;
+                }
+            }
+            else if (ActiveDocumentPath != null && !ActiveDocumentPath.IsEmpty && (ActiveToolMode is "pen" or "pathselection" or "directselection"))
+            {
+                // Direct Selection / Pen: arrow keys nudge the active path anchors (#2ca12e17, #4486, #4500)
+                foreach (var sub in ActiveDocumentPath.Subpaths)
+                {
+                    foreach (var knot in sub.Knots)
+                    {
+                        knot.Anchor = new Point(knot.Anchor.X + dx, knot.Anchor.Y + dy);
+                        knot.HandleIn = new Point(knot.HandleIn.X + dx, knot.HandleIn.Y + dy);
+                        knot.HandleOut = new Point(knot.HandleOut.X + dx, knot.HandleOut.Y + dy);
+                    }
+                }
+                CanvasChanged?.Invoke();
+                InvalidateVisual();
+                e.Handled = true;
+                return;
+            }
         }
     }
 
@@ -3911,7 +4066,7 @@ public partial class EditorCanvasControl : Control
         return new Point(x, y);
     }
 
-    private void ApplyResize(double dx, double dy, bool shiftHeld)
+    private void ApplyResize(double dx, double dy, bool shiftHeld, bool altHeld = false)
     {
         if (_selection.Count != 1) return;
         var selected = _selection[0];
@@ -3921,7 +4076,7 @@ public partial class EditorCanvasControl : Control
             : null;
 
         var orig = new Rect(_origX, _origY, _origW, _origH);
-        var result = ComputeResizedRect(orig, _resizeHandle, dx, dy, 20, lockedAspectRatio);
+        var result = ComputeResizedRect(orig, _resizeHandle, dx, dy, 20, lockedAspectRatio, altHeld, _customPivot);
 
         selected.X = result.X;
         selected.Y = result.Y;
@@ -3932,10 +4087,103 @@ public partial class EditorCanvasControl : Control
     /// <summary>
     /// Pure resize math shared by single-element resize, group-resize, and fixed-aspect-ratio
     /// crop presets. Handle indices: 0=TL 1=T 2=TR 3=R 4=BR 5=B 6=BL 7=L.
+    /// When altHeld is true, scales about the reference point (custom pivot if set, or center),
+    /// keeping the reference point pinned without snapping the center to it (Parity Commit 49f878d9 / #5510).
     /// </summary>
-    private static Rect ComputeResizedRect(Rect orig, int handleIndex, double dx, double dy, double minSize, double? lockedAspectRatio)
+    public static Rect ComputeResizedRect(
+        Rect orig,
+        int handleIndex,
+        double dx,
+        double dy,
+        double minSize,
+        double? lockedAspectRatio,
+        bool altHeld = false,
+        Point? customPivot = null)
     {
         double origX = orig.X, origY = orig.Y, origW = orig.Width, origH = orig.Height;
+
+        if (altHeld)
+        {
+            double pu = customPivot.HasValue && origW > 1e-5 ? (customPivot.Value.X - origX) / origW : 0.5;
+            double pv = customPivot.HasValue && origH > 1e-5 ? (customPivot.Value.Y - origY) / origH : 0.5;
+
+            (bool m0, bool m1) mu = handleIndex switch
+            {
+                0 or 6 or 7 => (true, false),
+                2 or 3 or 4 => (false, true),
+                _ => (false, false)
+            };
+
+            (bool m0, bool m1) mv = handleIndex switch
+            {
+                0 or 1 or 2 => (true, false),
+                4 or 5 or 6 => (false, true),
+                _ => (false, false)
+            };
+
+            double u = mu.m0 ? (dx / origW) : mu.m1 ? (1.0 + dx / origW) : 0.5;
+            double v = mv.m0 ? (dy / origH) : mv.m1 ? (1.0 + dy / origH) : 0.5;
+
+            static (double anchor, double k) AxisScale((bool m0, bool m1) m, double at, double pivot)
+            {
+                if (!m.m0 && !m.m1) return (0.5, 1.0);
+                double handle = m.m0 ? 0.0 : 1.0;
+                double anchor = pivot;
+                double d = handle - anchor;
+                double k = Math.Abs(d) > 1e-9 ? (at - anchor) / d : 1.0;
+                return (anchor, double.IsFinite(k) ? k : 1.0);
+            }
+
+            var (au, ku) = AxisScale(mu, u, pu);
+            var (av, kv) = AxisScale(mv, v, pv);
+
+            bool isCorner = handleIndex is 0 or 2 or 4 or 6;
+            bool isEdge = handleIndex is 1 or 3 or 5 or 7;
+
+            if (lockedAspectRatio.HasValue)
+            {
+                if (isEdge)
+                {
+                    if (mu.m0 || mu.m1)
+                    {
+                        av = pv;
+                        kv = Math.Abs(ku);
+                    }
+                    else
+                    {
+                        au = pu;
+                        ku = Math.Abs(kv);
+                    }
+                }
+                else if (isCorner)
+                {
+                    double k = Math.Max(Math.Abs(ku), Math.Abs(kv));
+                    ku = k * (ku < 0 ? -1 : 1);
+                    kv = k * (kv < 0 ? -1 : 1);
+                }
+            }
+
+            double u0 = au - au * ku;
+            double v0 = av - av * kv;
+            double u1 = au + (1.0 - au) * ku;
+            double v1 = av + (1.0 - av) * kv;
+
+            double resX = origX + Math.Min(u0, u1) * origW;
+            double resY = origY + Math.Min(v0, v1) * origH;
+            double resW = Math.Max(minSize, Math.Abs(u1 - u0) * origW);
+            double resH = Math.Max(minSize, Math.Abs(v1 - v0) * origH);
+
+            if (Core.Preferences.StudioPreferences.Instance.SnapVectorToolsAndTransformsToPixelGrid)
+            {
+                resX = Math.Round(resX);
+                resY = Math.Round(resY);
+                resW = Math.Max(1.0, Math.Round(resW));
+                resH = Math.Max(1.0, Math.Round(resH));
+            }
+
+            return new Rect(resX, resY, resW, resH);
+        }
+
         double newX = origX, newY = origY, newW = origW, newH = origH;
 
         switch (handleIndex)
@@ -4004,6 +4252,13 @@ public partial class EditorCanvasControl : Control
                     }
                     break;
             }
+        }
+        if (Core.Preferences.StudioPreferences.Instance.SnapVectorToolsAndTransformsToPixelGrid)
+        {
+            newX = Math.Round(newX);
+            newY = Math.Round(newY);
+            newW = Math.Max(1.0, Math.Round(newW));
+            newH = Math.Max(1.0, Math.Round(newH));
         }
 
         return new Rect(newX, newY, newW, newH);
@@ -4181,5 +4436,50 @@ public partial class EditorCanvasControl : Control
             10.0,
             new SolidColorBrush(Colors.White));
         dc.DrawText(ft, new Point(cx - ft.Width / 2, cy + r + 3));
+    }
+
+    internal static bool TryPenAutoAddDelete(VectorSubpath subpath, Point knotPt, double closeHitRadius, string activeToolMode = "pen")
+    {
+        // 1. Delete middle anchor if clicked directly on it (#6140, #6172)
+        for (int i = 1; i < subpath.Knots.Count - 1; i++)
+        {
+            if (Point.Distance(knotPt, subpath.Knots[i].Anchor) <= closeHitRadius)
+            {
+                subpath.Knots.RemoveAt(i);
+                if (activeToolMode == "curvaturepen")
+                {
+                    CurvaturePenEngine.ReflowCurvatureHandles(subpath);
+                }
+                return true;
+            }
+        }
+
+        // 2. Add anchor on segment if clicked on a segment (#6140, #6172)
+        for (int i = 0; i < subpath.Knots.Count - 1; i++)
+        {
+            if (DistanceToSegment(knotPt, subpath.Knots[i].Anchor, subpath.Knots[i + 1].Anchor) <= closeHitRadius)
+            {
+                var newKnot = new PathKnot(knotPt) { IsSmooth = activeToolMode == "curvaturepen" };
+                subpath.Knots.Insert(i + 1, newKnot);
+                if (activeToolMode == "curvaturepen")
+                {
+                    CurvaturePenEngine.ReflowCurvatureHandles(subpath);
+                }
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    internal static double DistanceToSegment(Point p, Point a, Point b)
+    {
+        double dx = b.X - a.X;
+        double dy = b.Y - a.Y;
+        double l2 = dx * dx + dy * dy;
+        if (l2 == 0) return Point.Distance(p, a);
+        double t = Math.Clamp(((p.X - a.X) * dx + (p.Y - a.Y) * dy) / l2, 0, 1);
+        var proj = new Point(a.X + t * dx, a.Y + t * dy);
+        return Point.Distance(p, proj);
     }
 }

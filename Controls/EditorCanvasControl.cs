@@ -387,7 +387,7 @@ public partial class EditorCanvasControl : Control
             return;
         }
 
-        if (_isPenOverFirstKnot && (ActiveToolMode is "pen" or "curvaturepen"))
+        if (_isPenOverFirstKnot && (ActiveToolMode is "pen" or "freepen" or "freeformpen" or "curvaturepen"))
         {
             Cursor = new Cursor(StandardCursorType.Cross);
             return;
@@ -398,18 +398,24 @@ public partial class EditorCanvasControl : Control
 
         Cursor = ActiveToolMode switch
         {
-            "brush" or "eraser" => new Cursor(StandardCursorType.Cross),
-            "pen" or "freeformpen" or "curvaturepen" or "addanchor" or "deleteanchor" or "convertpoint" =>
+            "brush" or "pencil" or "eraser" or "clonestamp" or "patternstamp" or "healing" or "healingbrush" or "historybrush" or "arthistorybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" or "bgeraser" or "magiceraser" or "colorreplace" or "colorreplacement" or "redeye" or "patch" or "mixerbrush" or "contentawaremove" =>
+                new Cursor(StandardCursorType.Cross),
+            "pen" or "freepen" or "freeformpen" or "curvaturepen" or "addanchor" or "deleteanchor" or "convertpoint" =>
                 precise ? new Cursor(StandardCursorType.Cross) : new Cursor(StandardCursorType.Arrow),
-            "text" => new Cursor(StandardCursorType.Ibeam),
-            "eyedropper" or "colorsampler" or "paintbucket" =>
+            "text" or "verticaltext" or "verticaltextmask" or "textmask" =>
+                new Cursor(StandardCursorType.Ibeam),
+            "eyedropper" or "colorsampler" or "materialeyedropper" or "bucket" or "paintbucket" or "materialdrop" =>
                 precise ? new Cursor(StandardCursorType.Cross) : new Cursor(StandardCursorType.Hand),
-            "marquee" or "lasso" or "wand" => new Cursor(StandardCursorType.Cross),
-            "zoom" => new Cursor(StandardCursorType.Cross),
-            "hand" or "rotateview" => new Cursor(StandardCursorType.Hand),
-            "ruler" => new Cursor(StandardCursorType.Cross),
-            "redeye" or "patch" => new Cursor(StandardCursorType.Cross),
-            "rect" or "ellipse" or "arrow" or "triangle" or "star" or "polygon" or "line" => new Cursor(StandardCursorType.Cross),
+            "marquee" or "rectmarquee" or "ellipsemarquee" or "rowmarquee" or "colmarquee" or "lasso" or "wand" or "objectselection" or "quickselection" =>
+                new Cursor(StandardCursorType.Cross),
+            "zoom" =>
+                new Cursor(StandardCursorType.Cross),
+            "hand" or "rotateview" =>
+                new Cursor(StandardCursorType.Hand),
+            "ruler" or "note" or "count" =>
+                new Cursor(StandardCursorType.Cross),
+            "rect" or "roundedrect" or "ellipse" or "arrow" or "triangle" or "star" or "polygon" or "line" =>
+                new Cursor(StandardCursorType.Cross),
             _ => new Cursor(StandardCursorType.Arrow)
         };
     }
@@ -1049,7 +1055,7 @@ public partial class EditorCanvasControl : Control
 
             // Draw brush tip cursor outline under mouse pointer
             if (_cursorCanvasPos is { } cursorPt
-                && (ActiveToolMode is "brush" or "pencil" or "eraser" or "clonestamp" or "healing" or "remove" or "historybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" or "bgeraser" or "colorreplacement" or "redeye" or "patch")
+                && (ActiveToolMode is "brush" or "pencil" or "eraser" or "clonestamp" or "patternstamp" or "healing" or "healingbrush" or "remove" or "historybrush" or "arthistorybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" or "bgeraser" or "magiceraser" or "colorreplace" or "colorreplacement" or "redeye" or "patch" or "mixerbrush" or "contentawaremove")
                 && !_isPanning && !_spaceHeld)
             {
                 DrawBrushCursor(dc, cursorPt, BrushThickness, BrushRoundness, BrushAngle, _zoom);
@@ -1107,7 +1113,7 @@ public partial class EditorCanvasControl : Control
         }
 
         // Pen tool close-path pointer ring indicator (#4596, #4612)
-        if (_isPenOverFirstKnot && _cursorCanvasPos is { } penCursor && (ActiveToolMode is "pen" or "curvaturepen"))
+        if (_isPenOverFirstKnot && _cursorCanvasPos is { } penCursor && (ActiveToolMode is "pen" or "freepen" or "freeformpen" or "curvaturepen"))
         {
             var sPos = CanvasToScreen(penCursor);
             var ringCenter = new Point(sPos.X + 9, sPos.Y + 9);
@@ -1656,25 +1662,46 @@ public partial class EditorCanvasControl : Control
         return new Rect(new Point(nx0, ny0), new Point(nx1, ny1));
     }
 
-    private static void DrawMarquee(DrawingContext dc, Point start, Point end, double zoom, bool isSquare = false)
+    private void DrawMarquee(DrawingContext dc, Point start, Point end, double zoom, bool isSquare = false)
     {
-        double x0 = Math.Floor(Math.Min(start.X, end.X));
-        double y0 = Math.Floor(Math.Min(start.Y, end.Y));
-        double x1 = Math.Ceiling(Math.Max(start.X, end.X));
-        double y1 = Math.Ceiling(Math.Max(start.Y, end.Y));
-        var rect = new Rect(new Point(x0, y0), new Point(x1, y1));
-        if (isSquare)
+        Rect rect;
+        if (ActiveToolMode == "rowmarquee")
         {
-            rect = SquarePx(rect, start, end);
+            rect = new Rect(0, Math.Floor(start.Y), _logicalWidth, 1.0);
+        }
+        else if (ActiveToolMode == "colmarquee")
+        {
+            rect = new Rect(Math.Floor(start.X), 0, 1.0, _logicalHeight);
+        }
+        else
+        {
+            double x0 = Math.Floor(Math.Min(start.X, end.X));
+            double y0 = Math.Floor(Math.Min(start.Y, end.Y));
+            double x1 = Math.Ceiling(Math.Max(start.X, end.X));
+            double y1 = Math.Ceiling(Math.Max(start.Y, end.Y));
+            rect = new Rect(new Point(x0, y0), new Point(x1, y1));
+            if (isSquare)
+            {
+                rect = SquarePx(rect, start, end);
+            }
         }
         if (rect.Width < 1 && rect.Height < 1) return;
 
-        dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(30, 0, 120, 215)), null, rect);
-
         var blackPen = new Pen(new SolidColorBrush(Colors.Black), 1.0 / zoom, new DashStyle(new double[] { 4, 4 }, 0));
         var whitePen = new Pen(new SolidColorBrush(Colors.White), 1.0 / zoom, new DashStyle(new double[] { 4, 4 }, 4));
-        dc.DrawRectangle(null, blackPen, rect);
-        dc.DrawRectangle(null, whitePen, rect);
+
+        if (ActiveToolMode == "ellipsemarquee")
+        {
+            dc.DrawEllipse(new SolidColorBrush(Color.FromArgb(30, 0, 120, 215)), null, rect.Center, rect.Width / 2, rect.Height / 2);
+            dc.DrawEllipse(null, blackPen, rect.Center, rect.Width / 2, rect.Height / 2);
+            dc.DrawEllipse(null, whitePen, rect.Center, rect.Width / 2, rect.Height / 2);
+        }
+        else
+        {
+            dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(30, 0, 120, 215)), null, rect);
+            dc.DrawRectangle(null, blackPen, rect);
+            dc.DrawRectangle(null, whitePen, rect);
+        }
     }
 
     private static void DrawShapePlacementPreview(DrawingContext dc, string toolType, Point start, Point end, double zoom)
@@ -1687,6 +1714,9 @@ public partial class EditorCanvasControl : Control
 
         switch (toolType)
         {
+            case "roundedrect":
+                dc.DrawRectangle(fill, pen, rect, 16, 16);
+                break;
             case "ellipse":
                 dc.DrawEllipse(fill, pen, rect.Center, rect.Width / 2, rect.Height / 2);
                 break;
@@ -1933,7 +1963,7 @@ public partial class EditorCanvasControl : Control
         }
 
         // Marquee tool
-        if (ActiveToolMode == "marquee")
+        if (ActiveToolMode is "marquee" or "rectmarquee" or "ellipsemarquee" or "rowmarquee" or "colmarquee")
         {
             _isMarqueeSelecting = true;
             _marqueeStart = canvasPt;
@@ -2016,6 +2046,16 @@ public partial class EditorCanvasControl : Control
         // 3. Tool-placement mode.
         if (ActiveToolMode != "select")
         {
+            if (ActiveToolMode is "bucket" or "paintbucket")
+            {
+                if (DataContext is ImageEditorViewModel vm)
+                {
+                    vm.ApplyPaintBucketFill(canvasPt);
+                }
+                e.Handled = true;
+                InvalidateVisual();
+                return;
+            }
             if (ActiveToolMode is "brush" or "pencil")
             {
                 if (IsQuickMaskMode && QuickMaskBuffer != null)
@@ -2047,9 +2087,9 @@ public partial class EditorCanvasControl : Control
                 InvalidateVisual();
                 return;
             }
-            if (ActiveToolMode is "remove" or "clonestamp" or "healing" or "historybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" or "bgeraser" or "colorreplacement" or "redeye" or "patch")
+            if (ActiveToolMode is "remove" or "clonestamp" or "patternstamp" or "healing" or "healingbrush" or "historybrush" or "arthistorybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" or "bgeraser" or "magiceraser" or "colorreplace" or "colorreplacement" or "redeye" or "patch" or "contentawaremove")
             {
-                if ((ActiveToolMode is "clonestamp" or "healing") && e.KeyModifiers.HasFlag(KeyModifiers.Alt))
+                if ((ActiveToolMode is "clonestamp" or "patternstamp" or "healing" or "healingbrush") && e.KeyModifiers.HasFlag(KeyModifiers.Alt))
                 {
                     CloneSourcePoint = canvasPt;
                     CloneSourceDefined?.Invoke(canvasPt);
@@ -2076,7 +2116,7 @@ public partial class EditorCanvasControl : Control
                 InvalidateVisual();
                 return;
             }
-            if (ActiveToolMode is "pen" or "curvaturepen")
+            if (ActiveToolMode is "pen" or "freepen" or "freeformpen" or "curvaturepen")
             {
                 if (ActiveDocumentPath == null)
                 {
@@ -2227,7 +2267,7 @@ public partial class EditorCanvasControl : Control
                 e.Handled = true;
                 return;
             }
-            if (ActiveToolMode == "text")
+            if (ActiveToolMode is "text" or "verticaltext" or "verticaltextmask" or "textmask")
             {
                 bool isShift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
                 var hitText = !isShift
@@ -2248,14 +2288,14 @@ public partial class EditorCanvasControl : Control
                     PlaceTextRequested?.Invoke(canvasPt);
                 }
             }
-            else if (ActiveToolMode is "rect" or "ellipse" or "arrow" or "triangle" or "star" or "polygon" or "line")
+            else if (ActiveToolMode is "rect" or "roundedrect" or "ellipse" or "arrow" or "triangle" or "star" or "polygon" or "line")
             {
                 _isPlacingShape = true;
                 _shapeDragStart = canvasPt;
                 _shapeDragEnd = canvasPt;
                 e.Pointer.Capture(this);
             }
-            else if (ActiveToolMode == "eyedropper")
+            else if (ActiveToolMode is "eyedropper" or "materialeyedropper" or "colorsampler")
             {
                 var sampled = SampleColorAtCanvasPoint(canvasPt);
                 if (sampled is { } color) ColorSampled?.Invoke(color);
@@ -2567,7 +2607,7 @@ public partial class EditorCanvasControl : Control
         // Pen / Curvature Pen: hit-test first anchor for close-path (#4596, #4612)
         bool wasPenOverFirst = _isPenOverFirstKnot;
         _isPenOverFirstKnot = false;
-        if ((ActiveToolMode is "pen" or "curvaturepen") && ActiveDocumentPath != null && ActiveDocumentPath.Subpaths.Count > 0 && !ActiveDocumentPath.Subpaths[^1].IsClosed)
+        if ((ActiveToolMode is "pen" or "freepen" or "freeformpen" or "curvaturepen") && ActiveDocumentPath != null && ActiveDocumentPath.Subpaths.Count > 0 && !ActiveDocumentPath.Subpaths[^1].IsClosed)
         {
             var currentSub = ActiveDocumentPath.Subpaths[^1];
             int minKnots = ActiveToolMode == "curvaturepen" ? 3 : 2;
@@ -2624,7 +2664,7 @@ public partial class EditorCanvasControl : Control
             CanvasHoveredElementChanged?.Invoke(null);
         }
 
-        if ((ActiveToolMode is "brush" or "pencil" or "eraser" or "clonestamp" or "healing" or "historybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" or "bgeraser" or "colorreplacement" or "redeye" or "patch" or "eyedropper") && !_isDrawingDoodle && !_isDrawingRetouch)
+        if ((ActiveToolMode is "brush" or "pencil" or "eraser" or "clonestamp" or "patternstamp" or "healing" or "healingbrush" or "historybrush" or "arthistorybrush" or "blur" or "sharpen" or "smudge" or "dodge" or "burn" or "sponge" or "bgeraser" or "magiceraser" or "colorreplace" or "colorreplacement" or "redeye" or "patch" or "eyedropper" or "mixerbrush" or "contentawaremove") && !_isDrawingDoodle && !_isDrawingRetouch)
         {
             InvalidateVisual();
         }
@@ -3251,14 +3291,26 @@ public partial class EditorCanvasControl : Control
 
     private void FinishMarqueeSelection(bool shiftHeld)
     {
-        double x0 = Math.Floor(Math.Min(_marqueeStart.X, _marqueeEnd.X));
-        double y0 = Math.Floor(Math.Min(_marqueeStart.Y, _marqueeEnd.Y));
-        double x1 = Math.Ceiling(Math.Max(_marqueeStart.X, _marqueeEnd.X));
-        double y1 = Math.Ceiling(Math.Max(_marqueeStart.Y, _marqueeEnd.Y));
-        var marqueeRect = new Rect(new Point(x0, y0), new Point(x1, y1));
-        if (shiftHeld)
+        Rect marqueeRect;
+        if (ActiveToolMode == "rowmarquee")
         {
-            marqueeRect = SquarePx(marqueeRect, _marqueeStart, _marqueeEnd);
+            marqueeRect = new Rect(0, Math.Floor(_marqueeStart.Y), _logicalWidth, 1);
+        }
+        else if (ActiveToolMode == "colmarquee")
+        {
+            marqueeRect = new Rect(Math.Floor(_marqueeStart.X), 0, 1, _logicalHeight);
+        }
+        else
+        {
+            double x0 = Math.Floor(Math.Min(_marqueeStart.X, _marqueeEnd.X));
+            double y0 = Math.Floor(Math.Min(_marqueeStart.Y, _marqueeEnd.Y));
+            double x1 = Math.Ceiling(Math.Max(_marqueeStart.X, _marqueeEnd.X));
+            double y1 = Math.Ceiling(Math.Max(_marqueeStart.Y, _marqueeEnd.Y));
+            marqueeRect = new Rect(new Point(x0, y0), new Point(x1, y1));
+            if (shiftHeld)
+            {
+                marqueeRect = SquarePx(marqueeRect, _marqueeStart, _marqueeEnd);
+            }
         }
 
         var hits = _elements.Where(el => el.IsVisible && !el.IsLocked && marqueeRect.Intersects(el.GetRotatedBounds())).ToList();
@@ -3439,7 +3491,7 @@ public partial class EditorCanvasControl : Control
 
         if (e.Key is Key.Delete or Key.Back && !e.KeyModifiers.HasFlag(KeyModifiers.Control) && !e.KeyModifiers.HasFlag(KeyModifiers.Meta) && !e.KeyModifiers.HasFlag(KeyModifiers.Alt))
         {
-            if ((ActiveToolMode is "pen" or "pathselection") && ActiveDocumentPath != null)
+            if ((ActiveToolMode is "pen" or "freepen" or "freeformpen" or "curvaturepen" or "pathselection" or "directselection") && ActiveDocumentPath != null)
             {
                 ActiveDocumentPath = null;
                 InvalidateVisual();
@@ -3640,7 +3692,7 @@ public partial class EditorCanvasControl : Control
                     return;
                 }
             }
-            else if (ActiveDocumentPath != null && !ActiveDocumentPath.IsEmpty && (ActiveToolMode is "pen" or "pathselection" or "directselection"))
+            else if (ActiveDocumentPath != null && !ActiveDocumentPath.IsEmpty && (ActiveToolMode is "pen" or "freepen" or "freeformpen" or "curvaturepen" or "pathselection" or "directselection"))
             {
                 // Direct Selection / Pen: arrow keys nudge the active path anchors (#2ca12e17, #4486, #4500)
                 foreach (var sub in ActiveDocumentPath.Subpaths)

@@ -153,6 +153,7 @@ public partial class ImageEditorViewModel
             {
                 case "clonestamp":
                 case "clone":
+                case "patternstamp":
                 {
                     if (CloneSourcePoint == null)
                     {
@@ -181,6 +182,7 @@ public partial class ImageEditorViewModel
 
                 case "healing":
                 case "spothealing":
+                case "healingbrush":
                 {
                     // Healing applies cloned texture with Poisson gradient-domain illumination matching
                     Point srcPixel = CloneSourcePoint.HasValue
@@ -291,6 +293,7 @@ public partial class ImageEditorViewModel
                 }
 
                 case "historybrush":
+                case "arthistorybrush":
                 {
                     byte[]? snapBytes = _historyBrushSnapshotBytes;
                     byte[]? snapBgra = null;
@@ -320,6 +323,7 @@ public partial class ImageEditorViewModel
                 }
 
                 case "bgeraser":
+                case "magiceraser":
                 {
                     Color sampledBg = SecondaryColor;
                     if (pixelPoints.Count > 0)
@@ -340,6 +344,7 @@ public partial class ImageEditorViewModel
                 }
 
                 case "colorreplacement":
+                case "colorreplace":
                 {
                     Color repColor = PrimaryColor;
                     foreach (var pt in pixelPoints)
@@ -396,15 +401,16 @@ public partial class ImageEditorViewModel
 
                 target.AdjustedSource?.Dispose();
                 target.AdjustedSource = new Bitmap(new MemoryStream(afterBytes));
+                target.OriginalImageBytes = afterBytes;
 
                 // 6. Record undoable command
                 string toolTitle = tool switch
                 {
-                    "clonestamp" => "Clone Stamp",
-                    "healing" => "Healing Brush",
-                    "historybrush" => "History Brush",
-                    "bgeraser" => "Background Eraser",
-                    "colorreplacement" => "Color Replacement",
+                    "clonestamp" or "patternstamp" => "Clone Stamp",
+                    "healing" or "healingbrush" => "Healing Brush",
+                    "historybrush" or "arthistorybrush" => "History Brush",
+                    "bgeraser" or "magiceraser" => "Background Eraser",
+                    "colorreplacement" or "colorreplace" => "Color Replacement",
                     "dodge" => "Dodge",
                     "burn" => "Burn",
                     "sponge" => "Sponge",
@@ -414,10 +420,11 @@ public partial class ImageEditorViewModel
                     _ => "Retouch"
                 };
 
-                var undoCmd = new RetouchImageCommand(target, beforeBytes, afterBytes, toolTitle, (el, b) =>
+                var undoCmd = new RetouchImageCommand(target, rawSourceBytes, afterBytes, toolTitle, (el, b) =>
                 {
                     el.AdjustedSource?.Dispose();
                     el.AdjustedSource = new Bitmap(new MemoryStream(b));
+                    el.OriginalImageBytes = b;
                     RefreshCanvas();
                 });
                 if (!_isApplyingHistory) History.Push(undoCmd);
@@ -643,11 +650,13 @@ public partial class ImageEditorViewModel
 
                 target.AdjustedSource?.Dispose();
                 target.AdjustedSource = new Bitmap(new MemoryStream(afterBytes));
+                target.OriginalImageBytes = afterBytes;
 
-                var undoCmd = new RetouchImageCommand(target, beforeBytes, afterBytes, "Remove Tool", (el, b) =>
+                var undoCmd = new RetouchImageCommand(target, rawSourceBytes, afterBytes, "Remove Tool", (el, b) =>
                 {
                     el.AdjustedSource?.Dispose();
                     el.AdjustedSource = new Bitmap(new MemoryStream(b));
+                    el.OriginalImageBytes = b;
                     RefreshCanvas();
                 });
                 if (!_isApplyingHistory) History.Push(undoCmd);
@@ -655,6 +664,258 @@ public partial class ImageEditorViewModel
                 RefreshCanvas();
                 ScheduleHistogramUpdate();
                 StatusMessage = "Remove tool stroke applied.";
+            }
+            finally
+            {
+                pin.Free();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Applies Paint Bucket fill to the canvas: fills clicked vector shape FillColor,
+    /// TextElement foreground color, raster ImageElement via BFS Flood Fill, or document background.
+    /// </summary>
+    public void ApplyPaintBucketFill(Point canvasPt)
+    {
+        // 1. Check if clicking on a vector shape with fill
+        var hitShape = Elements.OrderByDescending(e => e.ZIndex)
+            .FirstOrDefault(e => e.IsVisible && !e.IsLocked && e.HitTestRotationAware(canvasPt));
+
+        if (hitShape is IHasFill fillable)
+        {
+            Color oldColor = fillable.FillColor;
+            Color newColor = PrimaryColor;
+            fillable.FillColor = newColor;
+            if (ReferenceEquals(SelectedElement, fillable))
+                FillColorField = newColor;
+            CanvasControl?.InvalidateVisual();
+            if (!_isApplyingHistory)
+            {
+                History.Push(new GenericPropertyCommand<IHasFill, Color>(
+                    fillable,
+                    (target, c) => { target.FillColor = c; if (ReferenceEquals(SelectedElement, target)) FillColorField = c; CanvasControl?.InvalidateVisual(); },
+                    oldColor, newColor, "Paint Bucket Fill"));
+            }
+            StatusMessage = $"Paint Bucket: Filled shape with #{PrimaryColor.R:X2}{PrimaryColor.G:X2}{PrimaryColor.B:X2}.";
+            return;
+        }
+
+        if (hitShape is TextElement textEl)
+        {
+            Color oldColor = textEl.TextColor;
+            Color newColor = PrimaryColor;
+            textEl.TextColor = newColor;
+            if (ReferenceEquals(SelectedElement, textEl))
+                TextForegroundColorField = newColor;
+            CanvasControl?.InvalidateVisual();
+            if (!_isApplyingHistory)
+            {
+                History.Push(new GenericPropertyCommand<TextElement, Color>(
+                    textEl,
+                    (target, c) => { target.TextColor = c; if (ReferenceEquals(SelectedElement, target)) TextForegroundColorField = c; CanvasControl?.InvalidateVisual(); },
+                    oldColor, newColor, "Paint Bucket Fill"));
+            }
+            StatusMessage = $"Paint Bucket: Filled text with #{PrimaryColor.R:X2}{PrimaryColor.G:X2}{PrimaryColor.B:X2}.";
+            return;
+        }
+
+        // 2. Locate target ImageElement (hit element, selected, or topmost raster)
+        ImageElement? targetImg = hitShape as ImageElement ?? SelectedElement as ImageElement;
+        if (targetImg == null)
+        {
+            targetImg = Elements.OfType<ImageElement>()
+                .OrderByDescending(e => e.ZIndex)
+                .FirstOrDefault(e => e.IsVisible && !e.IsLocked && e.HitTestRotationAware(canvasPt));
+        }
+
+        if (targetImg != null)
+        {
+            ApplyImageFloodFill(targetImg, canvasPt);
+            return;
+        }
+
+        // 3. Otherwise, fill document background color
+        Color oldBg = BackgroundColor;
+        Color newBg = PrimaryColor;
+        BackgroundColor = newBg;
+        CanvasControl?.SetBackgroundColor(newBg);
+        CanvasControl?.InvalidateVisual();
+        if (!_isApplyingHistory)
+        {
+            History.Push(new GenericPropertyCommand<ImageEditorViewModel, Color>(
+                this,
+                (vm, c) => { vm.BackgroundColor = c; vm.CanvasControl?.SetBackgroundColor(c); vm.CanvasControl?.InvalidateVisual(); },
+                oldBg, newBg, "Paint Bucket Fill Background"));
+        }
+        StatusMessage = $"Paint Bucket: Filled canvas background with #{newBg.R:X2}{newBg.G:X2}{newBg.B:X2}.";
+    }
+
+    private void ApplyImageFloodFill(ImageElement target, Point canvasPt)
+    {
+        byte[]? rawSourceBytes = target.OriginalImageBytes;
+        if (rawSourceBytes == null || rawSourceBytes.Length == 0)
+        {
+            if (target.AdjustedSource is Bitmap adjBmp)
+            {
+                using var ms = new MemoryStream();
+                adjBmp.Save(ms, new PngBitmapEncoderOptions());
+                rawSourceBytes = ms.ToArray();
+                target.OriginalImageBytes = rawSourceBytes;
+            }
+            else if (target.Source is Bitmap srcBmpAv)
+            {
+                using var ms = new MemoryStream();
+                srcBmpAv.Save(ms, new PngBitmapEncoderOptions());
+                rawSourceBytes = ms.ToArray();
+                target.OriginalImageBytes = rawSourceBytes;
+            }
+        }
+
+        if (rawSourceBytes == null || rawSourceBytes.Length == 0) return;
+
+        using var srcBmp = SKBitmap.Decode(rawSourceBytes);
+        if (srcBmp == null) return;
+        using (srcBmp)
+        {
+            int imgW = srcBmp.Width;
+            int imgH = srcBmp.Height;
+            byte[] bgra = srcBmp.Bytes;
+            byte[] beforeBytes = (byte[])bgra.Clone();
+
+            double elW = Math.Max(1.0, target.Width);
+            double elH = Math.Max(1.0, target.Height);
+            double elX = target.X;
+            double elY = target.Y;
+
+            int startX = (int)Math.Clamp((canvasPt.X - elX) / elW * imgW, 0, imgW - 1);
+            int startY = (int)Math.Clamp((canvasPt.Y - elY) / elH * imgH, 0, imgH - 1);
+
+            int startIdx = (startY * imgW + startX) * 4;
+            byte targetB = bgra[startIdx];
+            byte targetG = bgra[startIdx + 1];
+            byte targetR = bgra[startIdx + 2];
+            byte targetA = bgra[startIdx + 3];
+
+            byte fillB = PrimaryColor.B;
+            byte fillG = PrimaryColor.G;
+            byte fillR = PrimaryColor.R;
+            byte fillA = (byte)Math.Clamp((int)(PrimaryColor.A * (BrushOpacity / 100.0)), 0, 255);
+
+            double tol = 32.0;
+            double tolSq = (tol * tol) * 3;
+
+            bool Matches(int idx)
+            {
+                int db = bgra[idx] - targetB;
+                int dg = bgra[idx + 1] - targetG;
+                int dr = bgra[idx + 2] - targetR;
+                return (dr * dr + dg * dg + db * db) <= tolSq;
+            }
+
+            int startDr = fillR - targetR;
+            int startDg = fillG - targetG;
+            int startDb = fillB - targetB;
+            if ((startDr * startDr + startDg * startDg + startDb * startDb) <= 4 && Math.Abs(fillA - targetA) <= 4)
+            {
+                StatusMessage = "Paint Bucket: Selected area already has this color.";
+                return;
+            }
+
+            bool[] visited = new bool[imgW * imgH];
+            Queue<int> queue = new Queue<int>();
+
+            int startCoord = startY * imgW + startX;
+            queue.Enqueue(startCoord);
+            visited[startCoord] = true;
+
+            int filledCount = 0;
+            while (queue.Count > 0)
+            {
+                int coord = queue.Dequeue();
+                int cx = coord % imgW;
+                int cy = coord / imgW;
+                int idx = coord * 4;
+
+                if (fillA >= 254)
+                {
+                    bgra[idx] = fillB;
+                    bgra[idx + 1] = fillG;
+                    bgra[idx + 2] = fillR;
+                    bgra[idx + 3] = fillA;
+                }
+                else
+                {
+                    double alpha = fillA / 255.0;
+                    double inv = 1.0 - alpha;
+                    bgra[idx] = (byte)Math.Clamp((int)(fillB * alpha + bgra[idx] * inv), 0, 255);
+                    bgra[idx + 1] = (byte)Math.Clamp((int)(fillG * alpha + bgra[idx + 1] * inv), 0, 255);
+                    bgra[idx + 2] = (byte)Math.Clamp((int)(fillR * alpha + bgra[idx + 2] * inv), 0, 255);
+                    bgra[idx + 3] = (byte)Math.Clamp((int)(fillA + bgra[idx + 3] * inv), 0, 255);
+                }
+                filledCount++;
+
+                if (cx > 0)
+                {
+                    int left = coord - 1;
+                    if (!visited[left] && Matches(left * 4))
+                    {
+                        visited[left] = true;
+                        queue.Enqueue(left);
+                    }
+                }
+                if (cx < imgW - 1)
+                {
+                    int right = coord + 1;
+                    if (!visited[right] && Matches(right * 4))
+                    {
+                        visited[right] = true;
+                        queue.Enqueue(right);
+                    }
+                }
+                if (cy > 0)
+                {
+                    int up = coord - imgW;
+                    if (!visited[up] && Matches(up * 4))
+                    {
+                        visited[up] = true;
+                        queue.Enqueue(up);
+                    }
+                }
+                if (cy < imgH - 1)
+                {
+                    int down = coord + imgW;
+                    if (!visited[down] && Matches(down * 4))
+                    {
+                        visited[down] = true;
+                        queue.Enqueue(down);
+                    }
+                }
+            }
+
+            using var resultBmp = new SKBitmap(imgW, imgH, SKColorType.Bgra8888, SKAlphaType.Premul);
+            var pin = GCHandle.Alloc(bgra, GCHandleType.Pinned);
+            try
+            {
+                resultBmp.InstallPixels(resultBmp.Info, pin.AddrOfPinnedObject());
+                using var outImg = SKImage.FromBitmap(resultBmp);
+                using var encoded = outImg.Encode(SKEncodedImageFormat.Png, 100);
+                byte[] afterBytes = encoded.ToArray();
+
+                target.AdjustedSource?.Dispose();
+                target.AdjustedSource = new Bitmap(new MemoryStream(afterBytes));
+                target.OriginalImageBytes = afterBytes;
+
+                var undoCmd = new RetouchImageCommand(target, rawSourceBytes, afterBytes, "Paint Bucket Fill", (el, b) =>
+                {
+                    el.AdjustedSource?.Dispose();
+                    el.AdjustedSource = new Bitmap(new MemoryStream(b));
+                    el.OriginalImageBytes = b;
+                    RefreshCanvas();
+                });
+                if (!_isApplyingHistory) History.Push(undoCmd);
+                RefreshCanvas();
+                StatusMessage = $"Paint Bucket: Filled {filledCount:N0} pixels with #{fillR:X2}{fillG:X2}{fillB:X2}.";
             }
             finally
             {

@@ -2934,6 +2934,9 @@ public partial class ImageEditorViewModel : ObservableObject, IDisposable
 
         CanvasElement el = toolType switch
         {
+            "roundedrect" => isClick
+                ? new RectangleElement { X = start.X - 60, Y = start.Y - 40, Width = 120, Height = 80, CornerRadius = 16 }
+                : new RectangleElement { X = minX, Y = minY, Width = w, Height = h, CornerRadius = 16 },
             "ellipse" => isClick
                 ? new EllipseElement { X = start.X - 50, Y = start.Y - 50, Width = 100, Height = 100 }
                 : new EllipseElement { X = minX, Y = minY, Width = w, Height = h },

@@ -58,8 +58,14 @@ public static class Program
         Console.WriteLine("\n[11/12] Running Oriented Transform & Handles Suite...");
         TransformSnapshotSuite.Run(ctx);
 
-        Console.WriteLine("\n[12/12] Running Studio Parity & Codecs Suite...");
+        Console.WriteLine("\n[12/14] Running Studio Parity & Codecs Suite...");
         ParityFeatureSnapshotSuite.Run(ctx);
+
+        Console.WriteLine("\n[13/14] Running Tool Interaction & Paint Bucket Audit Suite...");
+        ToolInteractionAuditSuite.Run(ctx);
+
+        Console.WriteLine("\n[14/14] Running Visual Canvas Tool & Brush Drawing Audit Suite...");
+        CanvasDrawingAuditSuite.Run(ctx);
 
         Console.WriteLine("\n==================================================");
         Console.WriteLine(" All Visual Audit Snapshots Captured Successfully!");

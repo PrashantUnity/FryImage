@@ -2671,6 +2671,7 @@ public static class ParityFeatureSnapshotSuite
                 throw new InvalidOperationException("LayerStyleEffects.Clone must preserve AreEffectsVisible master switch.");
 
             // n. Free Transform on active selection rectangle (Commit 3ee78a36, #5297, #5337)
+            var savedCanvasControl = vm.CanvasControl;
             canvasCtrl.ActiveSelectionBounds = new Rect(25, 30, 80, 60);
             vm.SelectedElement = propLayer;
             vm.CanvasControl = canvasCtrl;
@@ -2680,6 +2681,7 @@ public static class ParityFeatureSnapshotSuite
             vm.CommitFreeTransform();
             if (canvasCtrl.ActiveSelectionBounds == null || Math.Abs(canvasCtrl.ActiveSelectionBounds.Value.X - 25) > 1e-4 || Math.Abs(canvasCtrl.ActiveSelectionBounds.Value.Y - 30) > 1e-4)
                 throw new InvalidOperationException("CommitFreeTransform should update selection bounds with transformed element.");
+            vm.CanvasControl = savedCanvasControl;
 
             // o. Smart Filter delete without deleting layer (Commit 665cb581, #4751, #4764)
             var smartObj = new ImageElement { Width = 100, Height = 100 };
